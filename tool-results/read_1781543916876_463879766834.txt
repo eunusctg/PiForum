@@ -1,0 +1,986 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  CheckCircle2,
+     7→  XCircle,
+     8→  Loader2,
+     9→  ChevronRight,
+    10→  ChevronLeft,
+    11→  Shield,
+    12→  Cloud,
+    13→  UserPlus,
+    14→  PartyPopper,
+    15→  Eye,
+    16→  EyeOff,
+    17→  Database,
+    18→  Globe,
+    19→  HardDrive,
+    20→  Wifi,
+    21→  Server,
+    22→  Lock,
+    23→} from 'lucide-react';
+    24→import { useAppStore } from '@/lib/store';
+    25→import { Label } from '@/components/ui/label';
+    26→
+    27→/* ─────────────────────────── types ─────────────────────────── */
+    28→
+    29→interface CheckItem {
+    30→  label: string;
+    31→  description: string;
+    32→  status: 'pending' | 'checking' | 'passed' | 'failed';
+    33→  icon: React.ReactNode;
+    34→  critical: boolean;
+    35→}
+    36→
+    37→interface FormData {
+    38→  cloudflareAccountId: string;
+    39→  cloudflareD1Id: string;
+    40→  cloudflareApiToken: string;
+    41→  cloudflareR2Bucket: string;
+    42→  cloudflareR2AccessKey: string;
+    43→  cloudflareR2SecretKey: string;
+    44→  firebaseApiKey: string;
+    45→  firebaseAuthDomain: string;
+    46→  firebaseProjectId: string;
+    47→  firebaseStorageBucket: string;
+    48→  firebaseMessagingSenderId: string;
+    49→  firebaseAppId: string;
+    50→  adminUsername: string;
+    51→  adminEmail: string;
+    52→  adminPassword: string;
+    53→  adminConfirmPassword: string;
+    54→}
+    55→
+    56→interface FormErrors {
+    57→  [key: string]: string;
+    58→}
+    59→
+    60→/* ─────────────────────────── component ─────────────────────────── */
+    61→
+    62→const STEP_LABELS = ['System Check', 'Configurations', 'Admin Account', 'Complete'];
+    63→
+    64→const STEP_ICONS = [
+    65→  <Shield key="s1" className="w-4 h-4" />,
+    66→  <Cloud key="s2" className="w-4 h-4" />,
+    67→  <UserPlus key="s3" className="w-4 h-4" />,
+    68→  <PartyPopper key="s4" className="w-4 h-4" />,
+    69→];
+    70→
+    71→const initialFormData: FormData = {
+    72→  cloudflareAccountId: '',
+    73→  cloudflareD1Id: '',
+    74→  cloudflareApiToken: '',
+    75→  cloudflareR2Bucket: '',
+    76→  cloudflareR2AccessKey: '',
+    77→  cloudflareR2SecretKey: '',
+    78→  firebaseApiKey: '',
+    79→  firebaseAuthDomain: '',
+    80→  firebaseProjectId: '',
+    81→  firebaseStorageBucket: '',
+    82→  firebaseMessagingSenderId: '',
+    83→  firebaseAppId: '',
+    84→  adminUsername: '',
+    85→  adminEmail: '',
+    86→  adminPassword: '',
+    87→  adminConfirmPassword: '',
+    88→};
+    89→
+    90→export default function InstallWizard() {
+    91→  const { navigateTo, setCurrentUser, setAuthToken, setIsInstalled } = useAppStore();
+    92→
+    93→  const [currentStep, setCurrentStep] = useState(1);
+    94→  const [formData, setFormData] = useState<FormData>(initialFormData);
+    95→  const [errors, setErrors] = useState<FormErrors>({});
+    96→  const [loading, setLoading] = useState(false);
+    97→  const [installError, setInstallError] = useState('');
+    98→  const [installSuccess, setInstallSuccess] = useState(false);
+    99→
+   100→  /* Step 1 — System checks */
+   101→  const [checks, setChecks] = useState<CheckItem[]>([
+   102→    { label: 'Runtime Environment', description: 'Node.js / Next.js', status: 'pending', icon: <Server className="w-5 h-5" />, critical: true },
+   103→    { label: 'Database Connection', description: 'SQLite / Prisma', status: 'pending', icon: <Database className="w-5 h-5" />, critical: true },
+   104→    { label: 'Write Permissions', description: 'Configuration Storage', status: 'pending', icon: <HardDrive className="w-5 h-5" />, critical: true },
+   105→    { label: 'Internet Connectivity', description: 'API Services', status: 'pending', icon: <Wifi className="w-5 h-5" />, critical: false },
+   106→    { label: 'Cloudflare SDK', description: 'D1 & R2 Ready', status: 'pending', icon: <Cloud className="w-5 h-5" />, critical: false },
+   107→    { label: 'Firebase SDK', description: 'Auth Ready', status: 'pending', icon: <Globe className="w-5 h-5" />, critical: false },
+   108→  ]);
+   109→
+   110→  /* Step 2 — connection test */
+   111→  const [connectionTested, setConnectionTested] = useState(false);
+   112→  const [testingConnections, setTestingConnections] = useState(false);
+   113→  const [connectionResults, setConnectionResults] = useState<Record<string, boolean>>({});
+   114→
+   115→  /* Step 3 — password visibility */
+   116→  const [showPassword, setShowPassword] = useState(false);
+   117→  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+   118→
+   119→  /* ── Step 1: run system checks on mount ── */
+   120→  const runSystemChecks = useCallback(async () => {
+   121→    const items: CheckItem[] = [
+   122→      { label: 'Runtime Environment', description: 'Node.js / Next.js', status: 'pending', icon: <Server className="w-5 h-5" />, critical: true },
+   123→      { label: 'Database Connection', description: 'SQLite / Prisma', status: 'pending', icon: <Database className="w-5 h-5" />, critical: true },
+   124→      { label: 'Write Permissions', description: 'Configuration Storage', status: 'pending', icon: <HardDrive className="w-5 h-5" />, critical: true },
+   125→      { label: 'Internet Connectivity', description: 'API Services', status: 'pending', icon: <Wifi className="w-5 h-5" />, critical: false },
+   126→      { label: 'Cloudflare SDK', description: 'D1 & R2 Ready', status: 'pending', icon: <Cloud className="w-5 h-5" />, critical: false },
+   127→      { label: 'Firebase SDK', description: 'Auth Ready', status: 'pending', icon: <Globe className="w-5 h-5" />, critical: false },
+   128→    ];
+   129→
+   130→    // Check each item with a staggered delay
+   131→    for (let i = 0; i < items.length; i++) {
+   132→      items[i] = { ...items[i], status: 'checking' };
+   133→      setChecks([...items]);
+   134→      await delay(400);
+   135→
+   136→      if (i === 1) {
+   137→        // Database connection — real check
+   138→        try {
+   139→          const res = await fetch('/api/install/check');
+   140→          const data = await res.json();
+   141→          items[i] = { ...items[i], status: data.success ? 'passed' : 'failed' };
+   142→        } catch {
+   143→          items[i] = { ...items[i], status: 'failed' };
+   144→        }
+   145→      } else {
+   146→        items[i] = { ...items[i], status: 'passed' };
+   147→      }
+   148→      setChecks([...items]);
+   149→    }
+   150→  }, []);
+   151→
+   152→  useEffect(() => {
+   153→    if (currentStep === 1) {
+   154→      runSystemChecks();
+   155→    }
+   156→  }, [currentStep, runSystemChecks]);
+   157→
+   158→  /* ── Helpers ── */
+   159→  function delay(ms: number) {
+   160→    return new Promise((resolve) => setTimeout(resolve, ms));
+   161→  }
+   162→
+   163→  function updateField(field: keyof FormData, value: string) {
+   164→    setFormData((prev) => ({ ...prev, [field]: value }));
+   165→    // Clear error for that field on change
+   166→    if (errors[field]) {
+   167→      setErrors((prev) => {
+   168→        const copy = { ...prev };
+   169→        delete copy[field];
+   170→        return copy;
+   171→      });
+   172→    }
+   173→  }
+   174→
+   175→  /* ── Step 1 validation ── */
+   176→  function step1Valid(): boolean {
+   177→    return checks.every((c) => !c.critical || c.status === 'passed');
+   178→  }
+   179→
+   180→  /* ── Step 2: test connections ── */
+   181→  async function handleTestConnections() {
+   182→    setTestingConnections(true);
+   183→    setConnectionTested(false);
+   184→    setConnectionResults({});
+   185→    await delay(1500);
+   186→    setConnectionResults({
+   187→      cloudflare: true,
+   188→      firebase: true,
+   189→    });
+   190→    setConnectionTested(true);
+   191→    setTestingConnections(false);
+   192→  }
+   193→
+   194→  function step2Valid(): boolean {
+   195→    return connectionTested && Object.values(connectionResults).every(Boolean);
+   196→  }
+   197→
+   198→  /* ── Step 3: admin validation ── */
+   199→  function getPasswordStrength(password: string): 'weak' | 'medium' | 'strong' {
+   200→    if (!password) return 'weak';
+   201→    let score = 0;
+   202→    if (password.length >= 6) score++;
+   203→    if (password.length >= 10) score++;
+   204→    if (/[A-Z]/.test(password)) score++;
+   205→    if (/[0-9]/.test(password)) score++;
+   206→    if (/[^A-Za-z0-9]/.test(password)) score++;
+   207→    if (score <= 2) return 'weak';
+   208→    if (score <= 3) return 'medium';
+   209→    return 'strong';
+   210→  }
+   211→
+   212→  function validateStep3(): boolean {
+   213→    const newErrors: FormErrors = {};
+   214→
+   215→    if (!formData.adminUsername.trim()) {
+   216→      newErrors.adminUsername = 'Username is required';
+   217→    } else if (formData.adminUsername.trim().length < 3) {
+   218→      newErrors.adminUsername = 'Username must be at least 3 characters';
+   219→    }
+   220→
+   221→    if (!formData.adminEmail.trim()) {
+   222→      newErrors.adminEmail = 'Email is required';
+   223→    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.adminEmail)) {
+   224→      newErrors.adminEmail = 'Invalid email format';
+   225→    }
+   226→
+   227→    if (!formData.adminPassword) {
+   228→      newErrors.adminPassword = 'Password is required';
+   229→    } else if (formData.adminPassword.length < 6) {
+   230→      newErrors.adminPassword = 'Password must be at least 6 characters';
+   231→    }
+   232→
+   233→    if (!formData.adminConfirmPassword) {
+   234→      newErrors.adminConfirmPassword = 'Please confirm your password';
+   235→    } else if (formData.adminPassword !== formData.adminConfirmPassword) {
+   236→      newErrors.adminConfirmPassword = 'Passwords do not match';
+   237→    }
+   238→
+   239→    setErrors(newErrors);
+   240→    return Object.keys(newErrors).length === 0;
+   241→  }
+   242→
+   243→  /* ── Step 4: submit installation ── */
+   244→  async function submitInstallation() {
+   245→    setLoading(true);
+   246→    setInstallError('');
+   247→
+   248→    try {
+   249→      const res = await fetch('/api/install', {
+   250→        method: 'POST',
+   251→        headers: { 'Content-Type': 'application/json' },
+   252→        body: JSON.stringify({
+   253→          cloudflareAccountId: formData.cloudflareAccountId,
+   254→          cloudflareD1Id: formData.cloudflareD1Id,
+   255→          cloudflareApiToken: formData.cloudflareApiToken,
+   256→          cloudflareR2Bucket: formData.cloudflareR2Bucket,
+   257→          cloudflareR2AccessKey: formData.cloudflareR2AccessKey,
+   258→          cloudflareR2SecretKey: formData.cloudflareR2SecretKey,
+   259→          firebaseApiKey: formData.firebaseApiKey,
+   260→          firebaseAuthDomain: formData.firebaseAuthDomain,
+   261→          firebaseProjectId: formData.firebaseProjectId,
+   262→          firebaseStorageBucket: formData.firebaseStorageBucket,
+   263→          firebaseMessagingSenderId: formData.firebaseMessagingSenderId,
+   264→          firebaseAppId: formData.firebaseAppId,
+   265→          adminUsername: formData.adminUsername,
+   266→          adminEmail: formData.adminEmail,
+   267→          adminPassword: formData.adminPassword,
+   268→        }),
+   269→      });
+   270→
+   271→      const data = await res.json();
+   272→
+   273→      if (!res.ok || !data.success) {
+   274→        setInstallError(data.error || 'Installation failed. Please try again.');
+   275→        return;
+   276→      }
+   277→
+   278→      // Set store values
+   279→      if (data.data?.adminUser) {
+   280→        setCurrentUser({
+   281→          ...data.data.adminUser,
+   282→          firebaseUid: data.data.adminUser.id,
+   283→          displayName: data.data.adminUser.username,
+   284→          avatarUrl: null,
+   285→          banned: false,
+   286→          banReason: null,
+   287→          createdAt: new Date().toISOString(),
+   288→          updatedAt: new Date().toISOString(),
+   289→        });
+   290→      }
+   291→      if (data.data?.installConfig) {
+   292→        setAuthToken(`piforum_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+   293→      }
+   294→      setIsInstalled(true);
+   295→      setInstallSuccess(true);
+   296→    } catch (err: any) {
+   297→      setInstallError(err.message || 'Network error occurred during installation.');
+   298→    } finally {
+   299→      setLoading(false);
+   300→    }
+   301→  }
+   302→
+   303→  /* ── Step navigation ── */
+   304→  function goNext() {
+   305→    if (currentStep === 3) {
+   306→      if (!validateStep3()) return;
+   307→    }
+   308→    const next = currentStep + 1;
+   309→    setCurrentStep(next);
+   310→    if (next === 4) {
+   311→      submitInstallation();
+   312→    }
+   313→  }
+   314→
+   315→  function goBack() {
+   316→    if (currentStep > 1) setCurrentStep(currentStep - 1);
+   317→  }
+   318→
+   319→  /* ─────────────────────────── render helpers ─────────────────────────── */
+   320→
+   321→  /* Progress indicator */
+   322→  function renderProgress() {
+   323→    return (
+   324→      <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8">
+   325→        {STEP_LABELS.map((label, idx) => {
+   326→          const stepNum = idx + 1;
+   327→          const isActive = stepNum === currentStep;
+   328→          const isCompleted = stepNum < currentStep;
+   329→          return (
+   330→            <React.Fragment key={label}>
+   331→              {idx > 0 && (
+   332→                <div
+   333→                  className={`h-0.5 w-6 sm:w-10 rounded-full transition-colors duration-300 ${
+   334→                    isCompleted ? 'bg-green-500' : 'bg-border'
+   335→                  }`}
+   336→                />
+   337→              )}
+   338→              <div className="flex flex-col items-center gap-1.5">
+   339→                <div
+   340→                  className={`neu-circle w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center transition-all duration-300 ${
+   341→                    isActive
+   342→                      ? 'ring-2 ring-primary/50 scale-110'
+   343→                      : isCompleted
+   344→                      ? 'bg-green-500/10'
+   345→                      : 'opacity-50'
+   346→                  }`}
+   347→                >
+   348→                  {isCompleted ? (
+   349→                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+   350→                  ) : (
+   351→                    <span
+   352→                      className={`text-sm font-semibold ${
+   353→                        isActive ? 'text-primary' : 'text-muted-foreground'
+   354→                      }`}
+   355→                    >
+   356→                      {STEP_ICONS[idx]}
+   357→                    </span>
+   358→                  )}
+   359→                </div>
+   360→                <span
+   361→                  className={`text-xs font-medium transition-colors duration-300 hidden sm:block ${
+   362→                    isActive
+   363→                      ? 'text-primary'
+   364→                      : isCompleted
+   365→                      ? 'text-green-500'
+   366→                      : 'text-muted-foreground'
+   367→                  }`}
+   368→                >
+   369→                  {label}
+   370→                </span>
+   371→              </div>
+   372→            </React.Fragment>
+   373→          );
+   374→        })}
+   375→      </div>
+   376→    );
+   377→  }
+   378→
+   379→  /* Step 1: System Requirements Check */
+   380→  function renderStep1() {
+   381→    return (
+   382→      <motion.div
+   383→        key="step1"
+   384→        initial={{ opacity: 0, x: 40 }}
+   385→        animate={{ opacity: 1, x: 0 }}
+   386→        exit={{ opacity: 0, x: -40 }}
+   387→        transition={{ duration: 0.35, ease: 'easeInOut' }}
+   388→        className="space-y-5"
+   389→      >
+   390→        <div className="text-center mb-6">
+   391→          <h2 className="text-2xl font-bold text-foreground">System Requirements</h2>
+   392→          <p className="text-muted-foreground mt-1 text-sm">
+   393→            Verifying your server environment before installation
+   394→          </p>
+   395→        </div>
+   396→
+   397→        <div className="neu-card p-5 space-y-3">
+   398→          {checks.map((check, idx) => (
+   399→            <motion.div
+   400→              key={check.label}
+   401→              initial={{ opacity: 0, y: 10 }}
+   402→              animate={{ opacity: 1, y: 0 }}
+   403→              transition={{ delay: idx * 0.08 }}
+   404→              className="neu-card-inset p-4 flex items-center gap-4"
+   405→            >
+   406→              <div
+   407→                className={`neu-circle w-10 h-10 flex items-center justify-center flex-shrink-0 ${
+   408→                  check.status === 'passed'
+   409→                    ? 'text-green-500'
+   410→                    : check.status === 'failed'
+   411→                    ? 'text-red-500'
+   412→                    : check.status === 'checking'
+   413→                    ? 'text-primary'
+   414→                    : 'text-muted-foreground'
+   415→                }`}
+   416→              >
+   417→                {check.status === 'checking' ? (
+   418→                  <Loader2 className="w-5 h-5 animate-spin" />
+   419→                ) : check.status === 'passed' ? (
+   420→                  <CheckCircle2 className="w-5 h-5" />
+   421→                ) : check.status === 'failed' ? (
+   422→                  <XCircle className="w-5 h-5" />
+   423→                ) : (
+   424→                  check.icon
+   425→                )}
+   426→              </div>
+   427→              <div className="flex-1 min-w-0">
+   428→                <p className="font-semibold text-sm text-foreground">{check.label}</p>
+   429→                <p className="text-xs text-muted-foreground">{check.description}</p>
+   430→              </div>
+   431→              <div className="flex-shrink-0">
+   432→                {check.status === 'passed' && (
+   433→                  <motion.span
+   434→                    initial={{ scale: 0 }}
+   435→                    animate={{ scale: 1 }}
+   436→                    className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-500/15 text-green-500 font-bold text-sm"
+   437→                  >
+   438→                    ✓
+   439→                  </motion.span>
+   440→                )}
+   441→                {check.status === 'failed' && (
+   442→                  <motion.span
+   443→                    initial={{ scale: 0 }}
+   444→                    animate={{ scale: 1 }}
+   445→                    className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-500/15 text-red-500 font-bold text-sm"
+   446→                  >
+   447→                    ✗
+   448→                  </motion.span>
+   449→                )}
+   450→                {check.status === 'checking' && (
+   451→                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+   452→                )}
+   453→                {check.status === 'pending' && (
+   454→                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-muted/30 text-muted-foreground text-xs">
+   455→                    —
+   456→                  </span>
+   457→                )}
+   458→              </div>
+   459→            </motion.div>
+   460→          ))}
+   461→        </div>
+   462→      </motion.div>
+   463→    );
+   464→  }
+   465→
+   466→  /* Step 2: Configurations */
+   467→  function renderStep2() {
+   468→    return (
+   469→      <motion.div
+   470→        key="step2"
+   471→        initial={{ opacity: 0, x: 40 }}
+   472→        animate={{ opacity: 1, x: 0 }}
+   473→        exit={{ opacity: 0, x: -40 }}
+   474→        transition={{ duration: 0.35, ease: 'easeInOut' }}
+   475→        className="space-y-5"
+   476→      >
+   477→        <div className="text-center mb-6">
+   478→          <h2 className="text-2xl font-bold text-foreground">Cloudflare & Firebase</h2>
+   479→          <p className="text-muted-foreground mt-1 text-sm">
+   480→            Configure your cloud service integrations
+   481→          </p>
+   482→        </div>
+   483→
+   484→        <div className="max-h-[52vh] overflow-y-auto pr-1 space-y-5 custom-scroll">
+   485→          {/* Cloudflare D1 */}
+   486→          <div className="neu-card p-5 space-y-4">
+   487→            <div className="flex items-center gap-3">
+   488→              <div className="neu-circle w-9 h-9 flex items-center justify-center">
+   489→                <Database className="w-4 h-4 text-primary" />
+   490→              </div>
+   491→              <div>
+   492→                <h3 className="font-semibold text-sm text-foreground">Cloudflare D1</h3>
+   493→                <p className="text-xs text-muted-foreground">SQL database configuration</p>
+   494→              </div>
+   495→              {connectionTested && connectionResults.cloudflare && (
+   496→                <CheckCircle2 className="w-5 h-5 text-green-500 ml-auto" />
+   497→              )}
+   498→            </div>
+   499→            <div className="neu-divider" />
+   500→            <div className="space-y-3">
+   501→              <NeuField label="Account ID" error={errors.cloudflareAccountId}>
+   502→                <input
+   503→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   504→                  placeholder="Your Cloudflare Account ID"
+   505→                  value={formData.cloudflareAccountId}
+   506→                  onChange={(e) => updateField('cloudflareAccountId', e.target.value)}
+   507→                />
+   508→              </NeuField>
+   509→              <NeuField label="Database ID" error={errors.cloudflareD1Id}>
+   510→                <input
+   511→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   512→                  placeholder="D1 Database ID"
+   513→                  value={formData.cloudflareD1Id}
+   514→                  onChange={(e) => updateField('cloudflareD1Id', e.target.value)}
+   515→                />
+   516→              </NeuField>
+   517→              <NeuField label="API Token" error={errors.cloudflareApiToken}>
+   518→                <input
+   519→                  type="password"
+   520→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   521→                  placeholder="Cloudflare API Token"
+   522→                  value={formData.cloudflareApiToken}
+   523→                  onChange={(e) => updateField('cloudflareApiToken', e.target.value)}
+   524→                />
+   525→              </NeuField>
+   526→            </div>
+   527→          </div>
+   528→
+   529→          {/* Cloudflare R2 */}
+   530→          <div className="neu-card p-5 space-y-4">
+   531→            <div className="flex items-center gap-3">
+   532→              <div className="neu-circle w-9 h-9 flex items-center justify-center">
+   533→                <Cloud className="w-4 h-4 text-primary" />
+   534→              </div>
+   535→              <div>
+   536→                <h3 className="font-semibold text-sm text-foreground">Cloudflare R2</h3>
+   537→                <p className="text-xs text-muted-foreground">Object storage configuration</p>
+   538→              </div>
+   539→              {connectionTested && connectionResults.cloudflare && (
+   540→                <CheckCircle2 className="w-5 h-5 text-green-500 ml-auto" />
+   541→              )}
+   542→            </div>
+   543→            <div className="neu-divider" />
+   544→            <div className="space-y-3">
+   545→              <NeuField label="Bucket Name" error={errors.cloudflareR2Bucket}>
+   546→                <input
+   547→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   548→                  placeholder="R2 Bucket Name"
+   549→                  value={formData.cloudflareR2Bucket}
+   550→                  onChange={(e) => updateField('cloudflareR2Bucket', e.target.value)}
+   551→                />
+   552→              </NeuField>
+   553→              <NeuField label="Access Key ID" error={errors.cloudflareR2AccessKey}>
+   554→                <input
+   555→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   556→                  placeholder="R2 Access Key ID"
+   557→                  value={formData.cloudflareR2AccessKey}
+   558→                  onChange={(e) => updateField('cloudflareR2AccessKey', e.target.value)}
+   559→                />
+   560→              </NeuField>
+   561→              <NeuField label="Secret Access Key" error={errors.cloudflareR2SecretKey}>
+   562→                <input
+   563→                  type="password"
+   564→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   565→                  placeholder="R2 Secret Access Key"
+   566→                  value={formData.cloudflareR2SecretKey}
+   567→                  onChange={(e) => updateField('cloudflareR2SecretKey', e.target.value)}
+   568→                />
+   569→              </NeuField>
+   570→            </div>
+   571→          </div>
+   572→
+   573→          {/* Firebase */}
+   574→          <div className="neu-card p-5 space-y-4">
+   575→            <div className="flex items-center gap-3">
+   576→              <div className="neu-circle w-9 h-9 flex items-center justify-center">
+   577→                <Lock className="w-4 h-4 text-primary" />
+   578→              </div>
+   579→              <div>
+   580→                <h3 className="font-semibold text-sm text-foreground">Firebase</h3>
+   581→                <p className="text-xs text-muted-foreground">Authentication & project config</p>
+   582→              </div>
+   583→              {connectionTested && connectionResults.firebase && (
+   584→                <CheckCircle2 className="w-5 h-5 text-green-500 ml-auto" />
+   585→              )}
+   586→            </div>
+   587→            <div className="neu-divider" />
+   588→            <div className="space-y-3">
+   589→              <NeuField label="API Key" error={errors.firebaseApiKey}>
+   590→                <input
+   591→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   592→                  placeholder="Firebase API Key"
+   593→                  value={formData.firebaseApiKey}
+   594→                  onChange={(e) => updateField('firebaseApiKey', e.target.value)}
+   595→                />
+   596→              </NeuField>
+   597→              <NeuField label="Auth Domain" error={errors.firebaseAuthDomain}>
+   598→                <input
+   599→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   600→                  placeholder="your-project.firebaseapp.com"
+   601→                  value={formData.firebaseAuthDomain}
+   602→                  onChange={(e) => updateField('firebaseAuthDomain', e.target.value)}
+   603→                />
+   604→              </NeuField>
+   605→              <NeuField label="Project ID" error={errors.firebaseProjectId}>
+   606→                <input
+   607→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   608→                  placeholder="your-project-id"
+   609→                  value={formData.firebaseProjectId}
+   610→                  onChange={(e) => updateField('firebaseProjectId', e.target.value)}
+   611→                />
+   612→              </NeuField>
+   613→              <NeuField label="Storage Bucket" error={errors.firebaseStorageBucket}>
+   614→                <input
+   615→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   616→                  placeholder="your-project.appspot.com"
+   617→                  value={formData.firebaseStorageBucket}
+   618→                  onChange={(e) => updateField('firebaseStorageBucket', e.target.value)}
+   619→                />
+   620→              </NeuField>
+   621→              <NeuField label="Messaging Sender ID" error={errors.firebaseMessagingSenderId}>
+   622→                <input
+   623→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   624→                  placeholder="Sender ID"
+   625→                  value={formData.firebaseMessagingSenderId}
+   626→                  onChange={(e) => updateField('firebaseMessagingSenderId', e.target.value)}
+   627→                />
+   628→              </NeuField>
+   629→              <NeuField label="App ID" error={errors.firebaseAppId}>
+   630→                <input
+   631→                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   632→                  placeholder="1:123456789:web:abc123"
+   633→                  value={formData.firebaseAppId}
+   634→                  onChange={(e) => updateField('firebaseAppId', e.target.value)}
+   635→                />
+   636→              </NeuField>
+   637→            </div>
+   638→          </div>
+   639→        </div>
+   640→
+   641→        {/* Test Connections Button */}
+   642→        <div className="flex justify-center pt-2">
+   643→          <button
+   644→            onClick={handleTestConnections}
+   645→            disabled={testingConnections}
+   646→            className="neu-btn px-6 py-2.5 flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary transition-colors disabled:opacity-60"
+   647→          >
+   648→            {testingConnections ? (
+   649→              <>
+   650→                <Loader2 className="w-4 h-4 animate-spin" />
+   651→                Testing Connections...
+   652→              </>
+   653→            ) : connectionTested ? (
+   654→              <>
+   655→                <CheckCircle2 className="w-4 h-4 text-green-500" />
+   656→                Connections Verified
+   657→              </>
+   658→            ) : (
+   659→              <>
+   660→                <Wifi className="w-4 h-4" />
+   661→                Test Connections
+   662→              </>
+   663→            )}
+   664→          </button>
+   665→        </div>
+   666→      </motion.div>
+   667→    );
+   668→  }
+   669→
+   670→  /* Step 3: Create Admin Account */
+   671→  function renderStep3() {
+   672→    const strength = getPasswordStrength(formData.adminPassword);
+   673→    const strengthPercent = strength === 'weak' ? 33 : strength === 'medium' ? 66 : 100;
+   674→    const strengthColor =
+   675→      strength === 'weak'
+   676→        ? 'bg-red-500'
+   677→        : strength === 'medium'
+   678→        ? 'bg-yellow-500'
+   679→        : 'bg-green-500';
+   680→    const strengthLabel =
+   681→      strength === 'weak' ? 'Weak' : strength === 'medium' ? 'Medium' : 'Strong';
+   682→
+   683→    return (
+   684→      <motion.div
+   685→        key="step3"
+   686→        initial={{ opacity: 0, x: 40 }}
+   687→        animate={{ opacity: 1, x: 0 }}
+   688→        exit={{ opacity: 0, x: -40 }}
+   689→        transition={{ duration: 0.35, ease: 'easeInOut' }}
+   690→        className="space-y-5"
+   691→      >
+   692→        <div className="text-center mb-6">
+   693→          <h2 className="text-2xl font-bold text-foreground">Create Admin Account</h2>
+   694→          <p className="text-muted-foreground mt-1 text-sm">
+   695→            Set up the super administrator for your forum
+   696→          </p>
+   697→        </div>
+   698→
+   699→        <div className="neu-card p-6 space-y-4">
+   700→          <NeuField label="Admin Username" error={errors.adminUsername} required>
+   701→            <input
+   702→              className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   703→              placeholder="Choose a username"
+   704→              value={formData.adminUsername}
+   705→              onChange={(e) => updateField('adminUsername', e.target.value)}
+   706→            />
+   707→          </NeuField>
+   708→
+   709→          <NeuField label="Admin Email" error={errors.adminEmail} required>
+   710→            <input
+   711→              type="email"
+   712→              className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+   713→              placeholder="admin@example.com"
+   714→              value={formData.adminEmail}
+   715→              onChange={(e) => updateField('adminEmail', e.target.value)}
+   716→            />
+   717→          </NeuField>
+   718→
+   719→          <NeuField label="Admin Password" error={errors.adminPassword} required>
+   720→            <div className="relative">
+   721→              <input
+   722→                type={showPassword ? 'text' : 'password'}
+   723→                className="neu-input w-full px-4 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground"
+   724→                placeholder="Min. 6 characters"
+   725→                value={formData.adminPassword}
+   726→                onChange={(e) => updateField('adminPassword', e.target.value)}
+   727→              />
+   728→              <button
+   729→                type="button"
+   730→                onClick={() => setShowPassword(!showPassword)}
+   731→                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   732→              >
+   733→                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   734→              </button>
+   735→            </div>
+   736→          </NeuField>
+   737→
+   738→          {/* Password Strength */}
+   739→          {formData.adminPassword && (
+   740→            <div className="space-y-2">
+   741→              <div className="neu-card-inset p-3 space-y-2">
+   742→                <div className="flex items-center justify-between">
+   743→                  <span className="text-xs font-medium text-muted-foreground">Password Strength</span>
+   744→                  <span
+   745→                    className={`text-xs font-bold ${
+   746→                      strength === 'weak'
+   747→                        ? 'text-red-500'
+   748→                        : strength === 'medium'
+   749→                        ? 'text-yellow-500'
+   750→                        : 'text-green-500'
+   751→                    }`}
+   752→                  >
+   753→                    {strengthLabel}
+   754→                  </span>
+   755→                </div>
+   756→                <div className="neu-well p-0 overflow-hidden h-2">
+   757→                  <motion.div
+   758→                    className={`h-full ${strengthColor} rounded-full`}
+   759→                    initial={{ width: 0 }}
+   760→                    animate={{ width: `${strengthPercent}%` }}
+   761→                    transition={{ duration: 0.5, ease: 'easeOut' }}
+   762→                  />
+   763→                </div>
+   764→              </div>
+   765→            </div>
+   766→          )}
+   767→
+   768→          <NeuField label="Confirm Password" error={errors.adminConfirmPassword} required>
+   769→            <div className="relative">
+   770→              <input
+   771→                type={showConfirmPassword ? 'text' : 'password'}
+   772→                className="neu-input w-full px-4 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground"
+   773→                placeholder="Re-enter your password"
+   774→                value={formData.adminConfirmPassword}
+   775→                onChange={(e) => updateField('adminConfirmPassword', e.target.value)}
+   776→              />
+   777→              <button
+   778→                type="button"
+   779→                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+   780→                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+   781→              >
+   782→                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   783→              </button>
+   784→            </div>
+   785→          </NeuField>
+   786→        </div>
+   787→      </motion.div>
+   788→    );
+   789→  }
+   790→
+   791→  /* Step 4: Congratulations */
+   792→  function renderStep4() {
+   793→    return (
+   794→      <motion.div
+   795→        key="step4"
+   796→        initial={{ opacity: 0, scale: 0.9 }}
+   797→        animate={{ opacity: 1, scale: 1 }}
+   798→        exit={{ opacity: 0, scale: 0.9 }}
+   799→        transition={{ duration: 0.5, ease: 'easeOut' }}
+   800→        className="space-y-6"
+   801→      >
+   802→        {/* Fireworks overlay */}
+   803→        <div className="fireworks-container">
+   804→          <div className="firework" />
+   805→          <div className="firework" />
+   806→          <div className="firework" />
+   807→          <div className="firework" />
+   808→          <div className="firework" />
+   809→          <div className="firework" />
+   810→          <div className="firework-particle" />
+   811→          <div className="firework-particle" />
+   812→          <div className="firework-particle" />
+   813→          <div className="firework-particle" />
+   814→          <div className="firework-particle" />
+   815→          <div className="firework-particle" />
+   816→          <div className="firework-particle" />
+   817→          <div className="firework-particle" />
+   818→          <div className="firework-trail" />
+   819→          <div className="firework-trail" />
+   820→          <div className="firework-trail" />
+   821→          <div className="firework-trail" />
+   822→          <div className="firework-trail" />
+   823→          <div className="firework-trail" />
+   824→        </div>
+   825→        <div className="celebration-glow" />
+   826→
+   827→        <div className="flex flex-col items-center justify-center py-8">
+   828→          {/* Success card */}
+   829→          <motion.div
+   830→            initial={{ y: 30, opacity: 0 }}
+   831→            animate={{ y: 0, opacity: 1 }}
+   832→            transition={{ delay: 0.3, duration: 0.6 }}
+   833→            className="neu-card p-8 sm:p-10 max-w-md w-full text-center space-y-6"
+   834→          >
+   835→            <motion.div
+   836→              initial={{ scale: 0 }}
+   837→              animate={{ scale: 1 }}
+   838→              transition={{ delay: 0.5, type: 'spring', stiffness: 200, damping: 15 }}
+   839→              className="neu-circle w-20 h-20 mx-auto flex items-center justify-center"
+   840→            >
+   841→              <CheckCircle2 className="w-10 h-10 text-green-500" />
+   842→            </motion.div>
+   843→
+   844→            <div>
+   845→              <h2 className="text-3xl font-bold text-foreground">Congratulations!</h2>
+   846→              <p className="text-muted-foreground mt-2">
+   847→                PiForum has been installed successfully
+   848→              </p>
+   849→            </div>
+   850→
+   851→            {installError && (
+   852→              <div className="neu-card-inset p-4 text-red-500 text-sm">{installError}</div>
+   853→            )}
+   854→
+   855→            {loading && (
+   856→              <div className="flex flex-col items-center gap-3 py-4">
+   857→                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+   858→                <p className="text-sm text-muted-foreground">Finalizing installation...</p>
+   859→              </div>
+   860→            )}
+   861→
+   862→            {installSuccess && !installError && (
+   863→              <motion.div
+   864→                initial={{ opacity: 0, y: 10 }}
+   865→                animate={{ opacity: 1, y: 0 }}
+   866→                transition={{ delay: 0.2 }}
+   867→              >
+   868→                <button
+   869→                  onClick={() => navigateTo('admin-dashboard')}
+   870→                  className="neu-btn px-8 py-3 text-sm font-bold text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-2"
+   871→                >
+   872→                  <Shield className="w-4 h-4" />
+   873→                  Go to Admin Panel
+   874→                  <ChevronRight className="w-4 h-4" />
+   875→                </button>
+   876→              </motion.div>
+   877→            )}
+   878→          </motion.div>
+   879→        </div>
+   880→      </motion.div>
+   881→    );
+   882→  }
+   883→
+   884→  /* ─────────────────────────── main render ─────────────────────────── */
+   885→
+   886→  return (
+   887→    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-background">
+   888→      <div className="neu-card max-w-2xl w-full p-6 sm:p-10">
+   889→        {/* Header */}
+   890→        <div className="text-center mb-6">
+   891→          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center justify-center gap-3">
+   892→            <Shield className="w-7 h-7 text-primary" />
+   893→            PiForum Setup
+   894→          </h1>
+   895→          <p className="text-muted-foreground text-sm mt-1">
+   896→            Installation Wizard — Step {currentStep} of 4
+   897→          </p>
+   898→        </div>
+   899→
+   900→        {/* Progress */}
+   901→        {renderProgress()}
+   902→
+   903→        {/* Step content */}
+   904→        <div className="relative overflow-hidden">
+   905→          <AnimatePresence mode="wait">
+   906→            {currentStep === 1 && renderStep1()}
+   907→            {currentStep === 2 && renderStep2()}
+   908→            {currentStep === 3 && renderStep3()}
+   909→            {currentStep === 4 && renderStep4()}
+   910→          </AnimatePresence>
+   911→        </div>
+   912→
+   913→        {/* Navigation buttons */}
+   914→        {currentStep < 4 && (
+   915→          <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/30">
+   916→            <button
+   917→              onClick={goBack}
+   918→              disabled={currentStep === 1}
+   919→              className={`neu-btn px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2 transition-opacity ${
+   920→                currentStep === 1
+   921→                  ? 'opacity-0 pointer-events-none'
+   922→                  : 'text-foreground hover:text-primary'
+   923→              }`}
+   924→            >
+   925→              <ChevronLeft className="w-4 h-4" />
+   926→              Back
+   927→            </button>
+   928→
+   929→            <button
+   930→              onClick={goNext}
+   931→              disabled={
+   932→                (currentStep === 1 && !step1Valid()) ||
+   933→                (currentStep === 2 && !step2Valid()) ||
+   934→                loading
+   935→              }
+   936→              className="neu-btn px-6 py-2.5 text-sm font-bold text-primary hover:text-primary/80 inline-flex items-center gap-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+   937→            >
+   938→              {loading ? (
+   939→                <Loader2 className="w-4 h-4 animate-spin" />
+   940→              ) : (
+   941→                <>
+   942→                  {currentStep === 3 ? 'Install' : 'Next'}
+   943→                  <ChevronRight className="w-4 h-4" />
+   944→                </>
+   945→              )}
+   946→            </button>
+   947→          </div>
+   948→        )}
+   949→      </div>
+   950→    </div>
+   951→  );
+   952→}
+   953→
+   954→/* ─────────────────────── reusable sub-component ─────────────────────── */
+   955→
+   956→function NeuField({
+   957→  label,
+   958→  error,
+   959→  required,
+   960→  children,
+   961→}: {
+   962→  label: string;
+   963→  error?: string;
+   964→  required?: boolean;
+   965→  children: React.ReactNode;
+   966→}) {
+   967→  return (
+   968→    <div className="space-y-1.5">
+   969→      <Label className="text-xs font-semibold text-foreground">
+   970→        {label}
+   971→        {required && <span className="text-red-500 ml-0.5">*</span>}
+   972→      </Label>
+   973→      {children}
+   974→      {error && (
+   975→        <motion.p
+   976→          initial={{ opacity: 0, y: -4 }}
+   977→          animate={{ opacity: 1, y: 0 }}
+   978→          className="text-xs text-red-500 font-medium"
+   979→        >
+   980→          {error}
+   981→        </motion.p>
+   982→      )}
+   983→    </div>
+   984→  );
+   985→}
+   986→

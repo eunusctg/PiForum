@@ -1,0 +1,727 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-neu-bg: var(--neu-bg);
+  --shadow-neu: var(--neu-shadow);
+  --shadow-neu-inset: var(--neu-shadow-inset);
+  --shadow-neu-sm: var(--neu-shadow-sm);
+  --shadow-neu-inset-sm: var(--neu-shadow-inset-sm);
+}
+
+/* ============================================================
+   LIGHT THEME — Neumorphism base: #e0e0e0
+   ============================================================ */
+:root {
+  --radius: 1rem;
+
+  /* Core Neumorphism tokens */
+  --neu-bg: #e0e0e0;
+  --neu-shadow: 9px 9px 16px #bebebe, -9px -9px 16px #ffffff;
+  --neu-shadow-inset: inset 9px 9px 16px #bebebe, inset -9px -9px 16px #ffffff;
+  --neu-shadow-sm: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff;
+  --neu-shadow-inset-sm: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff;
+
+  /* shadcn/ui overrides adapted for #e0e0e0 base */
+  --background: #e0e0e0;
+  --foreground: #2d2d2d;
+  --card: #e0e0e0;
+  --card-foreground: #2d2d2d;
+  --popover: #e0e0e0;
+  --popover-foreground: #2d2d2d;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #d5d5d5;
+  --secondary-foreground: #2d2d2d;
+  --muted: #c8c8c8;
+  --muted-foreground: #6b6b6b;
+  --accent: #d5d5d5;
+  --accent-foreground: #2d2d2d;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #c0c0c0;
+  --input: #c0c0c0;
+  --ring: #6366f1;
+  --chart-1: #6366f1;
+  --chart-2: #22c55e;
+  --chart-3: #f59e0b;
+  --chart-4: #ec4899;
+  --chart-5: #06b6d4;
+  --sidebar: #d8d8d8;
+  --sidebar-foreground: #2d2d2d;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #d0d0d0;
+  --sidebar-accent-foreground: #2d2d2d;
+  --sidebar-border: #c0c0c0;
+  --sidebar-ring: #6366f1;
+}
+
+/* ============================================================
+   DARK THEME — Neumorphism base: #1e1e24
+   ============================================================ */
+.dark {
+  /* Core Neumorphism tokens */
+  --neu-bg: #1e1e24;
+  --neu-shadow: 9px 9px 16px #131317, -9px -9px 16px #292931;
+  --neu-shadow-inset: inset 9px 9px 16px #131317, inset -9px -9px 16px #292931;
+  --neu-shadow-sm: 5px 5px 10px #131317, -5px -5px 10px #292931;
+  --neu-shadow-inset-sm: inset 5px 5px 10px #131317, inset -5px -5px 10px #292931;
+
+  /* shadcn/ui overrides adapted for #1e1e24 base */
+  --background: #1e1e24;
+  --foreground: #e0e0e0;
+  --card: #1e1e24;
+  --card-foreground: #e0e0e0;
+  --popover: #1e1e24;
+  --popover-foreground: #e0e0e0;
+  --primary: #818cf8;
+  --primary-foreground: #1e1e24;
+  --secondary: #2a2a32;
+  --secondary-foreground: #e0e0e0;
+  --muted: #2a2a32;
+  --muted-foreground: #8888a0;
+  --accent: #2a2a32;
+  --accent-foreground: #e0e0e0;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #2e2e38;
+  --input: #2e2e38;
+  --ring: #818cf8;
+  --chart-1: #818cf8;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
+  --chart-4: #f472b6;
+  --chart-5: #22d3ee;
+  --sidebar: #1a1a20;
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: #818cf8;
+  --sidebar-primary-foreground: #1e1e24;
+  --sidebar-accent: #2a2a32;
+  --sidebar-accent-foreground: #e0e0e0;
+  --sidebar-border: #2e2e38;
+  --sidebar-ring: #818cf8;
+}
+
+/* ============================================================
+   BASE LAYER
+   ============================================================ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-color: var(--neu-bg);
+    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 1.0625rem);
+    line-height: 1.6;
+  }
+
+  /* Responsive typography scale */
+  h1 {
+    font-size: clamp(1.75rem, 1.25rem + 2.5vw, 2.75rem);
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: clamp(1.375rem, 1rem + 1.875vw, 2.125rem);
+    line-height: 1.25;
+    font-weight: 650;
+  }
+
+  h3 {
+    font-size: clamp(1.125rem, 0.875rem + 1.25vw, 1.625rem);
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  h4 {
+    font-size: clamp(1rem, 0.875rem + 0.625vw, 1.25rem);
+    line-height: 1.35;
+    font-weight: 600;
+  }
+
+  h5 {
+    font-size: clamp(0.9375rem, 0.85rem + 0.4375vw, 1.0625rem);
+    line-height: 1.4;
+    font-weight: 550;
+  }
+
+  h6 {
+    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 0.9375rem);
+    line-height: 1.45;
+    font-weight: 550;
+  }
+
+  p {
+    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 1.0625rem);
+    line-height: 1.65;
+  }
+
+  small {
+    font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);
+  }
+}
+
+/* ============================================================
+   NEUMORPHISM UTILITY CLASSES
+   ============================================================ */
+
+/* Raised card — soft extruded surface */
+.neu-card {
+  background-color: var(--neu-bg);
+  border-radius: 16px;
+  box-shadow: var(--neu-shadow);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.neu-card:hover {
+  box-shadow: var(--neu-shadow-sm);
+  transform: translateY(1px);
+}
+
+/* Pressed / inset card — sunken surface */
+.neu-card-inset {
+  background-color: var(--neu-bg);
+  border-radius: 16px;
+  box-shadow: var(--neu-shadow-inset);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Raised button — interactive extruded element */
+.neu-btn {
+  background-color: var(--neu-bg);
+  border-radius: 12px;
+  box-shadow: var(--neu-shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.neu-btn:hover {
+  box-shadow: var(--neu-shadow);
+  transform: translateY(-1px);
+}
+
+.neu-btn:active,
+.neu-btn-inset {
+  background-color: var(--neu-bg);
+  border-radius: 12px;
+  box-shadow: var(--neu-shadow-inset-sm);
+  transform: translateY(0);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Inset input field — sunken entry surface */
+.neu-input {
+  background-color: var(--neu-bg);
+  border-radius: 12px;
+  box-shadow: var(--neu-shadow-inset-sm);
+  border: none;
+  outline: none;
+  transition: box-shadow 0.25s ease;
+}
+
+.neu-input:focus {
+  box-shadow: var(--neu-shadow-inset), 0 0 0 2px var(--ring);
+}
+
+/* Flat surface — no shadow, base colour only */
+.neu-flat {
+  background-color: var(--neu-bg);
+  border-radius: 16px;
+  box-shadow: none;
+  transition: box-shadow 0.3s ease;
+}
+
+/* ============================================================
+   CUSTOM SCROLLBAR
+   ============================================================ */
+
+/* WebKit / Blink */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--neu-bg);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+  border: 2px solid var(--neu-bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--neu-bg);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--neu-bg);
+}
+
+/* ============================================================
+   FIREWORK CELEBRATION ANIMATION
+   ============================================================ */
+
+/* Full-screen overlay for the installation wizard completion step */
+.fireworks-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+/* Individual firework burst origin */
+.firework {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: firework-burst 1.2s ease-out forwards;
+}
+
+.firework::before,
+.firework::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* Staggered positions and colour variants */
+.firework:nth-child(1) {
+  left: 15%;
+  top: 25%;
+  animation-delay: 0s;
+  --fw-color: #ff6b6b;
+  background: var(--fw-color);
+  box-shadow:
+    -30px -50px 0 var(--fw-color),
+    30px -50px 0 var(--fw-color),
+    -50px -25px 0 var(--fw-color),
+    50px -25px 0 var(--fw-color),
+    -55px 5px 0 var(--fw-color),
+    55px 5px 0 var(--fw-color),
+    -40px 35px 0 var(--fw-color),
+    40px 35px 0 var(--fw-color),
+    -15px 55px 0 var(--fw-color),
+    15px 55px 0 var(--fw-color),
+    0 -60px 0 var(--fw-color),
+    0 60px 0 var(--fw-color);
+}
+
+.firework:nth-child(2) {
+  left: 50%;
+  top: 15%;
+  animation-delay: 0.35s;
+  --fw-color: #ffd93d;
+  background: var(--fw-color);
+  box-shadow:
+    -25px -45px 0 var(--fw-color),
+    25px -45px 0 var(--fw-color),
+    -45px -20px 0 var(--fw-color),
+    45px -20px 0 var(--fw-color),
+    -50px 10px 0 var(--fw-color),
+    50px 10px 0 var(--fw-color),
+    -35px 40px 0 var(--fw-color),
+    35px 40px 0 var(--fw-color),
+    -10px 50px 0 var(--fw-color),
+    10px 50px 0 var(--fw-color),
+    0 -55px 0 var(--fw-color),
+    0 55px 0 var(--fw-color);
+}
+
+.firework:nth-child(3) {
+  left: 80%;
+  top: 30%;
+  animation-delay: 0.7s;
+  --fw-color: #6bcb77;
+  background: var(--fw-color);
+  box-shadow:
+    -28px -48px 0 var(--fw-color),
+    28px -48px 0 var(--fw-color),
+    -48px -22px 0 var(--fw-color),
+    48px -22px 0 var(--fw-color),
+    -52px 8px 0 var(--fw-color),
+    52px 8px 0 var(--fw-color),
+    -38px 38px 0 var(--fw-color),
+    38px 38px 0 var(--fw-color),
+    -12px 52px 0 var(--fw-color),
+    12px 52px 0 var(--fw-color),
+    0 -58px 0 var(--fw-color),
+    0 58px 0 var(--fw-color);
+}
+
+.firework:nth-child(4) {
+  left: 35%;
+  top: 50%;
+  animation-delay: 1.05s;
+  --fw-color: #4d96ff;
+  background: var(--fw-color);
+  box-shadow:
+    -22px -42px 0 var(--fw-color),
+    22px -42px 0 var(--fw-color),
+    -42px -18px 0 var(--fw-color),
+    42px -18px 0 var(--fw-color),
+    -48px 12px 0 var(--fw-color),
+    48px 12px 0 var(--fw-color),
+    -32px 36px 0 var(--fw-color),
+    32px 36px 0 var(--fw-color),
+    -8px 48px 0 var(--fw-color),
+    8px 48px 0 var(--fw-color),
+    0 -52px 0 var(--fw-color),
+    0 52px 0 var(--fw-color);
+}
+
+.firework:nth-child(5) {
+  left: 65%;
+  top: 60%;
+  animation-delay: 1.4s;
+  --fw-color: #c084fc;
+  background: var(--fw-color);
+  box-shadow:
+    -26px -46px 0 var(--fw-color),
+    26px -46px 0 var(--fw-color),
+    -46px -24px 0 var(--fw-color),
+    46px -24px 0 var(--fw-color),
+    -54px 6px 0 var(--fw-color),
+    54px 6px 0 var(--fw-color),
+    -36px 40px 0 var(--fw-color),
+    36px 40px 0 var(--fw-color),
+    -14px 54px 0 var(--fw-color),
+    14px 54px 0 var(--fw-color),
+    0 -56px 0 var(--fw-color),
+    0 56px 0 var(--fw-color);
+}
+
+.firework:nth-child(6) {
+  left: 25%;
+  top: 70%;
+  animation-delay: 1.75s;
+  --fw-color: #f472b6;
+  background: var(--fw-color);
+  box-shadow:
+    -24px -44px 0 var(--fw-color),
+    24px -44px 0 var(--fw-color),
+    -44px -20px 0 var(--fw-color),
+    44px -20px 0 var(--fw-color),
+    -50px 10px 0 var(--fw-color),
+    50px 10px 0 var(--fw-color),
+    -34px 38px 0 var(--fw-color),
+    34px 38px 0 var(--fw-color),
+    -10px 50px 0 var(--fw-color),
+    10px 50px 0 var(--fw-color),
+    0 -54px 0 var(--fw-color),
+    0 54px 0 var(--fw-color);
+}
+
+/* Flicker/sparkle particles rendered as small pseudo-elements */
+.firework-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: firework-sparkle 1s ease-out forwards;
+}
+
+.firework-particle:nth-child(1) { --fp-x: -60px; --fp-y: -10px; --fp-color: #ff6b6b; animation-delay: 0.2s; }
+.firework-particle:nth-child(2) { --fp-x: 55px;  --fp-y: -30px; --fp-color: #ffd93d; animation-delay: 0.4s; }
+.firework-particle:nth-child(3) { --fp-x: -40px; --fp-y: 50px;  --fp-color: #6bcb77; animation-delay: 0.6s; }
+.firework-particle:nth-child(4) { --fp-x: 45px;  --fp-y: 40px;  --fp-color: #4d96ff; animation-delay: 0.8s; }
+.firework-particle:nth-child(5) { --fp-x: 0;     --fp-y: -65px; --fp-color: #c084fc; animation-delay: 1.0s; }
+.firework-particle:nth-child(6) { --fp-x: -50px; --fp-y: 45px;  --fp-color: #f472b6; animation-delay: 1.2s; }
+.firework-particle:nth-child(7) { --fp-x: 60px;  --fp-y: 15px;  --fp-color: #22d3ee; animation-delay: 1.4s; }
+.firework-particle:nth-child(8) { --fp-x: -20px; --fp-y: -55px; --fp-color: #fb923c; animation-delay: 1.6s; }
+
+.firework-particle::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--fp-color);
+  box-shadow: 0 0 6px 2px var(--fp-color);
+}
+
+@keyframes firework-burst {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes firework-sparkle {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--fp-x), var(--fp-y)) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Full celebration sequence — loop a few times then stop */
+@keyframes fireworks-cycle {
+  0% { opacity: 0; }
+  5% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.fireworks-container {
+  animation: fireworks-cycle 5s ease-in-out forwards;
+}
+
+/* Confetti-like trailing spark */
+.firework-trail {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: firework-trail-fall 2s ease-in forwards;
+}
+
+.firework-trail:nth-child(odd) {
+  background: #ffd93d;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.firework-trail:nth-child(even) {
+  background: #ff6b6b;
+  animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+}
+
+@keyframes firework-trail-fall {
+  0% {
+    transform: translateY(-20vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Celebration glow pulse behind content */
+.celebration-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: radial-gradient(circle at 50% 50%, var(--primary) 0%, transparent 70%);
+  opacity: 0;
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.08; }
+}
+
+/* ============================================================
+   NEUMORPHISM INTERACTION TRANSITIONS
+   ============================================================ */
+
+/* Smooth shadow transitions for any element toggling raised/inset */
+.neu-transition {
+  transition:
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s ease;
+}
+
+/* Hover lift for interactive cards */
+.neu-hover-lift:hover {
+  box-shadow: var(--neu-shadow);
+  transform: translateY(-2px);
+}
+
+/* Press sink for active / focus-within */
+.neu-press:active,
+.neu-press-active {
+  box-shadow: var(--neu-shadow-inset-sm);
+  transform: translateY(1px);
+}
+
+/* ============================================================
+   ADDITIONAL NEUMORPHISM SURFACE HELPERS
+   ============================================================ */
+
+/* Concave well — deeper inset for containers */
+.neu-well {
+  background-color: var(--neu-bg);
+  border-radius: 16px;
+  box-shadow: var(--neu-shadow-inset);
+  padding: 1.5rem;
+}
+
+/* Convex bump — raised surface for emphasis */
+.neu-bump {
+  background-color: var(--neu-bg);
+  border-radius: 16px;
+  box-shadow: var(--neu-shadow);
+}
+
+/* Circular neumorphic element (avatars, icons) */
+.neu-circle {
+  background-color: var(--neu-bg);
+  border-radius: 50%;
+  box-shadow: var(--neu-shadow-sm);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.neu-circle:hover {
+  box-shadow: var(--neu-shadow);
+  transform: translateY(-1px);
+}
+
+.neu-circle-inset {
+  background-color: var(--neu-bg);
+  border-radius: 50%;
+  box-shadow: var(--neu-shadow-inset-sm);
+}
+
+/* Divider with subtle neumorphic groove */
+.neu-divider {
+  height: 2px;
+  background: var(--neu-bg);
+  border-radius: 1px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 -1px 2px rgba(255, 255, 255, 0.6);
+}
+
+.dark .neu-divider {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 -1px 2px rgba(255, 255, 255, 0.05);
+}
+
+/* Toggle switch neumorphic track */
+.neu-toggle-track {
+  background-color: var(--neu-bg);
+  border-radius: 9999px;
+  box-shadow: var(--neu-shadow-inset-sm);
+  transition: box-shadow 0.3s ease;
+}
+
+.neu-toggle-thumb {
+  border-radius: 50%;
+  box-shadow: var(--neu-shadow-sm);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s ease;
+}
+
+/* ============================================================
+   NEUMORPHISM-ENHANCED FORM CONTROLS
+   ============================================================ */
+
+/* Checkbox / radio neumorphic style */
+.neu-checkbox {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background-color: var(--neu-bg);
+  border-radius: 6px;
+  box-shadow: var(--neu-shadow-sm);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.neu-checkbox:checked {
+  box-shadow: var(--neu-shadow-inset-sm);
+  background-color: var(--neu-bg);
+}
+
+/* ============================================================
+   RESPONSIVE NEUMORPHISM ADJUSTMENTS
+   ============================================================ */
+
+@media (max-width: 640px) {
+  /* Reduce shadow intensity on small screens for cleaner look */
+  :root {
+    --neu-shadow: 6px 6px 12px #bebebe, -6px -6px 12px #ffffff;
+    --neu-shadow-inset: inset 6px 6px 12px #bebebe, inset -6px -6px 12px #ffffff;
+    --neu-shadow-sm: 3px 3px 6px #bebebe, -3px -3px 6px #ffffff;
+    --neu-shadow-inset-sm: inset 3px 3px 6px #bebebe, inset -3px -3px 6px #ffffff;
+  }
+
+  .dark {
+    --neu-shadow: 6px 6px 12px #131317, -6px -6px 12px #292931;
+    --neu-shadow-inset: inset 6px 6px 12px #131317, inset -6px -6px 12px #292931;
+    --neu-shadow-sm: 3px 3px 6px #131317, -3px -3px 6px #292931;
+    --neu-shadow-inset-sm: inset 3px 3px 6px #131317, inset -3px -3px 6px #292931;
+  }
+
+  .neu-card,
+  .neu-card-inset,
+  .neu-bump,
+  .neu-well {
+    border-radius: 12px;
+  }
+}

@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model User {
+  id            String   @id @default(cuid())
+  firebaseUid   String   @unique
+  username      String   @unique
+  email         String   @unique
+  displayName   String?
+  avatarUrl     String?
+  role          Int      @default(0) // 0=User, 1=Moderator, 2=Admin, 3=SuperAdmin
+  banned        Boolean  @default(false)
+  banReason     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  threads       Thread[]
+  posts         Post[]
+  votes         PostVote[]
+  securityLogs  SecurityLog[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  accessLevel Int      @default(0) // 0=Public, 1=Registered, 2=Admin
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  forums      Forum[]
+}
+
+model Forum {
+  id          String   @id @default(cuid())
+  categoryId  String
+  name        String
+  description String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  lastPostAt  DateTime?
+  threadCount Int      @default(0)
+  postCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  threads     Thread[]
+}
+
+model Thread {
+  id         String   @id @default(cuid())
+  forumId    String
+  authorId   String
+  title      String
+  content    String
+  views      Int      @default(0)
+  pinned     Boolean  @default(false)
+  locked     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  forum      Forum    @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id])
+  posts      Post[]
+
+  @@index([forumId])
+  @@index([authorId])
+}
+
+model Post {
+  id         String   @id @default(cuid())
+  threadId   String
+  authorId   String
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id])
+  votes      PostVote[]
+  attachments Attachment[]
+
+  @@index([threadId])
+  @@index([authorId])
+}
+
+model PostVote {
+  id        String  @id @default(cuid())
+  postId    String
+  userId    String
+  voteType  Int     // 1=upvote, -1=downvote
+
+  post      Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  postId    String
+  url       String
+  filename  String
+  size      Int
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model SecurityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  eventType String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model InstallConfig {
+  id                String  @id @default(cuid())
+  installed         Boolean @default(false)
+  cloudflareAccountId String?
+  cloudflareD1Id    String?
+  cloudflareApiToken String?
+  cloudflareR2Bucket String?
+  cloudflareR2AccessKey String?
+  cloudflareR2SecretKey String?
+  firebaseApiKey    String?
+  firebaseAuthDomain String?
+  firebaseProjectId String?
+  firebaseStorageBucket String?
+  firebaseMessagingSenderId String?
+  firebaseAppId     String?
+  adminFirebaseUid  String?
+  forumName         String  @default("PiForum")
+  forumDescription  String  @default("A modern neumorphic forum")
+}
