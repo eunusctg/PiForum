@@ -1,0 +1,3 @@
+module.exports=[24789,a=>{"use strict";var b=a.i(87924),c=a.i(2352);a.s(["default",0,function(){return(0,b.jsx)(c.default,{initialView:"admin-monetization"})}])}];
+
+//# sourceMappingURL=src_app_admin_monetization_page_tsx_1tht4h6._.js.map

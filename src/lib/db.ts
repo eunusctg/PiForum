@@ -18,6 +18,14 @@
  *     await db.$transaction([...])
  */
 
+// IMPORTANT: install the fs stub before Prisma loads. Prisma 6.x's runtime
+// calls fs.readdir to detect OpenSSL on Linux; on Cloudflare Workers (unenv)
+// this throws "[unenv] fs.readdir is not implemented yet!". The stub returns
+// [] so Prisma's platform detection skips OpenSSL and continues with the
+// driver adapter path. The install runs lazily inside buildClient() so it
+// doesn't break Turbopack's static page-data collection.
+import { installFsStub } from './cf-fs-stub'
+
 import type { PrismaClient } from '@prisma/client'
 
 type CloudflareEnv = {
@@ -40,6 +48,10 @@ function isWorkersRuntime(): boolean {
 }
 
 async function buildClient(): Promise<PrismaClient> {
+  // Install the fs stub FIRST, before Prisma loads, so fs.readdir returns []
+  // instead of throwing on Cloudflare Workers.
+  installFsStub()
+
   // Always import from the default entry (`@prisma/client`). With an adapter,
   // Prisma 6.x skips the Rust query engine entirely and uses the driver
   // adapter to talk to D1 — no fs.readdir needed.
