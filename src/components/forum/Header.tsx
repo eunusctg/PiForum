@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useSyncExternalStore, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Sun,
   Moon,
@@ -24,7 +25,7 @@ import {
 import { useAppStore } from "@/lib/store";
 import type { ThemeMode as StoreThemeMode } from "@/lib/store";
 import { ROLE_LABELS, UserRole } from "@/lib/types";
-import type { AppView } from "@/lib/types";
+import type { AppView, ForumUser } from "@/lib/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,65 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+/**
+ * Map a store view (+ optional params) to a real App-Router URL so that
+ * clicking nav links updates the browser URL and the route is shareable /
+ * bookmarkable. Returns `null` for views that have no dedicated URL
+ * (install / login / register), in which case the caller falls back to the
+ * in-store `navigateTo` SPA switch.
+ */
+function viewToUrl(
+  view: AppView,
+  params: Record<string, string> | undefined,
+  currentUser: ForumUser | null
+): string | null {
+  switch (view) {
+    case "home":
+      return "/";
+    case "forum":
+      return params?.forumId
+        ? `/forum/${encodeURIComponent(params.forumId)}`
+        : "/";
+    case "thread":
+      return params?.threadId
+        ? `/thread/${encodeURIComponent(params.threadId)}`
+        : "/";
+    case "new-thread":
+      return params?.forumId
+        ? `/new-thread?forumId=${encodeURIComponent(params.forumId)}`
+        : "/new-thread";
+    case "search":
+      return params?.q ? `/search?q=${encodeURIComponent(params.q)}` : "/search";
+    case "members":
+      return "/members";
+    case "bookmarks":
+      return "/bookmarks";
+    case "notifications":
+      return "/notifications";
+    case "tags":
+      return "/tags";
+    case "profile": {
+      const uid = params?.userId || currentUser?.id;
+      return uid ? `/profile/${encodeURIComponent(uid)}` : "/";
+    }
+    case "admin-dashboard":
+      return "/admin";
+    case "admin-users":
+      return "/admin/users";
+    case "admin-categories":
+      return "/admin/categories";
+    case "admin-settings":
+      return "/admin/settings";
+    case "admin-security":
+      return "/admin/security";
+    case "admin-reports":
+      return "/admin/reports";
+    default:
+      // install / login / register / activity — no dedicated URL
+      return null;
+  }
+}
 
 export default function Header() {
   const {
@@ -61,6 +121,7 @@ export default function Header() {
     () => false
   );
 
+  const router = useRouter();
   const forumName = getSetting("forum_name", "PiForum");
 
   // ---------- Fetch unread notification count ----------
@@ -95,18 +156,29 @@ export default function Header() {
 
   const handleNavigate = useCallback(
     (view: AppView, params?: Record<string, string>) => {
-      navigateTo(view, params);
+      const url = viewToUrl(view, params, currentUser);
+      if (url !== null) {
+        // Real route exists — push it so the URL updates and the page is
+        // shareable / bookmarkable. ForumShell on the destination page will
+        // sync the store's currentView on mount.
+        router.push(url);
+      } else {
+        // No dedicated URL (install / login / register) — fall back to the
+        // in-store SPA switch.
+        navigateTo(view, params);
+      }
       setMobileMenuOpen(false);
       setSearchOpen(false);
     },
-    [navigateTo]
+    [router, navigateTo, currentUser]
   );
 
   const handleLogout = useCallback(() => {
     setCurrentUser(null);
     setAuthToken(null);
-    navigateTo("home");
-  }, [setCurrentUser, setAuthToken, navigateTo]);
+    // After clearing auth, send the user back to the home route.
+    router.push("/");
+  }, [router, setCurrentUser, setAuthToken]);
 
   const handleOpenAuthModal = useCallback(
     (tab: "login" | "register") => {

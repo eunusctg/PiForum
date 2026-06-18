@@ -20,6 +20,9 @@ import {
   Wifi,
   Server,
   Lock,
+  Image as ImageIcon,
+  Type,
+  FileText,
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { Label } from '@/components/ui/label';
@@ -35,18 +38,32 @@ interface CheckItem {
 }
 
 interface FormData {
+  // Database selection
+  dbType: 'sqlite' | 'mysql';
+  mysqlHost: string;
+  mysqlPort: string;
+  mysqlDatabase: string;
+  mysqlUsername: string;
+  mysqlPassword: string;
+  // Cloudflare
   cloudflareAccountId: string;
   cloudflareD1Id: string;
   cloudflareApiToken: string;
   cloudflareR2Bucket: string;
   cloudflareR2AccessKey: string;
   cloudflareR2SecretKey: string;
+  // Firebase
   firebaseApiKey: string;
   firebaseAuthDomain: string;
   firebaseProjectId: string;
   firebaseStorageBucket: string;
   firebaseMessagingSenderId: string;
   firebaseAppId: string;
+  // Site branding
+  forumName: string;
+  forumDescription: string;
+  logoUrl: string;
+  // Admin account
   adminUsername: string;
   adminEmail: string;
   adminPassword: string;
@@ -69,18 +86,32 @@ const STEP_ICONS = [
 ];
 
 const initialFormData: FormData = {
+  // Database selection
+  dbType: 'sqlite',
+  mysqlHost: '',
+  mysqlPort: '3306',
+  mysqlDatabase: '',
+  mysqlUsername: '',
+  mysqlPassword: '',
+  // Cloudflare
   cloudflareAccountId: '',
   cloudflareD1Id: '',
   cloudflareApiToken: '',
   cloudflareR2Bucket: '',
   cloudflareR2AccessKey: '',
   cloudflareR2SecretKey: '',
+  // Firebase
   firebaseApiKey: '',
   firebaseAuthDomain: '',
   firebaseProjectId: '',
   firebaseStorageBucket: '',
   firebaseMessagingSenderId: '',
   firebaseAppId: '',
+  // Site branding
+  forumName: '',
+  forumDescription: '',
+  logoUrl: '',
+  // Admin account
   adminUsername: '',
   adminEmail: '',
   adminPassword: '',
@@ -192,7 +223,38 @@ export default function InstallWizard() {
   }
 
   function step2Valid(): boolean {
+    // If MySQL is selected, the required MySQL fields must be filled
+    if (formData.dbType === 'mysql') {
+      if (
+        !formData.mysqlHost.trim() ||
+        !formData.mysqlDatabase.trim() ||
+        !formData.mysqlUsername.trim()
+      ) {
+        return false;
+      }
+    }
     return connectionTested && Object.values(connectionResults).every(Boolean);
+  }
+
+  function validateStep2(): boolean {
+    const newErrors: FormErrors = {};
+    if (formData.dbType === 'mysql') {
+      if (!formData.mysqlHost.trim()) newErrors.mysqlHost = 'MySQL host is required';
+      if (!formData.mysqlDatabase.trim()) newErrors.mysqlDatabase = 'Database name is required';
+      if (!formData.mysqlUsername.trim()) newErrors.mysqlUsername = 'MySQL username is required';
+    }
+    setErrors((prev) => ({ ...prev, ...newErrors }));
+    // Clean up MySQL errors when switching back to SQLite
+    if (formData.dbType === 'sqlite') {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.mysqlHost;
+        delete copy.mysqlDatabase;
+        delete copy.mysqlUsername;
+        return copy;
+      });
+    }
+    return Object.keys(newErrors).length === 0;
   }
 
   /* ── Step 3: admin validation ── */
@@ -211,6 +273,13 @@ export default function InstallWizard() {
 
   function validateStep3(): boolean {
     const newErrors: FormErrors = {};
+
+    // Site branding validation — site title (forum name) is required
+    if (!formData.forumName.trim()) {
+      newErrors.forumName = 'Site title is required';
+    } else if (formData.forumName.trim().length < 2) {
+      newErrors.forumName = 'Site title must be at least 2 characters';
+    }
 
     if (!formData.adminUsername.trim()) {
       newErrors.adminUsername = 'Username is required';
@@ -250,18 +319,32 @@ export default function InstallWizard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          // Database selection
+          dbType: formData.dbType,
+          mysqlHost: formData.mysqlHost,
+          mysqlPort: formData.mysqlPort,
+          mysqlDatabase: formData.mysqlDatabase,
+          mysqlUsername: formData.mysqlUsername,
+          mysqlPassword: formData.mysqlPassword,
+          // Cloudflare
           cloudflareAccountId: formData.cloudflareAccountId,
           cloudflareD1Id: formData.cloudflareD1Id,
           cloudflareApiToken: formData.cloudflareApiToken,
           cloudflareR2Bucket: formData.cloudflareR2Bucket,
           cloudflareR2AccessKey: formData.cloudflareR2AccessKey,
           cloudflareR2SecretKey: formData.cloudflareR2SecretKey,
+          // Firebase
           firebaseApiKey: formData.firebaseApiKey,
           firebaseAuthDomain: formData.firebaseAuthDomain,
           firebaseProjectId: formData.firebaseProjectId,
           firebaseStorageBucket: formData.firebaseStorageBucket,
           firebaseMessagingSenderId: formData.firebaseMessagingSenderId,
           firebaseAppId: formData.firebaseAppId,
+          // Site branding
+          forumName: formData.forumName,
+          forumDescription: formData.forumDescription,
+          logoUrl: formData.logoUrl,
+          // Admin account
           adminUsername: formData.adminUsername,
           adminEmail: formData.adminEmail,
           adminPassword: formData.adminPassword,
@@ -302,6 +385,9 @@ export default function InstallWizard() {
 
   /* ── Step navigation ── */
   function goNext() {
+    if (currentStep === 2) {
+      if (!validateStep2()) return;
+    }
     if (currentStep === 3) {
       if (!validateStep3()) return;
     }
@@ -475,13 +561,134 @@ export default function InstallWizard() {
         className="space-y-5"
       >
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Cloudflare & Firebase</h2>
+          <h2 className="text-2xl font-bold text-foreground">Database & Integrations</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Configure your cloud service integrations
+            Choose your database and configure cloud service integrations
           </p>
         </div>
 
         <div className="max-h-[52vh] overflow-y-auto pr-1 space-y-5 custom-scroll">
+          {/* Database Configuration */}
+          <div className="neu-card p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="neu-circle w-9 h-9 flex items-center justify-center">
+                <Database className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm text-foreground">Database Configuration</h3>
+                <p className="text-xs text-muted-foreground">
+                  Choose between local SQLite or external MySQL
+                </p>
+              </div>
+            </div>
+            <div className="neu-divider" />
+
+            {/* DB type toggle */}
+            <div className="neu-well rounded-none p-1.5 flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData({ ...formData, dbType: 'sqlite' });
+                  // Clear any MySQL errors
+                  setErrors((prev) => {
+                    const copy = { ...prev };
+                    delete copy.mysqlHost;
+                    delete copy.mysqlDatabase;
+                    delete copy.mysqlUsername;
+                    return copy;
+                  });
+                }}
+                className={`flex-1 py-2.5 text-sm font-semibold rounded-xl text-center transition-all ${
+                  formData.dbType === 'sqlite'
+                    ? 'neu-card shadow-sm text-primary'
+                    : 'neu-flat text-muted-foreground'
+                }`}
+              >
+                SQLite (Default)
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, dbType: 'mysql' })}
+                className={`flex-1 py-2.5 text-sm font-semibold rounded-xl text-center transition-all ${
+                  formData.dbType === 'mysql'
+                    ? 'neu-card shadow-sm text-primary'
+                    : 'neu-flat text-muted-foreground'
+                }`}
+              >
+                MySQL
+              </button>
+            </div>
+
+            {formData.dbType === 'sqlite' ? (
+              <div className="neu-card-inset p-4 flex items-start gap-3">
+                <HardDrive className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  <span className="font-semibold text-foreground">Using local SQLite database.</span>{' '}
+                  No configuration needed — PiForum will store all data in a local file. This is
+                  recommended for small to medium-sized communities. You can migrate to MySQL later
+                  via the deployment configuration.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="neu-card-inset p-3 flex items-start gap-3">
+                  <Server className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-muted-foreground leading-relaxed">
+                    Enter your MySQL connection credentials. They will be persisted in the install
+                    config for deployment. The actual MySQL connection is wired up at deployment
+                    time by setting <code className="px-1 py-0.5 rounded bg-muted/40">DATABASE_URL</code>{' '}
+                    and switching the Prisma provider.
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <NeuField label="Host" error={errors.mysqlHost} required>
+                      <input
+                        className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                        placeholder="localhost or 127.0.0.1"
+                        value={formData.mysqlHost}
+                        onChange={(e) => updateField('mysqlHost', e.target.value)}
+                      />
+                    </NeuField>
+                  </div>
+                  <NeuField label="Port" error={errors.mysqlPort}>
+                    <input
+                      className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                      placeholder="3306"
+                      value={formData.mysqlPort}
+                      onChange={(e) => updateField('mysqlPort', e.target.value)}
+                    />
+                  </NeuField>
+                </div>
+                <NeuField label="Database Name" error={errors.mysqlDatabase} required>
+                  <input
+                    className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                    placeholder="piforum"
+                    value={formData.mysqlDatabase}
+                    onChange={(e) => updateField('mysqlDatabase', e.target.value)}
+                  />
+                </NeuField>
+                <NeuField label="Username" error={errors.mysqlUsername} required>
+                  <input
+                    className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                    placeholder="root"
+                    value={formData.mysqlUsername}
+                    onChange={(e) => updateField('mysqlUsername', e.target.value)}
+                  />
+                </NeuField>
+                <NeuField label="Password" error={errors.mysqlPassword}>
+                  <input
+                    type="password"
+                    className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                    placeholder="••••••••"
+                    value={formData.mysqlPassword}
+                    onChange={(e) => updateField('mysqlPassword', e.target.value)}
+                  />
+                </NeuField>
+              </div>
+            )}
+          </div>
+
           {/* Cloudflare D1 */}
           <div className="neu-card p-5 space-y-4">
             <div className="flex items-center gap-3">
@@ -690,99 +897,182 @@ export default function InstallWizard() {
         className="space-y-5"
       >
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Create Admin Account</h2>
+          <h2 className="text-2xl font-bold text-foreground">Branding & Admin Account</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Set up the super administrator for your forum
+            Customize your forum identity and create the super administrator
           </p>
         </div>
 
-        <div className="neu-card p-6 space-y-4">
-          <NeuField label="Admin Username" error={errors.adminUsername} required>
-            <input
-              className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
-              placeholder="Choose a username"
-              value={formData.adminUsername}
-              onChange={(e) => updateField('adminUsername', e.target.value)}
-            />
-          </NeuField>
-
-          <NeuField label="Admin Email" error={errors.adminEmail} required>
-            <input
-              type="email"
-              className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
-              placeholder="admin@example.com"
-              value={formData.adminEmail}
-              onChange={(e) => updateField('adminEmail', e.target.value)}
-            />
-          </NeuField>
-
-          <NeuField label="Admin Password" error={errors.adminPassword} required>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                className="neu-input w-full px-4 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground"
-                placeholder="Min. 6 characters"
-                value={formData.adminPassword}
-                onChange={(e) => updateField('adminPassword', e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </NeuField>
-
-          {/* Password Strength */}
-          {formData.adminPassword && (
-            <div className="space-y-2">
-              <div className="neu-card-inset p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Password Strength</span>
-                  <span
-                    className={`text-xs font-bold ${
-                      strength === 'weak'
-                        ? 'text-red-500'
-                        : strength === 'medium'
-                        ? 'text-yellow-500'
-                        : 'text-green-500'
-                    }`}
-                  >
-                    {strengthLabel}
-                  </span>
-                </div>
-                <div className="neu-well p-0 overflow-hidden h-2">
-                  <motion.div
-                    className={`h-full ${strengthColor} rounded-full`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${strengthPercent}%` }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
-                  />
-                </div>
+        <div className="max-h-[58vh] overflow-y-auto pr-1 space-y-5 custom-scroll">
+          {/* Site Branding */}
+          <div className="neu-card p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="neu-circle w-9 h-9 flex items-center justify-center">
+                <Type className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm text-foreground">Site Branding</h3>
+                <p className="text-xs text-muted-foreground">
+                  Title, description, and logo for your forum
+                </p>
               </div>
             </div>
-          )}
+            <div className="neu-divider" />
+            <div className="space-y-3">
+              <NeuField label="Site Title" error={errors.forumName} required>
+                <input
+                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                  placeholder="PiForum"
+                  value={formData.forumName}
+                  onChange={(e) => updateField('forumName', e.target.value)}
+                />
+              </NeuField>
+              <NeuField label="Site Description" error={errors.forumDescription}>
+                <textarea
+                  rows={3}
+                  className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground resize-none"
+                  placeholder="A modern neumorphic forum community"
+                  value={formData.forumDescription}
+                  onChange={(e) => updateField('forumDescription', e.target.value)}
+                />
+              </NeuField>
+              <NeuField label="Site Logo URL (optional)" error={errors.logoUrl}>
+                <div className="relative">
+                  <ImageIcon className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    className="neu-input w-full pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                    placeholder="https://example.com/logo.png"
+                    value={formData.logoUrl}
+                    onChange={(e) => updateField('logoUrl', e.target.value)}
+                  />
+                </div>
+              </NeuField>
+              <div className="neu-card-inset p-3 flex items-start gap-3">
+                <FileText className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-muted-foreground leading-relaxed">
+                  Paste a direct image URL above to set your site logo. Leave empty to use the
+                  default <code className="px-1 py-0.5 rounded bg-muted/40">/logo.svg</code>. You can
+                  upload a logo file from <span className="font-semibold text-foreground">Admin → Settings</span>{' '}
+                  after installation.
+                </div>
+              </div>
 
-          <NeuField label="Confirm Password" error={errors.adminConfirmPassword} required>
-            <div className="relative">
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                className="neu-input w-full px-4 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground"
-                placeholder="Re-enter your password"
-                value={formData.adminConfirmPassword}
-                onChange={(e) => updateField('adminConfirmPassword', e.target.value)}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+              {/* Logo preview */}
+              {formData.logoUrl.trim() && (
+                <div className="flex items-center gap-3 neu-card-inset p-3">
+                  <span className="text-xs text-muted-foreground">Preview:</span>
+                  <img
+                    src={formData.logoUrl.trim()}
+                    alt="Logo preview"
+                    className="h-8 max-w-[160px] object-contain rounded"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
             </div>
-          </NeuField>
+          </div>
+
+          {/* Admin Account */}
+          <div className="neu-card p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="neu-circle w-9 h-9 flex items-center justify-center">
+                <UserPlus className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm text-foreground">Admin Account</h3>
+                <p className="text-xs text-muted-foreground">Super administrator credentials</p>
+              </div>
+            </div>
+            <div className="neu-divider" />
+            <NeuField label="Admin Username" error={errors.adminUsername} required>
+              <input
+                className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                placeholder="Choose a username"
+                value={formData.adminUsername}
+                onChange={(e) => updateField('adminUsername', e.target.value)}
+              />
+            </NeuField>
+
+            <NeuField label="Admin Email" error={errors.adminEmail} required>
+              <input
+                type="email"
+                className="neu-input w-full px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                placeholder="admin@example.com"
+                value={formData.adminEmail}
+                onChange={(e) => updateField('adminEmail', e.target.value)}
+              />
+            </NeuField>
+
+            <NeuField label="Admin Password" error={errors.adminPassword} required>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="neu-input w-full px-4 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground"
+                  placeholder="Min. 6 characters"
+                  value={formData.adminPassword}
+                  onChange={(e) => updateField('adminPassword', e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </NeuField>
+
+            {/* Password Strength */}
+            {formData.adminPassword && (
+              <div className="space-y-2">
+                <div className="neu-card-inset p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Password Strength</span>
+                    <span
+                      className={`text-xs font-bold ${
+                        strength === 'weak'
+                          ? 'text-red-500'
+                          : strength === 'medium'
+                          ? 'text-yellow-500'
+                          : 'text-green-500'
+                      }`}
+                    >
+                      {strengthLabel}
+                    </span>
+                  </div>
+                  <div className="neu-well p-0 overflow-hidden h-2">
+                    <motion.div
+                      className={`h-full ${strengthColor} rounded-full`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${strengthPercent}%` }}
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <NeuField label="Confirm Password" error={errors.adminConfirmPassword} required>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  className="neu-input w-full px-4 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground"
+                  placeholder="Re-enter your password"
+                  value={formData.adminConfirmPassword}
+                  onChange={(e) => updateField('adminConfirmPassword', e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </NeuField>
+          </div>
         </div>
       </motion.div>
     );

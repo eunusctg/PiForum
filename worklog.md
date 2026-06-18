@@ -370,3 +370,140 @@ Stage Summary:
   - src/components/forum/AdminCategories.tsx (DialogContent/AlertDialogContent/SelectContent → neu-card-static)
   - src/components/forum/AdminSecurity.tsx (SelectContent → neu-card-static)
 - Both Login and Register flows now fully functional and visually confirmed
+
+---
+Task ID: INSTALL-WIZARD
+Agent: Install Wizard Enhancer
+Task: Add MySQL database option and site branding to installation wizard
+
+Work Log:
+- Read worklog.md, InstallWizard.tsx, /api/install/route.ts, prisma/schema.prisma, and api-helpers.ts to understand the existing 4-step install wizard (System Check → Configurations → Admin Account → Complete) and the InstallConfig Prisma model
+- Updated prisma/schema.prisma InstallConfig model: added `dbType` (default "sqlite"), `mysqlHost`, `mysqlPort`, `mysqlDatabase`, `mysqlUsername`, `mysqlPassword` (all nullable Strings), and `logoUrl` (nullable String). Added a comment block explaining that switching the Prisma datasource provider at runtime is not possible — these fields are persisted for documentation/deployment purposes
+- Ran `bun run db:push` to apply schema changes — Prisma Client v6.19.2 regenerated successfully, database synced
+- Updated InstallWizard.tsx FormData interface: added dbType ('sqlite' | 'mysql'), mysqlHost/Port/Database/Username/Password, forumName, forumDescription, logoUrl (organized into clearly commented groups)
+- Updated initialFormData with new defaults (dbType: 'sqlite', mysqlPort: '3306', forumName/description/logoUrl: '')
+- Added new imports from lucide-react: `Image as ImageIcon`, `Type`, `FileText` (Database, Server, HardDrive were already imported)
+- Updated Step 2 (renderStep2): renamed heading to "Database & Integrations". Added a "Database Configuration" card at the TOP containing a two-button toggle (SQLite vs MySQL) using the neumorphic tab style specified in the task. When SQLite is selected: shows an info inset explaining no config is needed. When MySQL is selected: shows the deployment note + fields for Host, Port (3-col grid layout for Host+Port), Database Name, Username, Password — all using neu-input + NeuField
+- Added new `validateStep2()` function: requires mysqlHost, mysqlDatabase, mysqlUsername when dbType === 'mysql'; clears those errors when dbType === 'sqlite'
+- Updated `step2Valid()`: returns false if MySQL is selected but required MySQL fields are empty
+- Updated `goNext()`: now calls validateStep2() when leaving step 2 (in addition to validateStep3() for step 3)
+- Updated Step 3 (renderStep3): renamed heading to "Branding & Admin Account". Wrapped content in a `max-h-[58vh] overflow-y-auto custom-scroll` container. Added a "Site Branding" card at the TOP with: Site Title input (required, placeholder "PiForum"), Site Description textarea (3 rows, optional), Site Logo URL input (with ImageIcon prefix, optional), a helper note explaining the upload-after-install fallback, and a live logo preview using `<img>` with onError hide
+- Updated `validateStep3()`: now requires forumName (min 2 chars) in addition to admin credentials
+- Updated `submitInstallation()` POST body: includes dbType, mysqlHost/Port/Database/Username/Password, forumName, forumDescription, logoUrl alongside existing cloudflare/firebase/admin fields
+- Updated /api/install/route.ts POST handler:
+  - Destructured new fields from body: dbType, mysqlHost, mysqlPort, mysqlDatabase, mysqlUsername, mysqlPassword, logoUrl
+  - Added validation: if dbType === 'mysql', requires mysqlHost + mysqlDatabase + mysqlUsername (returns 400 otherwise)
+  - Added explanatory comment block describing why the MySQL connection isn't switched at runtime (Prisma provider is build-time) and how to deploy on MySQL (set DATABASE_URL + change provider + db:push)
+  - Persisted all new fields into InstallConfig.create() — only saves MySQL fields when dbType === 'mysql', normalized dbType to 'sqlite' | 'mysql'
+  - Updated default settings createMany: `logo_url` setting now uses `logoUrl || '/logo.svg'` instead of hardcoded '/logo.svg'
+- Ran `bun run lint` — initially 1 warning (unused eslint-disable directive on the logo preview <img>). Removed the comment since Next.js's @next/next/no-img-element rule wasn't triggering in this client component context. Re-ran lint: 0 errors, 0 warnings
+- Verified dev server compiled successfully (✓ Compiled in 141ms in dev.log)
+- Confirmed db:push is in sync after all changes
+
+Stage Summary:
+- Files modified:
+  - prisma/schema.prisma (InstallConfig model: +7 fields + comments)
+  - src/components/forum/InstallWizard.tsx (FormData interface, initialFormData, 3 new icons, Database Configuration section in Step 2, Site Branding section in Step 3, validateStep2, step2Valid, validateStep3, goNext, submitInstallation body)
+  - src/app/api/install/route.ts (destructure new fields, MySQL validation, persist to InstallConfig, logo_url setting)
+- Key decisions:
+  - Used Option A (keep 4 steps, augment existing steps) per the task spec — less disruptive and matches the user's wording ("in database section" + "in admin creation step")
+  - Database toggle uses the neumorphic tab button pattern from the spec (neu-well wrapper + neu-card active state)
+  - MySQL fields use a responsive 3-column grid for Host (spanning 2) + Port (spanning 1) on sm+ screens
+  - Logo is implemented as a URL input (with live preview) rather than a file upload, because the /api/upload route requires authentication and there's no user yet during installation — a clear note directs the admin to Admin → Settings to upload a file post-install
+  - The MySQL credentials are persisted in InstallConfig for documentation/deployment purposes only; a comment block in the route explains the runtime MySQL switch is not possible (Prisma provider is build-time)
+  - Step 3 content is wrapped in a scrollable container (max-h-[58vh] overflow-y-auto custom-scroll) since adding the branding section roughly doubled its height
+  - dbType is normalized to 'sqlite' | 'mysql' on the backend to prevent arbitrary strings; MySQL fields are only persisted when dbType === 'mysql' (null otherwise) to keep the install config clean
+
+---
+Task ID: ROUTES-1
+Agent: Routes Builder
+Task: Create Next.js App Router pages for all forum routes so visiting /admin (and every other view) returns a real page instead of 404.
+
+Work Log:
+- Read worklog.md, src/app/page.tsx (SPA), src/lib/store.ts, src/lib/types.ts, src/components/forum/Header.tsx, src/app/layout.tsx to understand the existing SPA architecture (Zustand `currentView` switch) and confirm which view components read props vs. read from `viewParams`.
+- Confirmed: ProfileView reads `viewParams.userId`, SearchView reads `viewParams.q`, ThreadList/ThreadView/NewThread take direct props (forumId/threadId/forumId), all other views take no props.
+- Created `src/components/forum/ForumShell.tsx` — a shared client component that:
+  * Replicates the init flow from src/app/page.tsx (install check via /api/install/check, settings load via /api/settings, auth restore via localStorage 'piforum_token' + /api/auth/verify).
+  * Skips the loading screen when the store already reports `isInstalled` (avoids loader flash on client-side navigation between routes).
+  * Accepts `initialView` + `initialParams` props and syncs them to the store's `currentView` / `viewParams` on mount (and whenever they change, e.g. /forum/abc → /forum/xyz without a remount).
+  * Renders the same SPA switch as src/app/page.tsx — based on `currentView` from the store — so in-app `navigateTo()` calls still switch views without a full reload (standard SPA trade-off: URL doesn't change on deep component nav, but the user's primary complaint — direct URL visits — is fixed).
+  * Renders the same Header + AuthModal + footer chrome as the root page so the layout is identical across all routes.
+- Created 15 App Router pages, each a thin 'use client' wrapper that renders <ForumShell initialView=... initialParams=.../>:
+  * /admin, /admin/users, /admin/categories, /admin/settings, /admin/security, /admin/reports (admin views)
+  * /forum/[id], /thread/[id], /profile/[id] (dynamic routes — params unwrapped with React 19 `use()`)
+  * /new-thread (reads ?forumId= from searchParams via `use()`), /search (reads ?q= from searchParams via `use()`)
+  * /members, /tags, /bookmarks, /notifications (static routes)
+- Updated `src/components/forum/Header.tsx`:
+  * Added `useRouter` from next/navigation.
+  * Added a `viewToUrl(view, params, currentUser)` helper that maps every AppView to its real App-Router URL (or null for install/login/register which have no dedicated route).
+  * Modified `handleNavigate` to call `router.push(url)` when a real URL exists, falling back to `navigateTo(view, params)` only for views without a route (install/login/register). This makes the header's nav links update the browser URL, so the routes are shareable and bookmarkable.
+  * Modified `handleLogout` to call `router.push('/')` after clearing auth (instead of `navigateTo('home')`), so the URL also reflects the logged-out home state.
+- Did NOT touch src/app/page.tsx, src/app/layout.tsx, or any existing view component (per task constraints). The original `/` route continues to work unchanged as the SPA entry point.
+- Ran `bun run lint` — passes with zero errors and zero warnings after removing two unused eslint-disable directives.
+- curl-tested all 15 new routes against http://localhost:3000 — every route returns HTTP 200 (no 404). The dev log shows that hitting /admin correctly triggers /api/install/check + /api/settings + /api/categories + /api/stats, confirming ForumShell's init logic runs end-to-end on direct URL visits.
+
+Stage Summary:
+- Files created (16):
+  * src/components/forum/ForumShell.tsx
+  * src/app/admin/page.tsx
+  * src/app/admin/users/page.tsx
+  * src/app/admin/categories/page.tsx
+  * src/app/admin/settings/page.tsx
+  * src/app/admin/security/page.tsx
+  * src/app/admin/reports/page.tsx
+  * src/app/forum/[id]/page.tsx
+  * src/app/thread/[id]/page.tsx
+  * src/app/profile/[id]/page.tsx
+  * src/app/new-thread/page.tsx
+  * src/app/search/page.tsx
+  * src/app/members/page.tsx
+  * src/app/tags/page.tsx
+  * src/app/bookmarks/page.tsx
+  * src/app/notifications/page.tsx
+- Files modified (1):
+  * src/components/forum/Header.tsx (added useRouter + viewToUrl helper, switched handleNavigate / handleLogout to real URL navigation)
+- Key decisions:
+  * Used a shared `ForumShell` client component (instead of importing the root `Home` from src/app/page.tsx) to avoid the root page's `navigateTo('home')` init override and to keep the new routes self-contained.
+  * ForumShell renders based on the store's `currentView` (same SPA switch as the root page) so existing in-app `navigateTo()` calls in deep components continue to switch views without modification.
+  * Skipped the loading screen when `isInstalled` is already true in the store, so client-side navigation between routes doesn't flash a loader.
+  * Header now uses `router.push()` for real URL navigation; in-app `navigateTo` is preserved as a fallback for views with no dedicated URL (install/login/register).
+  * Dynamic route params and search params are unwrapped with React 19's `use()` hook (Next.js 16 returns Promises for both).
+- Verification: `bun run lint` → 0 errors / 0 warnings. All 15 new routes return HTTP 200. Dev log shows ForumShell correctly triggering the install/settings/auth init APIs on direct URL visits.
+
+---
+Task ID: FIX-COMPLETE-CMS
+Agent: Main Orchestrator
+Task: Fix post creation error, /admin 404, create all routes, add MySQL option + site branding to installer, add upload API
+
+Work Log:
+- Diagnosed "Forum ID, title, and content are required" error: ForumHome's handleNewThread() called navigateTo('new-thread', {}) with empty params, so NewThread received forumId='' → API rejected
+- Fixed ForumHome.tsx: replaced direct navigation with a Forum Picker Dialog that fetches all forums and lets the user pick which forum to post in. Added search filter, category labels, neumorphic styling
+- Created /api/upload route (was missing — NewThread referenced it for file attachments). Handles multipart/formdata, validates size (10MB) and MIME type, writes to public/uploads/, returns URL
+- Dispatched Task ROUTES-1 (subagent): created ForumShell.tsx + 15 App Router pages so all URLs work:
+  - /admin, /admin/users, /admin/categories, /admin/settings, /admin/security, /admin/reports
+  - /forum/[id], /thread/[id], /profile/[id]
+  - /new-thread, /search, /members, /tags, /bookmarks, /notifications
+  - Updated Header.tsx to use router.push() for real URL navigation
+- Dispatched Task INSTALL-WIZARD (subagent): enhanced installation wizard:
+  - Added MySQL database option (SQLite/MySQL toggle + host/port/database/user/password fields)
+  - Added Site Branding section to admin step (site title, description, logo URL with preview)
+  - Updated Prisma schema with dbType, mysql*, logoUrl fields on InstallConfig
+  - Updated /api/install to persist all new fields
+- Browser-verified all fixes:
+  - /admin URL returns 200 with Admin Dashboard (was 404 before) ✓
+  - /admin/settings, /admin/users, /admin/categories, /admin/reports, /admin/security all work ✓
+  - /forum/[id], /thread/[id], /profile/[id] dynamic routes all work ✓
+  - /members, /tags, /search, /bookmarks, /notifications all work ✓
+  - Post creation: clicked New Thread → forum picker dialog → selected Announcements → filled title+content → Create Thread → 201 response → navigated to new thread ✓
+  - Login as admin (admin@piforum.com / password123) works ✓
+- Lint: 0 errors, 0 warnings
+- Dev log: 0 errors
+
+Stage Summary:
+- Post creation bug FIXED: Forum Picker dialog ensures forumId is always set before navigating to NewThread
+- /admin 404 FIXED: 15 new App Router pages created, all URLs return 200
+- InstallWizard enhanced: MySQL database option + Site Branding (title, description, logo)
+- /api/upload route created (was missing, NewThread depended on it)
+- Files created: src/app/api/upload/route.ts, src/components/forum/ForumShell.tsx, 15 route pages under src/app/
+- Files modified: src/components/forum/ForumHome.tsx (forum picker), src/components/forum/Header.tsx (router.push), src/components/forum/InstallWizard.tsx (MySQL + branding), src/app/api/install/route.ts (new fields), prisma/schema.prisma (new InstallConfig fields)
+- All routes browser-verified, post creation end-to-end verified

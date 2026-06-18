@@ -182,6 +182,22 @@ model InstallConfig {
   adminFirebaseUid  String?
   forumName         String  @default("PiForum")
   forumDescription  String  @default("A modern neumorphic forum")
+  // Database selection (persisted for documentation/deployment purposes)
+  // NOTE: The actual Prisma datasource provider is determined at build time by
+  // the `datasource db` block at the top of this file. Switching to MySQL at
+  // runtime is not possible — to deploy on MySQL the operator must set the
+  // `DATABASE_URL` env var to a MySQL connection string and change the
+  // `provider` to "mysql" here, then regenerate the Prisma client. We persist
+  // the admin's database choice + MySQL credentials here so the deployment
+  // script can read them later.
+  dbType            String  @default("sqlite") // "sqlite" | "mysql"
+  mysqlHost         String?
+  mysqlPort         String?
+  mysqlDatabase     String?
+  mysqlUsername     String?
+  mysqlPassword     String?
+  // Site branding
+  logoUrl           String?
 }
 
 /* ============================================================

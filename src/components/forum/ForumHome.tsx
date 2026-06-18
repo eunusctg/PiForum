@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
-import type { Category, ForumStats } from '@/lib/types';
+import type { Category, ForumStats, Forum } from '@/lib/types';
 import {
   MessageSquare,
   Users,
@@ -14,10 +14,18 @@ import {
   Pin,
   Clock,
   LayoutGrid,
+  X,
+  Search,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 /* ------------------------------------------------------------------ */
 /*  Forum Home — Categories & Forums overview                         */
@@ -87,9 +95,41 @@ export default function ForumHome({ onNavigateForum }: ForumHomeProps) {
     }
   };
 
-  const handleNewThread = () => {
-    navigateTo('new-thread', {});
+  const [showForumPicker, setShowForumPicker] = useState(false);
+  const [allForums, setAllForums] = useState<Forum[]>([]);
+  const [forumPickerLoading, setForumPickerLoading] = useState(false);
+  const [forumSearch, setForumSearch] = useState('');
+
+  const handleNewThread = useCallback(async () => {
+    // Fetch all forums so the user can pick one to post in.
+    setForumPickerLoading(true);
+    setShowForumPicker(true);
+    try {
+      const res = await fetch('/api/forums?categoryId=all');
+      const data = await res.json();
+      if (data.success) {
+        setAllForums(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch forums for picker:', err);
+    } finally {
+      setForumPickerLoading(false);
+    }
+  }, []);
+
+  const handlePickForum = (forumId: string) => {
+    setShowForumPicker(false);
+    setForumSearch('');
+    navigateTo('new-thread', { forumId });
   };
+
+  const filteredForums = forumSearch.trim()
+    ? allForums.filter(
+        (f) =>
+          f.name.toLowerCase().includes(forumSearch.toLowerCase()) ||
+          (f.description ?? '').toLowerCase().includes(forumSearch.toLowerCase())
+      )
+    : allForums;
 
   // ---------- derived ----------
   const forumName = getSetting('forum_name', 'PiForum');
@@ -184,6 +224,89 @@ export default function ForumHome({ onNavigateForum }: ForumHomeProps) {
           <Plus className="size-6" />
         </button>
       )}
+
+      {/* ---- Forum Picker Dialog (for "New Thread" from home) ---- */}
+      <Dialog open={showForumPicker} onOpenChange={setShowForumPicker}>
+        <DialogContent className="neu-card-static border-0 sm:max-w-lg p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <Plus className="size-5 text-primary" />
+              Choose a Forum
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Select which forum you&apos;d like to post your new thread in.
+            </p>
+          </DialogHeader>
+
+          {/* Search */}
+          <div className="px-6 pb-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search forums..."
+                value={forumSearch}
+                onChange={(e) => setForumSearch(e.target.value)}
+                className="neu-input w-full h-10 pl-9 pr-9 text-sm placeholder:text-muted-foreground"
+              />
+              {forumSearch && (
+                <button
+                  onClick={() => setForumSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Forum list */}
+          <div className="px-6 pb-6 max-h-[50vh] overflow-y-auto">
+            {forumPickerLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredForums.length === 0 ? (
+              <div className="text-center py-10 text-sm text-muted-foreground">
+                No forums found. Try a different search.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {filteredForums.map((forum) => {
+                  const cat = categories.find((c) => c.id === forum.categoryId);
+                  return (
+                    <button
+                      key={forum.id}
+                      onClick={() => handlePickForum(forum.id)}
+                      className="neu-btn p-3 flex items-center gap-3 text-left hover:text-primary transition-all"
+                    >
+                      <span className="text-xl shrink-0">{forum.icon || '💬'}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm truncate">{forum.name}</span>
+                          {cat && (
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
+                              {cat.icon} {cat.name}
+                            </span>
+                          )}
+                        </div>
+                        {forum.description && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {forum.description}
+                          </p>
+                        )}
+                      </div>
+                      <ChevronRight className="size-4 text-muted-foreground shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -22,30 +22,62 @@ export async function POST(request: Request) {
     if (!body) return errorResponse('Invalid request body');
 
     const {
+      // Database selection
+      dbType,
+      mysqlHost,
+      mysqlPort,
+      mysqlDatabase,
+      mysqlUsername,
+      mysqlPassword,
+      // Cloudflare
       cloudflareAccountId,
       cloudflareD1Id,
       cloudflareApiToken,
       cloudflareR2Bucket,
       cloudflareR2AccessKey,
       cloudflareR2SecretKey,
+      // Firebase
       firebaseApiKey,
       firebaseAuthDomain,
       firebaseProjectId,
       firebaseStorageBucket,
       firebaseMessagingSenderId,
       firebaseAppId,
+      // Site branding
+      forumName,
+      forumDescription,
+      logoUrl,
+      // Admin
       adminUsername,
       adminEmail,
       adminPassword,
-      forumName,
-      forumDescription,
     } = body;
 
     if (!adminUsername || !adminEmail || !adminPassword) {
       return errorResponse('Admin username, email, and password are required');
     }
 
+    // Validate MySQL fields if MySQL was chosen
+    // NOTE: We persist the database choice + credentials here for documentation
+    // and deployment purposes. The actual Prisma datasource provider is set at
+    // build time in prisma/schema.prisma (currently "sqlite"). Switching to
+    // MySQL at runtime is not possible — to deploy on MySQL the operator must:
+    //   1. Set DATABASE_URL env var to a MySQL connection string
+    //      (e.g. mysql://user:pass@host:port/dbname)
+    //   2. Change the `provider` in prisma/schema.prisma to "mysql"
+    //   3. Regenerate the Prisma client (`bun run db:push`)
+    // The MySQL credentials captured here are stored in InstallConfig so a
+    // deployment script can read them and apply the migration automatically.
+    if (dbType === 'mysql') {
+      if (!mysqlHost || !mysqlDatabase || !mysqlUsername) {
+        return errorResponse('MySQL host, database name, and username are required when MySQL is selected');
+      }
+    }
+
     const adminFirebaseUid = generateUUID();
+
+    // Normalize database selection
+    const normalizedDbType = dbType === 'mysql' ? 'mysql' : 'sqlite';
 
     // Create InstallConfig record
     const installConfig = await db.installConfig.create({
@@ -66,6 +98,13 @@ export async function POST(request: Request) {
         adminFirebaseUid,
         forumName: forumName || 'PiForum',
         forumDescription: forumDescription || 'A modern neumorphic forum',
+        dbType: normalizedDbType,
+        mysqlHost: normalizedDbType === 'mysql' ? (mysqlHost || null) : null,
+        mysqlPort: normalizedDbType === 'mysql' ? (mysqlPort || '3306') : null,
+        mysqlDatabase: normalizedDbType === 'mysql' ? (mysqlDatabase || null) : null,
+        mysqlUsername: normalizedDbType === 'mysql' ? (mysqlUsername || null) : null,
+        mysqlPassword: normalizedDbType === 'mysql' ? (mysqlPassword || null) : null,
+        logoUrl: logoUrl || null,
       },
     });
 
@@ -96,7 +135,7 @@ export async function POST(request: Request) {
         { key: 'forum_description', value: forumDescription || 'A modern neumorphic forum' },
         { key: 'maintenance_mode', value: 'false' },
         { key: 'open_registration', value: 'true' },
-        { key: 'logo_url', value: '/logo.svg' },
+        { key: 'logo_url', value: logoUrl || '/logo.svg' },
         { key: 'favicon_url', value: '/favicon.ico' },
         { key: 'posts_per_page', value: '20' },
         { key: 'threads_per_page', value: '25' },
