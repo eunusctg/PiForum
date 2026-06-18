@@ -1,0 +1,63 @@
+# ============================================================
+# PiForum — Cloudflare Pages + D1 Configuration
+# ============================================================
+# Place this file at the project root.
+# Used by `npx @cloudflare/next-on-pages` and `wrangler` CLI.
+#
+# Create the D1 database first:
+#   npx wrangler d1 create piforum
+#   → copy the database_id below
+# ============================================================
+
+name = "piforum"
+compatibility_date = "2025-01-15"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+# ============================================================
+# D1 Database binding
+# ============================================================
+# After `wrangler d1 create piforum`, paste the ID below.
+# Then bind it via the Cloudflare dashboard OR here:
+[[d1_databases]]
+binding = "DB"
+database_name = "piforum"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# ============================================================
+# R2 Storage binding (for file uploads — replaces local fs)
+# ============================================================
+# Create with: npx wrangler r2 bucket create piforum-uploads
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "piforum-uploads"
+
+# ============================================================
+# KV Namespace binding (for sessions, cache, rate-limits)
+# ============================================================
+# Create with: npx wrangler kv namespace create SESSIONS
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# ============================================================
+# Environment variables (non-secret)
+# Set secrets separately with: npx wrangler pages secret put NAME
+# ============================================================
+[vars]
+NEXT_PUBLIC_SITE_URL = "https://piforum.eu.org"
+NEXT_PUBLIC_SITE_NAME = "PiForum"
+NEXTAUTH_URL = "https://piforum.eu.org"
+
+# Secrets to set via `wrangler pages secret put`:
+#   NEXTAUTH_SECRET
+#   ZAI_API_KEY
+#   SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_FROM
+#   WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_VERIFY_TOKEN
+#   TELEGRAM_BOT_TOKEN
+
+# ============================================================
+# Limits / observability
+# ============================================================
+[limits]
+cpu_ms = 50  # free tier; bump to 30000 on Workers Paid

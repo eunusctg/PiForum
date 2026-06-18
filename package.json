@@ -10,7 +10,15 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "pages:build": "npx @cloudflare/next-on-pages",
+    "pages:preview": "npm run pages:build && npx wrangler pages dev .vercel/output/static --compatibility-flag=nodejs_compat",
+    "pages:deploy": "npm run pages:build && npx wrangler pages deploy .vercel/output/static",
+    "d1:create": "npx wrangler d1 create piforum",
+    "d1:migrate": "chmod +x migrate-to-d1.sh && ./migrate-to-d1.sh",
+    "d1:query": "npx wrangler d1 execute piforum --remote --command",
+    "r2:create": "npx wrangler r2 bucket create piforum-uploads",
+    "kv:create": "npx wrangler kv namespace create SESSIONS"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
