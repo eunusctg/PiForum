@@ -529,7 +529,7 @@ export default function AdminCategories() {
 
       {/* Add/Edit Category Dialog */}
       <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-        <DialogContent className="neu-card border-0 max-w-md">
+        <DialogContent className="neu-card-static border-0 max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editingCategory ? 'Edit Category' : 'New Category'}
@@ -586,7 +586,7 @@ export default function AdminCategories() {
                 <SelectTrigger className="neu-input w-full px-3 py-2.5">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="neu-card border-0">
+                <SelectContent className="neu-card-static border-0">
                   <SelectItem value="0">Public — Visible to everyone</SelectItem>
                   <SelectItem value="1">Registered — Logged-in users only</SelectItem>
                   <SelectItem value="2">Admin — Administrators only</SelectItem>
@@ -616,7 +616,7 @@ export default function AdminCategories() {
 
       {/* Add/Edit Forum Dialog */}
       <Dialog open={forumDialogOpen} onOpenChange={setForumDialogOpen}>
-        <DialogContent className="neu-card border-0 max-w-md">
+        <DialogContent className="neu-card-static border-0 max-w-md">
           <DialogHeader>
             <DialogTitle>
               {editingForum ? 'Edit Forum' : 'New Forum'}
@@ -690,7 +690,7 @@ export default function AdminCategories() {
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="neu-card border-0">
+        <AlertDialogContent className="neu-card-static border-0">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
             <AlertDialogDescription>

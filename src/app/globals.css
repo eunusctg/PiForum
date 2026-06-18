@@ -298,6 +298,19 @@
   transform: translateY(-2px);
 }
 
+/* Static neumorphic card — same raised look, but no hover lift.
+   Use for modals/dialogs/popovers where a transform on hover would
+   fight the centering transform and cause the dialog to jump.
+   NOTE: position is intentionally NOT set here so the element's own
+   positioning (fixed for dialogs, absolute for popovers) is preserved.
+   The ::before pseudo-element still positions correctly because it
+   resolves against the nearest positioned ancestor (the element itself). */
+.neu-card-static {
+  background-color: var(--neu-bg);
+  border-radius: 18px;
+  box-shadow: var(--neu-shadow);
+}
+
 /* Golden theme — luxe metallic sheen overlay on cards.
    A subtle radial gradient gives a polished gold surface. */
 .gold .neu-card::before {
@@ -315,6 +328,19 @@
 
 .gold .neu-card:hover::before {
   opacity: 1;
+}
+
+/* Golden sheen for static (non-hoverable) cards — mirrors .neu-card::before */
+.gold .neu-card-static::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(255, 241, 189, 0.28), transparent 55%),
+    radial-gradient(120% 80% at 100% 100%, rgba(139, 106, 8, 0.18), transparent 55%);
+  pointer-events: none;
+  opacity: 0.9;
 }
 
 /* Golden FAB — chic gold dome */

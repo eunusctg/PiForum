@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import {
   Dialog,
@@ -33,7 +33,11 @@ export default function AuthModal() {
     setAuthToken,
   } = useAppStore();
 
-  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+  // authModalTab from the store is the single source of truth for which tab is shown.
+  // This guarantees that clicking "Login" or "Register" in the header always shows
+  // the correct form, even across open/close cycles.
+  const activeTab = authModalTab;
+
   const [loginForm, setLoginForm] = useState<LoginFormData>({
     email: "",
     password: "",
@@ -52,35 +56,37 @@ export default function AuthModal() {
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Sync active tab with store when modal opens
+  // Reset forms, errors, and password visibility whenever the modal closes.
+  // Using an effect on authModalOpen (instead of onOpenChange) ensures the reset
+  // happens reliably even when the modal is closed programmatically.
+  useEffect(() => {
+    if (!authModalOpen) {
+      setLoginForm({ email: "", password: "" });
+      setRegisterForm({
+        username: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+      });
+      setLoginError("");
+      setRegisterError("");
+      setShowLoginPassword(false);
+      setShowRegisterPassword(false);
+      setShowConfirmPassword(false);
+      setLoginLoading(false);
+      setRegisterLoading(false);
+    }
+  }, [authModalOpen]);
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (open) {
-        setActiveTab(authModalTab);
-      }
       setAuthModalOpen(open);
-      if (!open) {
-        // Reset forms and errors on close
-        setLoginForm({ email: "", password: "" });
-        setRegisterForm({
-          username: "",
-          email: "",
-          password: "",
-          confirmPassword: "",
-        });
-        setLoginError("");
-        setRegisterError("");
-        setShowLoginPassword(false);
-        setShowRegisterPassword(false);
-        setShowConfirmPassword(false);
-      }
     },
-    [authModalTab, setAuthModalOpen]
+    [setAuthModalOpen]
   );
 
   const handleTabChange = useCallback(
     (tab: "login" | "register") => {
-      setActiveTab(tab);
       setAuthModalTab(tab);
       setLoginError("");
       setRegisterError("");
@@ -186,7 +192,7 @@ export default function AuthModal() {
   return (
     <Dialog open={authModalOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="neu-card border-0 sm:max-w-md p-0 overflow-hidden"
+        className="neu-card-static border-0 sm:max-w-md p-0 overflow-hidden"
         showCloseButton
       >
         {/* Tab Headers — Neumorphism-styled custom tabs */}

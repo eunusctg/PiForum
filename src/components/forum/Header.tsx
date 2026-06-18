@@ -265,7 +265,7 @@ export default function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="neu-card w-48 p-2 border-0"
+                className="neu-card-static w-48 p-2 border-0"
               >
                 <DropdownMenuLabel className="px-2 py-1.5 flex items-center gap-2">
                   <Palette className="size-4" />
@@ -320,7 +320,7 @@ export default function Header() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="neu-card w-56 p-2 border-0"
+                    className="neu-card-static w-56 p-2 border-0"
                   >
                     <DropdownMenuLabel className="px-2 py-1.5">
                       <div className="flex flex-col gap-0.5">

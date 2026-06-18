@@ -331,3 +331,42 @@ Stage Summary:
 - Auth system: login/register with password hashing, JWT-like token (firebaseUid), role-based access (User/Mod/Admin/SuperAdmin), localStorage persistence
 - Mobile-responsive header with search bar, theme selector, notification badge, profile dropdown
 - All features wired end-to-end and browser-verified
+
+---
+Task ID: FIX-AUTH-MODAL
+Agent: Main Orchestrator
+Task: Fix "login and registration page not showing" — auth modal was invisible
+
+Work Log:
+- Investigated via Agent Browser: clicked Login/Register buttons in header
+- DOM snapshot confirmed modal elements existed (Email, Password, Sign In) but VLM could not see them in screenshots
+- Diagnosed root cause via `agent-browser eval` on `[data-slot="dialog-content"]`:
+  - Computed `position: relative` instead of expected `fixed`
+  - Computed `top: 2009.75px` / rect `y: 3401.5` — dialog was rendering deep in the document flow, not as a centered overlay
+  - Cause: the `.neu-card` CSS class in globals.css sets `position: relative`, which overrides Tailwind's `fixed` utility (globals.css is outside @layer, so it wins over Tailwind utilities)
+- Secondary issue: `.neu-card:hover { transform: translateY(-2px) }` would override the dialog's centering `translate-x-[-50%] translate-y-[-50%]` transform, causing the modal to jump on hover
+- Fix 1 (globals.css): Added new `.neu-card-static` class — same raised neumorphism look (bg + shadow + border-radius) but with NO `position: relative` and NO `:hover` transform. This preserves the element's own positioning (fixed for dialogs, absolute for popovers) while still rendering the neumorphic shadow. Added matching `.gold .neu-card-static::before` golden sheen rule.
+- Fix 2 (AuthModal.tsx): Replaced local `activeTab` useState with direct derivation from store's `authModalTab` (single source of truth). Previously, `handleOpenChange` tried to sync `setActiveTab(authModalTab)` on open, but Radix Dialog does NOT call `onOpenChange` for programmatic opens — only for user-initiated changes (close button, Escape, overlay click). This meant the local tab state could desync from the store, showing the Register form when Login was clicked (or vice versa). Moved form/error/loading reset logic into a `useEffect` keyed on `authModalOpen` so it fires reliably on every close (programmatic or user-initiated).
+- Fix 3 (Header.tsx): Updated both DropdownMenuContent instances (theme selector, user menu) from `neu-card` to `neu-card-static` to prevent hover-jump.
+- Fix 4 (AdminUsers.tsx, AdminCategories.tsx, AdminSecurity.tsx): Updated all DialogContent, AlertDialogContent, and SelectContent instances from `neu-card` to `neu-card-static` to prevent the same position:relative override on those popovers/dialogs.
+- Verified end-to-end via Agent Browser:
+  - Click "Login" in header → Login modal appears centered on screen with Email + Password fields, Sign In button, Login tab active ✓
+  - Click "Register" in header → Register modal appears with Username + Email + Password + Confirm Password fields, Create Account button, Register tab active ✓
+  - Tab switching inside modal works (click Login tab while on Register → switches to Login form) ✓
+  - Full login flow: filled alex@piforum.dev / password123 → submitted → modal closed, user logged in as "Alex Writer" ✓
+  - Full registration flow: filled testuser123 / testuser123@example.com / password123 → submitted → 201 response, modal closed, new user logged in ✓
+- VLM (glm-4.6v) confirmed both modals are visually rendered with correct fields, placeholders, buttons, and active tab highlighting
+- Lint: 0 errors, 0 warnings
+- Dev log: 0 errors, all auth endpoints returning 200/201
+
+Stage Summary:
+- Root cause: `.neu-card { position: relative }` in globals.css overrode Tailwind's `fixed` utility on DialogContent, causing the auth modal to render inline at y≈3400px instead of as a centered overlay — making it invisible to the user
+- Fix: New `.neu-card-static` class (no position, no hover transform) used on all DialogContent/AlertDialogContent/DropdownMenuContent/SelectContent instances; AuthModal tab state now derives directly from store to prevent desync
+- Files modified:
+  - src/app/globals.css (added .neu-card-static + golden sheen variant)
+  - src/components/forum/AuthModal.tsx (removed local activeTab state, use store authModalTab directly, useEffect-based reset)
+  - src/components/forum/Header.tsx (2 DropdownMenuContent → neu-card-static)
+  - src/components/forum/AdminUsers.tsx (DialogContent/SelectContent → neu-card-static)
+  - src/components/forum/AdminCategories.tsx (DialogContent/AlertDialogContent/SelectContent → neu-card-static)
+  - src/components/forum/AdminSecurity.tsx (SelectContent → neu-card-static)
+- Both Login and Register flows now fully functional and visually confirmed

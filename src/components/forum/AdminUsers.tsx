@@ -339,7 +339,7 @@ export default function AdminUsers() {
           <SelectTrigger className="neu-input w-full sm:w-44 px-3 py-2.5 text-sm">
             <SelectValue placeholder="Filter by role" />
           </SelectTrigger>
-          <SelectContent className="neu-card border-0">
+          <SelectContent className="neu-card-static border-0">
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="0">User</SelectItem>
             <SelectItem value="1">Moderator</SelectItem>
@@ -410,7 +410,7 @@ export default function AdminUsers() {
 
       {/* Edit Role Dialog */}
       <Dialog open={editRoleOpen} onOpenChange={setEditRoleOpen}>
-        <DialogContent className="neu-card border-0 max-w-md">
+        <DialogContent className="neu-card-static border-0 max-w-md">
           <DialogHeader>
             <DialogTitle>Edit User Role</DialogTitle>
             <DialogDescription>
@@ -430,7 +430,7 @@ export default function AdminUsers() {
                 <SelectTrigger className="neu-input w-full px-3 py-2.5">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="neu-card border-0">
+                <SelectContent className="neu-card-static border-0">
                   <SelectItem value="0">User</SelectItem>
                   <SelectItem value="1">Moderator</SelectItem>
                   <SelectItem value="2">Admin</SelectItem>
@@ -461,7 +461,7 @@ export default function AdminUsers() {
 
       {/* Ban Dialog */}
       <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
-        <DialogContent className="neu-card border-0 max-w-md">
+        <DialogContent className="neu-card-static border-0 max-w-md">
           <DialogHeader>
             <DialogTitle>Ban User</DialogTitle>
             <DialogDescription>

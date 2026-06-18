@@ -369,7 +369,7 @@ export default function AdminSecurity() {
                 <SelectTrigger className="neu-input w-full sm:w-48 px-3 py-2 text-sm">
                   <SelectValue placeholder="Filter by event" />
                 </SelectTrigger>
-                <SelectContent className="neu-card border-0">
+                <SelectContent className="neu-card-static border-0">
                   <SelectItem value="all">All Events</SelectItem>
                   {eventTypes.map((type) => (
                     <SelectItem key={type} value={type}>
