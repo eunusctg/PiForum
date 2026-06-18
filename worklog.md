@@ -877,3 +877,35 @@ Stage Summary:
   3. `npx wrangler deploy` → reads wrangler.toml (main = ".open-next/worker.js", assets = ".open-next/assets") → deploys Worker to Cloudflare
 - User's next action: watch the new Cloudflare build at Workers & Pages → piforum → Deployments. Should succeed within ~5 minutes.
 - After successful deploy: user should push D1 schema (`npx wrangler d1 execute piforum --remote --file=migrations_d1/0001_init.sql`) and set secrets (`npx wrangler secret put NEXTAUTH_SECRET` etc.) from their Windows CMD.
+
+---
+Task ID: cf-lockfile-frozen-fix
+Agent: main (orchestrator)
+Task: Cloudflare Workers Build failed at `bun install --frozen-lockfile` with "lockfile had changes, but lockfile is frozen" because committed bun.lock predated the addition of @opennextjs/cloudflare and wrangler to devDependencies.
+
+Work Log:
+- Analyzed the failed Cloudflare build log:
+  - `bun install --frozen-lockfile` failed immediately after "Resolved, downloaded and extracted [1218]"
+  - Error: "lockfile had changes, but lockfile is frozen"
+  - Note from bun: "try re-running without --frozen-lockfile and commit the updated lockfile"
+- Root cause: Previous commit `0f9b9d3` added `@opennextjs/cloudflare@^1.19.11` and `wrangler@^4.102.0` to devDependencies in package.json, but the committed bun.lock file was never regenerated. Cloudflare runs `bun install --frozen-lockfile` (strict mode — refuses to update lockfile), saw the mismatch, and bailed.
+- Verified by inspecting origin/master's bun.lock: 0 references to "opennextjs" or "wrangler@4".
+- Fix steps:
+  1. Removed node_modules + both stale lockfiles (bun.lock, package-lock.json)
+  2. Ran `bun install` → regenerated bun.lock with 1131 packages including @opennextjs/cloudflare@1.19.11 and wrangler@4.102.0
+  3. Restored package-lock.json from origin/master (it was committed in initial commit, shouldn't be deleted)
+  4. Ran `npm install --legacy-peer-deps --no-audit --no-fund` → regenerated package-lock.json in sync with package.json
+  5. Verified both lockfiles now have 31+ references to "opennextjs"
+  6. Committed as `36f45f1` with both lockfile updates (9769 insertions, 11217 deletions — the diff is large because bun.lock format changed slightly between bun versions)
+  7. Pushed to origin/master: `0f9b9d3..36f45f1  HEAD -> master`
+- Expected Cloudflare build flow on next deploy:
+  1. `bun install --frozen-lockfile` ✅ will now succeed (lockfile in sync with package.json)
+  2. `bun run build` → `npx opennextjs-cloudflare build` → produces .open-next/worker.js + .open-next/assets/
+  3. `npx wrangler deploy` → deploys Worker to Cloudflare
+
+Stage Summary:
+- Root cause: bun.lock was stale relative to package.json (missing @opennextjs/cloudflare and wrangler entries)
+- Fix: regenerated both bun.lock and package-lock.json from scratch with current package.json
+- Single commit pushed to origin/master: `36f45f1`
+- User's next action: watch the new Cloudflare build at Workers & Pages → piforum → Deployments. Should succeed end-to-end within ~5 minutes.
+- After successful deploy: user should push D1 schema and set secrets from Windows CMD (these commands work fine on Windows).
