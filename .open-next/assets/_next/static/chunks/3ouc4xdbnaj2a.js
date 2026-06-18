@@ -1,1 +1,0 @@
-(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,79177,i=>{"use strict";var t=i.i(43476),e=i.i(90433);i.s(["default",0,function(){return(0,t.jsx)(e.default,{initialView:"admin-spam"})}])}]);
