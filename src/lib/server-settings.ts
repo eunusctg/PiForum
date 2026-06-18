@@ -26,6 +26,12 @@ export function settingStr(map: Record<string, string>, key: string, def = ''): 
   return map[key] ?? def;
 }
 
+export function settingInt(map: Record<string, string>, key: string, fallback: number): number {
+  if (map[key] === undefined || map[key] === '') return fallback;
+  const n = parseInt(map[key], 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /* Derive the public site origin from request headers (supports the gateway
    X-Forwarded-* pattern). Falls back to localhost for dev. */
 export function getOrigin(request: Request): string {

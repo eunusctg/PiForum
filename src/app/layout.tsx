@@ -61,7 +61,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#D4AF37",
+  // Provide theme-color for both light & dark color-scheme preferences so the
+  // browser chrome (mobile address bar, PWA toolbar, iOS status bar) matches
+  // the page before JS hydrates. ThemeManager syncs this live when the user
+  // explicitly picks Day / Night / Golden.
+  // Golden (#D4AF37) is used as the default light-scheme color because the
+  // PiForum brand is gold-themed; the dark-scheme uses the dark bronze bg.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#D4AF37" },
+    { media: "(prefers-color-scheme: dark)", color: "#2A1F0A" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,

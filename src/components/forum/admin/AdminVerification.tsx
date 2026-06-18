@@ -19,6 +19,11 @@ import {
   Users as UsersIcon,
   Activity,
   KeyRound,
+  Smartphone,
+  MessageCircle,
+  Send,
+  QrCode,
+  Lock,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,11 +53,32 @@ const KEYS = [
   // Resend & rate limiting
   'verification_resend_cooldown_minutes',
   'verification_max_resends',
-  // Phone / OTP verification
+  // Phone / OTP verification (legacy single-provider field)
   'enable_phone_verification',
   'phone_otp_length',
   'phone_otp_expiry_minutes',
   'phone_otp_provider',
+  // TOTP (Time-based OTP / authenticator apps)
+  'enable_totp',
+  'totp_issuer',
+  'totp_period',
+  'totp_digits',
+  // WhatsApp Cloud API OTP
+  'enable_whatsapp_otp',
+  'whatsapp_phone_number_id',
+  'whatsapp_access_token',
+  'whatsapp_api_version',
+  // Telegram Bot API OTP
+  'enable_telegram_otp',
+  'telegram_bot_token',
+  'telegram_bot_username',
+  // Email OTP (code-based, distinct from link-based email verification)
+  'enable_email_otp',
+  'email_otp_subject',
+  'email_from_address',
+  // Shared OTP settings
+  'otp_code_length',
+  'otp_expiry_minutes',
   // ID / document verification
   'enable_id_verification',
   'id_allowed_types',
@@ -150,6 +176,20 @@ export default function AdminVerification() {
     phone_otp_length: '6',
     phone_otp_expiry_minutes: '10',
     phone_otp_provider: 'none',
+    // TOTP defaults
+    totp_issuer: 'PiForum',
+    totp_period: '30',
+    totp_digits: '6',
+    // WhatsApp defaults
+    whatsapp_api_version: 'v18.0',
+    // Telegram defaults (no bot username by default)
+    telegram_bot_username: '',
+    // Email OTP defaults
+    email_otp_subject: 'Your PiForum verification code',
+    email_from_address: 'noreply@piforum.com',
+    // Shared OTP defaults
+    otp_code_length: '6',
+    otp_expiry_minutes: '10',
     id_allowed_types: 'passport,drivers_license,national_id',
     id_review_mode: 'manual',
     verified_badge_text: 'Verified',
@@ -329,7 +369,10 @@ export default function AdminVerification() {
       <FlawsCallout
         flaws={[
           'When SMTP is not configured, verification links are surfaced directly in the UI instead of being emailed — this defeats the purpose of email verification (anyone with the link can verify).',
-          'Phone OTP verification in this build is simulated: the OTP is returned in the API response and shown in the UI. A real SMS provider (e.g. Twilio) is required for genuine phone verification.',
+          'TOTP secrets are stored in plaintext in the database. In production they should be encrypted at rest with a KMS or app-level AES key derived from an environment variable.',
+          'WhatsApp & Telegram OTP delivery is real (calls the live Meta/Telegram APIs) but only works when valid credentials are entered here. With no credentials, the code is returned in the API response for sandbox testing.',
+          'Email OTP dispatch is stubbed — it returns the code in the API response instead of actually sending email until the SMTP transport in src/lib/email.ts is wired to the Email-SMTP admin settings.',
+          'TOTP backup codes are hashed with SHA-256 (good) but there is no rate limit on backup-code consumption attempts (a 1/10000 guess per request is feasible if an attacker has the session).',
           'ID/document verification is a manual admin-review queue only. There is no automated identity provider (Persona, Stripe Identity, Onfido) integration — the admin must visually inspect and approve.',
           'There is no rate limit on resend requests enforced server-side in this build (the cooldown here is advisory); a malicious client can bypass it. Enforce limits at the API or edge in production.',
           'Admin manual verification bypasses email entirely and is logged but not reversible from the user side.',
@@ -543,6 +586,204 @@ export default function AdminVerification() {
         <div className="neu-card-inset p-3 text-xs text-muted-foreground flex items-start gap-2">
           <ShieldAlert className="size-4 text-amber-500 shrink-0 mt-0.5" />
           <span>When the provider is <strong>None</strong>, OTPs are shown in the UI for development — never enable this on a live site. Enter provider credentials in <strong>System → Backup</strong> (or via environment variables) once a real provider is selected.</span>
+        </div>
+      </div>
+
+      {/* ============ OTP & Authenticator Apps ============ */}
+      <div className="neu-card p-6 space-y-6">
+        <SectionHeader
+          icon={Smartphone}
+          title="OTP & Authenticator Apps"
+          description="Time-based OTP (Google Authenticator, Authy) plus WhatsApp, Telegram & Email code delivery. All channels are free or have generous free tiers."
+        />
+
+        {/* Provider channel status grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { key: 'enable_totp', icon: Smartphone, label: 'TOTP', desc: 'Authenticator apps', color: 'text-blue-500' },
+            { key: 'enable_whatsapp_otp', icon: MessageCircle, label: 'WhatsApp', desc: 'Cloud API · 1k/mo free', color: 'text-emerald-500' },
+            { key: 'enable_telegram_otp', icon: Send, label: 'Telegram', desc: 'Bot API · free, no limits', color: 'text-cyan-500' },
+            { key: 'enable_email_otp', icon: Mail, label: 'Email OTP', desc: 'SendGrid 100/day free', color: 'text-amber-500' },
+          ].map((ch) => (
+            <div key={ch.key} className={`neu-card-inset p-3 space-y-1 ${parseBool(ch.key, false) ? 'ring-1 ring-primary/30' : ''}`}>
+              <div className="flex items-center gap-1.5">
+                <ch.icon className={`size-4 ${ch.color}`} />
+                <span className="text-sm font-semibold">{ch.label}</span>
+                {parseBool(ch.key, false) && <span className="ml-auto size-2 rounded-full bg-emerald-500 animate-pulse" />}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-tight">{ch.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ---- TOTP (Time-based OTP / authenticator apps) ---- */}
+        <div className="neu-card-inset p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Smartphone className="size-4 text-blue-500" />
+            <h3 className="text-sm font-semibold">TOTP — Authenticator Apps</h3>
+            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold">RECOMMENDED</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Time-based One-Time Passwords work with Google Authenticator, Authy, 1Password, Microsoft Authenticator, and any RFC 6238 app.
+            No SMS fees, works offline, and is the most secure non-hardware 2FA. Powered by <code className="font-mono">otplib</code>.
+          </p>
+          <div className="flex items-center justify-between gap-4 py-1">
+            <div className="space-y-0.5">
+              <Label>Enable TOTP Verification</Label>
+              <p className="text-xs text-muted-foreground">Allow users to set up an authenticator app for 2FA / verification.</p>
+            </div>
+            <Switch checked={parseBool('enable_totp', false)} onCheckedChange={(c) => setValue('enable_totp', String(c))} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="totpissuer" className="flex items-center gap-1.5"><Award className="size-3.5" /> Issuer Name</Label>
+              <Input id="totpissuer" value={v('totp_issuer', 'PiForum')} onChange={(e) => setValue('totp_issuer', e.target.value)} className="neu-input px-3 py-2.5" placeholder="PiForum" />
+              <p className="text-xs text-muted-foreground">Shown in the user's authenticator app above their username.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="totpperiod" className="flex items-center gap-1.5"><Clock className="size-3.5" /> Step Period (seconds)</Label>
+              <Input id="totpperiod" type="number" min="15" max="120" value={v('totp_period', '30')} onChange={(e) => setValue('totp_period', e.target.value)} className="neu-input px-3 py-2.5" />
+              <p className="text-xs text-muted-foreground">30s is standard. Longer = more convenience, less security.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="totpdigits" className="flex items-center gap-1.5"><KeyRound className="size-3.5" /> Code Digits</Label>
+              <select
+                id="totpdigits"
+                value={v('totp_digits', '6')}
+                onChange={(e) => setValue('totp_digits', e.target.value)}
+                className="neu-input px-3 py-2.5 w-full rounded-xl bg-transparent"
+              >
+                <option value="6">6 digits (standard)</option>
+                <option value="8">8 digits (higher security)</option>
+              </select>
+            </div>
+          </div>
+          {/* QR preview placeholder */}
+          <div className="flex items-center gap-4 neu-well p-4 rounded-xl">
+            <div className="size-16 rounded-lg bg-white flex items-center justify-center shrink-0">
+              <QrCode className="size-10 text-gray-400" />
+            </div>
+            <div className="space-y-1 min-w-0">
+              <div className="text-xs font-semibold flex items-center gap-1.5"><Lock className="size-3 text-emerald-500" /> RFC 6238 compliant</div>
+              <p className="text-xs text-muted-foreground">When a user enables TOTP, a QR code is generated on-the-fly from their unique secret + these settings. Users scan it with any authenticator app — no per-app configuration needed.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ---- WhatsApp Cloud API OTP ---- */}
+        <div className="neu-card-inset p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="size-4 text-emerald-500" />
+            <h3 className="text-sm font-semibold">WhatsApp Cloud API</h3>
+            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold">1,000 FREE / MONTH</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Send OTP codes via WhatsApp using Meta's official Cloud API. Free tier includes 1,000 conversations per month.
+            <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">Get credentials →</a>
+          </p>
+          <div className="flex items-center justify-between gap-4 py-1">
+            <div className="space-y-0.5">
+              <Label>Enable WhatsApp OTP</Label>
+              <p className="text-xs text-muted-foreground">Users can receive verification codes via WhatsApp.</p>
+            </div>
+            <Switch checked={parseBool('enable_whatsapp_otp', false)} onCheckedChange={(c) => setValue('enable_whatsapp_otp', String(c))} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="waphid">Phone Number ID</Label>
+              <Input id="waphid" value={v('whatsapp_phone_number_id', '')} onChange={(e) => setValue('whatsapp_phone_number_id', e.target.value)} className="neu-input px-3 py-2.5 font-mono text-xs" placeholder="123456789012345" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wapiver">API Version</Label>
+              <Input id="wapiver" value={v('whatsapp_api_version', 'v18.0')} onChange={(e) => setValue('whatsapp_api_version', e.target.value)} className="neu-input px-3 py-2.5" placeholder="v18.0" />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="watoken">Access Token</Label>
+              <Input id="watoken" type="password" value={v('whatsapp_access_token', '')} onChange={(e) => setValue('whatsapp_access_token', e.target.value)} className="neu-input px-3 py-2.5 font-mono text-xs" placeholder="EAAG..." />
+              <p className="text-xs text-muted-foreground">Generate a permanent access token in Meta App → WhatsApp → API Setup.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ---- Telegram Bot API OTP ---- */}
+        <div className="neu-card-inset p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Send className="size-4 text-cyan-500" />
+            <h3 className="text-sm font-semibold">Telegram Bot API</h3>
+            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold">FREE · NO LIMITS</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Send OTP codes via your own Telegram bot. Completely free with no monthly limits. Users must start a chat with the bot first (the bot's username is shown on the verification page).
+            <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1">Create a bot with @BotFather →</a>
+          </p>
+          <div className="flex items-center justify-between gap-4 py-1">
+            <div className="space-y-0.5">
+              <Label>Enable Telegram OTP</Label>
+              <p className="text-xs text-muted-foreground">Users can receive verification codes via your Telegram bot.</p>
+            </div>
+            <Switch checked={parseBool('enable_telegram_otp', false)} onCheckedChange={(c) => setValue('enable_telegram_otp', String(c))} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="tgtoken">Bot Token</Label>
+              <Input id="tgtoken" type="password" value={v('telegram_bot_token', '')} onChange={(e) => setValue('telegram_bot_token', e.target.value)} className="neu-input px-3 py-2.5 font-mono text-xs" placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tguser">Bot Username (shown to users)</Label>
+              <Input id="tguser" value={v('telegram_bot_username', '')} onChange={(e) => setValue('telegram_bot_username', e.target.value)} className="neu-input px-3 py-2.5" placeholder="PiForumVerifyBot" />
+              <p className="text-xs text-muted-foreground">Without the @ prefix. Users will be told to message this bot.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ---- Email OTP ---- */}
+        <div className="neu-card-inset p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Mail className="size-4 text-amber-500" />
+            <h3 className="text-sm font-semibold">Email OTP</h3>
+            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold">100 FREE / DAY</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Send a one-time code to the user's email (distinct from link-based email verification). Works with any SMTP server or transactional provider (SendGrid free tier: 100 emails/day).
+            Configure SMTP credentials in <strong>Auth & Communication → Email-SMTP</strong>.
+          </p>
+          <div className="flex items-center justify-between gap-4 py-1">
+            <div className="space-y-0.5">
+              <Label>Enable Email OTP</Label>
+              <p className="text-xs text-muted-foreground">Users can receive a 6-digit code via email instead of a verification link.</p>
+            </div>
+            <Switch checked={parseBool('enable_email_otp', false)} onCheckedChange={(c) => setValue('enable_email_otp', String(c))} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="eotpsubj">Email Subject</Label>
+              <Input id="eotpsubj" value={v('email_otp_subject', 'Your PiForum verification code')} onChange={(e) => setValue('email_otp_subject', e.target.value)} className="neu-input px-3 py-2.5" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="efrom">From Address</Label>
+              <Input id="efrom" type="email" value={v('email_from_address', 'noreply@piforum.com')} onChange={(e) => setValue('email_from_address', e.target.value)} className="neu-input px-3 py-2.5" />
+            </div>
+          </div>
+        </div>
+
+        {/* ---- Shared OTP settings ---- */}
+        <div className="neu-card-inset p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <KeyRound className="size-4 text-primary" />
+            <h3 className="text-sm font-semibold">Shared OTP Settings</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="otpclen" className="flex items-center gap-1.5"><KeyRound className="size-3.5" /> OTP Code Length</Label>
+              <Input id="otpclen" type="number" min="4" max="8" value={v('otp_code_length', '6')} onChange={(e) => setValue('otp_code_length', e.target.value)} className="neu-input px-3 py-2.5" />
+              <p className="text-xs text-muted-foreground">Applies to WhatsApp, Telegram, and Email OTP (not TOTP).</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="otpexpmin" className="flex items-center gap-1.5"><Clock className="size-3.5" /> OTP Expiry (minutes)</Label>
+              <Input id="otpexpmin" type="number" min="1" value={v('otp_expiry_minutes', '10')} onChange={(e) => setValue('otp_expiry_minutes', e.target.value)} className="neu-input px-3 py-2.5" />
+              <p className="text-xs text-muted-foreground">How long a code stays valid after being sent.</p>
+            </div>
+          </div>
         </div>
       </div>
 

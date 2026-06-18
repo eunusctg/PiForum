@@ -17,7 +17,47 @@ import { useAppStore, type ThemeMode } from "@/lib/store";
  *
  * The chosen mode is persisted in localStorage ("piforum_theme") and
  * restored on mount so the preference survives reloads.
+ *
+ * Browser chrome color: the `<meta name="theme-color">` tag is synced
+ * live with the active theme so mobile browser headers, PWA toolbars,
+ * and the iOS status bar match the page (Day=#e6e6e8, Night=#2A1F0A,
+ * Golden=#D4AF37). Both the static tag (in <head>) and any dynamically
+ * injected tags are kept in sync.
  */
+
+/* The exact background colors used by each theme's `--background` token.
+   Kept in sync with src/app/globals.css. */
+const THEME_COLORS: Record<ThemeMode, string> = {
+  light: "#e6e6e8",
+  dark: "#2A1F0A",
+  gold: "#D4AF37",
+};
+
+/* Update every <meta name="theme-color"> tag in the document head so the
+   browser chrome (mobile address bar, PWA toolbar, iOS status bar) matches
+   the active theme. */
+function syncThemeColorMeta(mode: ThemeMode) {
+  const color = THEME_COLORS[mode];
+  if (typeof document === "undefined") return;
+  const metas = document.querySelectorAll<HTMLMetaElement>(
+    'meta[name="theme-color"]'
+  );
+  metas.forEach((m) => {
+    m.setAttribute("content", color);
+  });
+  // Also keep the iOS-specific apple-mobile-web-app-status-bar-style in sync
+  const apple = document.querySelector<HTMLMetaElement>(
+    'meta[name="apple-mobile-web-app-status-bar-style"]'
+  );
+  if (apple) {
+    // "default" lets the bar adapt to the page; black-translucent for dark/gold
+    apple.setAttribute(
+      "content",
+      mode === "light" ? "default" : "black-translucent"
+    );
+  }
+}
+
 export default function ThemeManager() {
   const themeMode = useAppStore((s) => s.themeMode);
   const setThemeMode = useAppStore((s) => s.setThemeMode);
@@ -52,6 +92,9 @@ export default function ThemeManager() {
         if (nextTheme !== "light") setTheme("light");
       }
     }
+
+    // Sync browser chrome color with the active theme
+    syncThemeColorMeta(themeMode);
   }, [themeMode, setTheme, nextTheme]);
 
   return null;

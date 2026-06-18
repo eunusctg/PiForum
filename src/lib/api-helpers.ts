@@ -128,6 +128,9 @@ export function serializeUser(user: any) {
     isVerified: user.isVerified ?? false,
     verifiedAt: user.verifiedAt ?? null,
     twoFactorEnabled: user.twoFactorEnabled ?? false,
+    totpEnabled: user.totpEnabled ?? false,
+    phoneNumber: user.phoneNumber ?? null,
+    phoneVerified: user.phoneVerified ?? false,
     rankId: user.rankId ?? null,
     rank: user.rank
       ? {

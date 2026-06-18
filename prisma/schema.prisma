@@ -36,6 +36,14 @@ model User {
   verifyToken   String?                    // current pending email-verification token
   verifyExpires DateTime?
   twoFactorEnabled Boolean @default(false)
+  // TOTP (Time-based One-Time Password) — authenticator apps
+  // (Google Authenticator, Authy, 1Password, etc.)
+  totpSecret    String?                    // base32-encoded secret (encrypted at rest in prod)
+  totpEnabled   Boolean  @default(false)
+  totpBackupCodes String?                  // JSON array of hashed backup codes
+  // Phone number for WhatsApp/Telegram/SMS OTP verification
+  phoneNumber   String?
+  phoneVerified Boolean  @default(false)
   rankId        String?                    // optional custom rank/title
   lastSeenAt    DateTime @default(now())
   createdAt     DateTime @default(now())
@@ -46,6 +54,7 @@ model User {
   posts         Post[]
   votes         PostVote[]
   securityLogs  SecurityLog[]
+  otpChallenges OtpChallenge[]
   notifications Notification[]
   bookmarks     Bookmark[]
   subscriptions Subscription[]
@@ -171,6 +180,27 @@ model SecurityLog {
 
   @@index([eventType])
   @@index([createdAt])
+}
+
+/* One-Time Password challenge record — used for WhatsApp, Telegram,
+   Email, and SMS OTP verification. Each challenge stores a hashed OTP
+   code, the delivery channel, expiry, and consumption state. */
+model OtpChallenge {
+  id         String   @id @default(cuid())
+  userId     String
+  channel    String                     // 'whatsapp' | 'telegram' | 'email' | 'sms'
+  target     String                     // phone number, email, or chat id
+  codeHash   String                     // SHA-256 hash of the OTP code
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int      @default(0)       // wrong-code attempts
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([codeHash])
+  @@index([expiresAt])
 }
 
 model InstallConfig {

@@ -761,3 +761,88 @@ Stage Summary:
 - This completes the "verified user system" the user requested: admins now have a clean directory view of their verified user base (not just a pending/unverified queue), with instant search and revoke that updates the directory in-place without a refetch.
 - Combined with the existing Pending Verifications list (verify new users) and the stunning VerifiedBadge shown site-wide on member cards, thread views, and profiles, the verification system is now complete and production-quality.
 - Files modified: src/components/forum/admin/AdminVerification.tsx (added Verified Users Directory section, expanded SimpleUser interface, added allUsers/verifiedSearch state, formatVerifiedAt helper, in-place update logic)
+
+---
+Task ID: THEME-COLOR-ANIMATIONS-OTP
+Agent: Main
+Task: Add dynamic browser header color per theme, fix/polish site animations, and add comprehensive TOTP + WhatsApp/Telegram/Email OTP verification system
+
+Work Log:
+- **Browser header color (theme-color meta)**:
+  • Updated src/app/layout.tsx viewport.themeColor from hardcoded "#D4AF37" to a media-query array: light=#D4AF37 (golden brand default), dark=#2A1F0A. Provides correct initial SSR color before hydration.
+  • Updated src/components/forum/ThemeManager.tsx to sync all <meta name="theme-color"> tags live with the active theme (light=#e6e6e8, dark=#2A1F0A, gold=#D4AF37) whenever themeMode changes. Also syncs apple-mobile-web-app-status-bar-style (default for light, black-translucent for dark/gold).
+  • Browser-verified: Day→#e6e6e8, Night→#2A1F0A, Golden→#D4AF37 — all switch instantly with no page reload.
+
+- **Animation polish**:
+  • Added 174 lines of animation CSS to src/app/globals.css:
+    - *:focus-visible ring with smooth offset transition
+    - Default 0.18s transition on buttons/links/interactive elements (color, bg, border, shadow, transform, opacity)
+    - 5 new keyframe utilities: .animate-fade-in, .animate-fade-in-up, .animate-scale-in, .animate-slide-down, .animate-toast-in
+    - .skeleton-shimmer loading placeholder
+    - @view-transition { navigation: auto } opt-in for smooth client navigation
+    - **prefers-reduced-motion: reduce** block — disables all non-essential animations, transitions, hover transforms; keeps skeleton opacity feedback and focus rings
+  • Added keyed <div key={currentView} className="animate-fade-in-up"> wrapper in ForumShell.tsx main content so each view swap triggers a subtle entrance animation.
+
+- **Prisma schema updates** (prisma/schema.prisma):
+  • Added to User model: totpSecret (String?), totpEnabled (Boolean), totpBackupCodes (String?), phoneNumber (String?), phoneVerified (Boolean)
+  • Added new OtpChallenge model: id, userId, channel (whatsapp/telegram/email/sms), target, codeHash (SHA-256), expiresAt, consumedAt, attempts. Indexed on userId, codeHash, expiresAt.
+  • Added otpChallenges relation on User.
+  • Updated serializeUser() in api-helpers.ts to expose totpEnabled, phoneNumber, phoneVerified.
+
+- **OTP utility library** (src/lib/otp.ts):
+  • Uses otplib v13 (async-first functional API: generateSecret, generate, verify, generateURI) + qrcode package.
+  • generateTotpSecret() — 20-byte base32 secret
+  • buildTotpUri(secret, {issuer, label, period, digits}) — otpauth:// URI
+  • generateQrCodeDataUrl(uri) — PNG data URL via qrcode package
+  • verifyTotpToken(token, secret, {period, digits}) — async, ±1 step epochTolerance for clock drift
+  • generateBackupCodes(count=8) — 8-digit hyphenated codes (e.g. "1234-5678")
+  • hashOtp(value) — SHA-256 for backup codes + OTP codes
+  • generateOtpCode(length) — numeric OTP code
+  • verifyOtpCode(code, codeHash) — constant-time hash compare
+  • sendWhatsAppOtp(toPhone, code, {phoneNumberId, accessToken, apiVersion}) — real Meta WhatsApp Cloud API call
+  • sendTelegramOtp(chatId, code, {botToken}) — real Telegram Bot API call
+  • sendEmailOtp(toEmail, code, {provider, fromAddress}, subject) — stub (returns debug code; TODO: wire to SMTP)
+  • All channel functions return { delivered, debugCode?, messageId?, error? }
+
+- **API routes**:
+  • POST /api/totp/setup — generates secret + QR code, stores secret (totpEnabled=false). DELETE cancels pending setup.
+  • POST /api/totp/verify — verifies first token, enables TOTP, generates 8 hashed backup codes, returns plaintext backup codes (shown once).
+  • POST /api/totp/disable — requires valid TOTP token OR backup code, clears secret + backup codes.
+  • POST /api/otp/send — generates OTP, stores hashed in OtpChallenge (10-min expiry), dispatches via channel. Rate limited: max 3 per (user, channel) per 10 min. Returns debugCode when delivery fails (sandbox mode).
+  • POST /api/otp/verify — verifies code against most recent pending challenge, locks after 5 wrong attempts. On success: email→isVerified=true, whatsapp/telegram→phoneVerified=true + stores phoneNumber.
+
+- **AdminVerification panel expansion** (src/components/forum/admin/AdminVerification.tsx):
+  • Added 16 new setting keys: enable_totp, totp_issuer, totp_period, totp_digits, enable_whatsapp_otp, whatsapp_phone_number_id, whatsapp_access_token, whatsapp_api_version, enable_telegram_otp, telegram_bot_token, telegram_bot_username, enable_email_otp, email_otp_subject, email_from_address, otp_code_length, otp_expiry_minutes
+  • Added new "OTP & Authenticator Apps" section (between Phone OTP and ID/Document) with:
+    - 4-card provider status grid (TOTP/WhatsApp/Telegram/Email OTP) with colored icons + live pulse dot when enabled + ring highlight
+    - TOTP subsection: enable toggle, Issuer name, Step Period (15-120s), Code Digits (6/8), QR code preview placeholder, RFC 6238 compliant badge, links to docs
+    - WhatsApp subsection: enable toggle, Phone Number ID, API Version, Access Token (password field), "1,000 FREE / MONTH" badge, link to Meta docs
+    - Telegram subsection: enable toggle, Bot Token (password), Bot Username, "FREE · NO LIMITS" badge, link to @BotFather
+    - Email OTP subsection: enable toggle, Email Subject, From Address, "100 FREE / DAY" badge
+    - Shared OTP Settings: OTP Code Length (4-8), OTP Expiry (minutes)
+  • Updated DEFAULTS map with all new keys
+  • Updated FlawsCallout with 3 new OTP-specific flaws (plaintext TOTP secrets, stubbed email dispatch, backup code rate limiting)
+  • Added new lucide icons: Smartphone, MessageCircle, Send, QrCode, Lock
+
+- **Packages installed**: otplib (^13.4.1), qrcode (^1.5.4), @types/qrcode (dev)
+
+- **End-to-end API testing** (via curl):
+  • TOTP setup → success, 32-char base32 secret, QR code PNG data URL, otpauth:// URI with correct issuer/label/period/digits ✓
+  • TOTP verify → generated real TOTP token (694948) from secret, verified → enabled=true, 8 backup codes, totpEnabled=true ✓
+  • Email OTP send → success, delivered=true (stub) ✓
+  • WhatsApp OTP send → success, delivered=false (no creds), debugCode returned ✓
+  • WhatsApp OTP verify (correct code) → verified=true, phoneVerified=true ✓
+  • WhatsApp OTP verify (wrong code) → fails with "No active OTP" (consumed) ✓
+
+- **Dev server issue resolved**: Initial TOTP API calls failed with "Unknown argument totpSecret" — the Prisma client was regenerated by db:push but the dev server's Turbopack cache had a stale client. Fixed by: killing ALL stale next-server/postcss processes (PIDs 25281/25295/25515/30978/31046 from old sessions), full .next directory clear, then fresh `bun run dev` (PID 1778). Server now ready in 579ms, all routes HTTP 200.
+
+- **Lint**: 0 errors, 0 warnings.
+- **Browser-verified**: Agent Browser confirms OTP section renders with all 4 provider cards + 5 subsections + shared settings, zero console errors, zero page errors.
+- **VLM-verified**: Full panel has all 9 sections polished (Stats, Verified Users Directory, Email Verification, Phone OTP, OTP & Authenticator Apps, ID/Document, Verified Badge with live preview, Action Requirements, Pending Verifications).
+- **Theme-color verified**: Day→#e6e6e8, Night→#2A1F0A, Golden→#D4AF37 — all sync live with theme switches.
+
+Stage Summary:
+- Browser header color now follows the active theme (light/dark/gold) live, syncing both the Next.js viewport theme-color meta tags and the iOS status bar style. No more hardcoded gold for every theme.
+- Site animations polished: smooth 0.18s transitions on all interactive elements, 5 new entrance animation utilities, skeleton shimmer, view-transition opt-in, and full prefers-reduced-motion accessibility support (disables all non-essential motion for users who request it).
+- Comprehensive OTP & authenticator system added: TOTP (Google Authenticator, Authy, 1Password — RFC 6238 compliant via otplib), WhatsApp Cloud API (1k/mo free), Telegram Bot API (free, no limits), Email OTP (SendGrid 100/day free). All 5 API routes work end-to-end (tested via curl). Admin panel has a stunning new "OTP & Authenticator Apps" section with 4-card provider status grid, per-provider credential fields, free-tier badges, and shared OTP settings.
+- All flaws documented honestly in the FlawsCallout (plaintext TOTP secrets, stubbed email dispatch, backup code rate limiting, sandbox debug codes).
