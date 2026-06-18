@@ -3,27 +3,22 @@
  * =================================================================
  *
  * Production (Cloudflare Workers via OpenNext):
- *   Uses `getCloudflareContext()` from `@opennextjs/cloudflare` to grab the
- *   `DB` D1 binding, wraps it with `@prisma/adapter-d1`'s `PrismaD1` adapter.
- *   No filesystem access required.
+ *   Dynamic-imports `@prisma/client/edge` (WASM query engine, no fs.readdir)
+ *   and wraps the `DB` D1 binding with `@prisma/adapter-d1`'s `PrismaD1`.
  *
  * Local dev (`bun run dev`):
- *   `initOpenNextCloudflareForDev()` is called in next.config.mjs, which
- *   makes `getCloudflareContext()` work locally too (via wrangler's
- *   `getPlatformProxy`). Falls back to a plain `PrismaClient()` opening
- *   the local SQLite file if the Cloudflare context is unavailable.
+ *   Dynamic-imports `@prisma/client` (native Node.js engine) and opens the
+ *   local SQLite file via DATABASE_URL.
  *
- * The export is a Proxy that lazily initialises the client on first property
- * access inside a request. Call sites stay unchanged:
+ * `db` is a recursive Proxy that bridges sync→async transparently so call
+ * sites stay unchanged:
  *
  *     import { db } from '@/lib/db'
  *     await db.user.findMany()
  *     await db.$transaction([...])
  */
 
-import { PrismaClient } from '@prisma/client'
-import { PrismaD1 } from '@prisma/adapter-d1'
-import { getCloudflareContext } from '@opennextjs/cloudflare'
+import type { PrismaClient } from '@prisma/client'
 
 type CloudflareEnv = {
   DB?: D1Database
@@ -32,69 +27,119 @@ type CloudflareEnv = {
   [key: string]: unknown
 }
 
-let _db: PrismaClient | null = null
+let _clientPromise: Promise<PrismaClient> | null = null
 
-function buildWorkerClient(): PrismaClient {
-  const ctx = getCloudflareContext() as { env: CloudflareEnv } | undefined
-  const d1 = ctx?.env?.DB
-  if (!d1) {
-    throw new Error(
-      'Cloudflare D1 binding "DB" is not attached to this Worker. ' +
-        'Check wrangler.toml → [[d1_databases]] → binding = "DB".',
-    )
-  }
-  return new PrismaClient({ adapter: new PrismaD1(d1) })
+function isWorkersRuntime(): boolean {
+  // Cloudflare Workers / workerd exposes WebSocketPair and caches on globalThis
+  return (
+    typeof (globalThis as { WebSocketPair?: unknown }).WebSocketPair ===
+      'function' ||
+    // Miniflare marker
+    typeof (globalThis as { MINIFLARE?: unknown }).MINIFLARE !== 'undefined'
+  )
 }
 
-function buildLocalClient(): PrismaClient {
-  return new PrismaClient({
+async function buildClient(): Promise<PrismaClient> {
+  if (isWorkersRuntime()) {
+    try {
+      const [{ getCloudflareContext }, { PrismaD1 }, edgeMod] =
+        await Promise.all([
+          import('@opennextjs/cloudflare'),
+          import('@prisma/adapter-d1'),
+          import('@prisma/client/edge'),
+        ])
+      const ctx = (await getCloudflareContext({ async: true })) as {
+        env: CloudflareEnv
+      }
+      const d1 = ctx?.env?.DB
+      if (d1) {
+        const EdgePrismaClient = (
+          edgeMod as { PrismaClient: typeof PrismaClient }
+        ).PrismaClient
+        return new EdgePrismaClient({ adapter: new PrismaD1(d1) })
+      }
+    } catch (err) {
+      console.error('[db] Workers Prisma init failed:', err)
+      throw err
+    }
+  }
+
+  // Local Node.js dev path
+  const nodeMod = await import('@prisma/client')
+  const NodePrismaClient = (
+    nodeMod as { PrismaClient: typeof PrismaClient }
+  ).PrismaClient
+  return new NodePrismaClient({
     log:
       process.env.NODE_ENV !== 'production' ? ['error', 'warn'] : ['error'],
   })
 }
 
-/**
- * Returns the cached PrismaClient, initialising it on first call.
- *
- * Tries the Cloudflare Workers path first. If `getCloudflareContext()` is
- * unavailable (e.g. running outside a request context, or local dev without
- * `initOpenNextCloudflareForDev`), falls back to a plain PrismaClient that
- * opens the local SQLite file via DATABASE_URL.
- */
-function getDb(): PrismaClient {
-  if (_db) return _db
-  try {
-    _db = buildWorkerClient()
-  } catch {
-    _db = buildLocalClient()
+function getClient(): Promise<PrismaClient> {
+  if (!_clientPromise) {
+    _clientPromise = buildClient().catch((err) => {
+      // Reset so the next call can retry
+      _clientPromise = null
+      throw err
+    })
   }
-  return _db
+  return _clientPromise
 }
 
 /**
- * Proxy that mirrors the PrismaClient surface so call sites stay unchanged.
- * The client is lazily constructed on first property access inside a request.
+ * Recursive Proxy that turns `db.x.y.z(args)` into a Promise that resolves
+ * once the underlying client is ready, then calls through to it. This lets
+ * call sites stay exactly the same as a sync PrismaClient:
+ *
+ *     await db.user.findMany()                       // ✅ works
+ *     await db.$transaction([db.user.deleteMany()])  // ⚠️  see note
+ *
+ * Note: `db.$transaction([...])` with an ARRAY of operations requires the
+ * operations to be Prisma promises (not our proxy promises). For
+ * transactions, use the callback form: `await db.$transaction(async (tx) => { ... })`.
  */
-export const db = new Proxy({} as PrismaClient, {
-  get(_target, prop) {
-    const client = getDb()
-    return (client as Record<PropertyKey, unknown>)[prop as PropertyKey]
-  },
-}) as PrismaClient
+function makeAsyncProxy<T>(promise: Promise<unknown>): T {
+  const proxy = new Proxy(function () {} as unknown as T, {
+    get(_target, prop) {
+      // Special-case Symbol.toPrimitive etc. so the proxy is inspectable.
+      if (typeof prop === 'symbol') {
+        return undefined
+      }
+      return makeAsyncProxy(promise.then((t) => (t as Record<string, unknown>)[prop]))
+    },
+    apply(_target, _thisArg, args) {
+      return promise.then((fn) => {
+        if (typeof fn !== 'function') {
+          throw new Error(
+            `[db] attempted to call a non-function: ${String(fn)}`,
+          )
+        }
+        return (fn as (...a: unknown[]) => unknown)(...args)
+      })
+    },
+  })
+  return proxy
+}
 
-/** Explicit async getter (useful for explicit init or reset). */
-export function getDbAsync(): PrismaClient {
-  return getDb()
+/**
+ * The PrismaClient. Lazily initialises on first property access.
+ */
+export const db = makeAsyncProxy<PrismaClient>(getClient())
+
+/** Explicit async getter (useful for explicit init or testing). */
+export function getDbAsync(): Promise<PrismaClient> {
+  return getClient()
 }
 
 /** Reset the cached client (mainly for HMR / tests). */
 export async function resetDb(): Promise<void> {
-  if (_db) {
+  if (_clientPromise) {
     try {
-      await _db.$disconnect()
+      const client = await _clientPromise
+      await client.$disconnect()
     } catch {
       /* ignore */
     }
-    _db = null
+    _clientPromise = null
   }
 }
