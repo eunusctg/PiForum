@@ -948,3 +948,35 @@ Stage Summary:
   4. OpenNext bundles .open-next/worker.js + .open-next/assets/ ✅
   5. Cloudflare runs `npx wrangler deploy` ✅
   6. Site live at https://piforum.<subdomain>.workers.dev 🎉
+
+---
+Task ID: DEPLOY-FINAL
+Agent: Main (Cloudflare Production Deploy)
+Task: Deploy PiForum Worker to production traffic, push D1 schema, set NEXTAUTH_SECRET, enable workers.dev, add custom domains
+
+Work Log:
+- Verified Cloudflare API token (cfut_...) authenticated to Techctg24 Inc (account 704489378006d2bed6a45de180f6679f)
+- Listed worker versions; latest was a1cee333-8aea-439e-91b0-492893558b08 (uploaded by prior CF Build)
+- Ran `wrangler versions deploy --version-id a1cee333-...` (with `y` piped in) — deployed at 100% traffic in 1.46s
+- Queried remote D1: 26 tables already present (Attachment, Bookmark, Category, EmailVerification, Forum, InstallConfig, Notification, OtpChallenge, Page, PageRevision, Poll, PollOption, PollVote, Post, PostVote, Rank, Report, Rule, SecurityLog, Setting, Subscription, Tag, Thread, ThreadTag, User, UserSetting) — skipped re-running migration to avoid duplicate CREATE errors
+- Generated NEXTAUTH_SECRET via `openssl rand -base64 32` → `9kKu7J460BgiPuYWYKSF9yF0HWaAs7gELhm6eQ9fd+k=`
+- Set secret via `wrangler secret put NEXTAUTH_SECRET` — this triggered a new version (67e8ec55-2d1f-4a80-be3c-5cf1039979a4) which auto-deployed at 100%
+- Fetched account workers.dev subdomain via API → `piforum` (so URL is https://piforum.workers.dev)
+- Worker subdomain was disabled (enabled:false) → POSTed to /workers/scripts/piforum/subdomain with {enabled:true} → now enabled
+- Listed account zones; both piforum.eu.org (zone 3a405826081c82730c3d3adae9a1fdd8) and piforum.eu.cc (zone ca3ac503c63537f49ee8d07e08dee2c5) are active
+- PUT /accounts/{id}/workers/domains for each hostname with service=piforum, environment=production — both succeeded with auto-provisioned SSL certs:
+  * piforum.eu.org → cert d891c5c9-ee3d-4196-8da4-9adf3bb164b5
+  * piforum.eu.cc  → cert 66930c76-1a4c-4749-b414-dc65f09f9d66
+- Final GET /workers/domains?service=piforum confirmed both hostnames attached and enabled
+- Unset CLOUDFLARE_API_TOKEN from shell at end of session
+
+Stage Summary:
+- ✅ Worker serving 100% production traffic on version 67e8ec55-2d1f-4a80-be3c-5cf1039979a4
+- ✅ D1 schema present (26 tables) on remote piforum database
+- ✅ NEXTAUTH_SECRET set as worker secret
+- ✅ workers.dev preview URL enabled: https://piforum.workers.dev
+- ✅ Custom domains live with SSL:
+    https://piforum.eu.org
+    https://piforum.eu.cc
+- ⚠️ Note: DNS propagation for the apex custom domains may take 1-5 minutes; users may see intermittent 522/1043 until SSL certs finish issuing (usually <2 min)
+- ⏳ Remaining (optional, for full feature functionality): set ZAI_API_KEY, SMTP_* secrets via `wrangler secret put <NAME>` when those features are needed
