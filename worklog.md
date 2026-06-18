@@ -909,3 +909,42 @@ Stage Summary:
 - Single commit pushed to origin/master: `36f45f1`
 - User's next action: watch the new Cloudflare build at Workers & Pages → piforum → Deployments. Should succeed end-to-end within ~5 minutes.
 - After successful deploy: user should push D1 schema and set secrets from Windows CMD (these commands work fine on Windows).
+
+---
+Task ID: cf-opennext-recursion-fix
+Agent: main (orchestrator)
+Task: Cloudflare build hit infinite recursion — OpenNext kept re-invoking itself. Build was killed by Cloudflare after ~7 minutes (18:23:24 → 18:31:49).
+
+Work Log:
+- Analyzed the failed build log (1311 lines):
+  - bun install --frozen-lockfile ✅ succeeded (1131 packages, including @opennextjs/cloudflare and wrangler)
+  - OpenNext started successfully: "│ OpenNext — Cloudflare build │"
+  - OpenNext began "Building Next.js app" phase
+  - But then instead of running `next build`, OpenNext called `bun x opennextjs-cloudflare build` again
+  - This created an infinite loop: ~50+ iterations of the OpenNext banner appearing, each invoking itself again
+  - Eventually Cloudflare killed the build: "An internal error occurred. Please retry your build."
+- Root cause analysis:
+  - OpenNext's `buildNextApp()` function invokes the user's `build` npm script to run Next.js
+  - I had set `"build": "npx opennextjs-cloudflare build"` in package.json (previous commit `0f9b9d3`)
+  - So the recursion chain was: OpenNext → `bun run build` → `npx opennextjs-cloudflare build` → OpenNext → `bun run build` → ...
+  - This was a regression I introduced in my previous "fix" for the missing .open-next/worker.js
+- Fix:
+  - Reverted `build` script back to plain `"build": "next build"` — OpenNext will call this directly without recursion
+  - Added `"build:cf": "npx opennextjs-cloudflare build"` as a separate convenience script for manual OpenNext invocations
+  - Committed as `0dfee87` and pushed to origin/master
+- CRITICAL: User must also verify the Cloudflare build command is set to `npx opennextjs-cloudflare build` (NOT `bun run build`):
+  - If it's `bun run build`: OpenNext is never invoked → .open-next/worker.js not found (the previous error)
+  - If it's `npx opennextjs-cloudflare build`: OpenNext runs, internally calls `bun run build` which is now plain `next build` → no recursion, .open-next/worker.js is generated → wrangler deploy succeeds
+
+Stage Summary:
+- Root cause: Previous fix (`build: "npx opennextjs-cloudflare build"`) caused OpenNext to recurse infinitely
+- Fix: Reverted build script to plain `next build`, added `build:cf` for explicit OpenNext invocation
+- Commit `0dfee87` pushed to origin/master
+- User must verify Cloudflare build command is `npx opennextjs-cloudflare build` (not `bun run build`)
+- Expected successful build flow:
+  1. `bun install --frozen-lockfile` ✅ (lockfile in sync)
+  2. Cloudflare runs `npx opennextjs-cloudflare build` ✅
+  3. OpenNext internally runs `bun run build` → `next build` → 77/77 pages compile ✅
+  4. OpenNext bundles .open-next/worker.js + .open-next/assets/ ✅
+  5. Cloudflare runs `npx wrangler deploy` ✅
+  6. Site live at https://piforum.<subdomain>.workers.dev 🎉
