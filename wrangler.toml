@@ -36,7 +36,7 @@ account_id = "704489378006d2bed6a45de180f6679f"
 [[d1_databases]]
 binding = "DB"
 database_name = "piforum"
-database_id = "PASTE_D1_DATABASE_UUID_HERE"
+database_id = "25923490-eba7-4e98-b9f0-34c9c183c0b9"
 
 # ============================================================
 # R2 Storage binding (✅ bucket 'piforum-uploads' already created)
