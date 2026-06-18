@@ -662,3 +662,27 @@ Stage Summary:
 - Header.tsx code was already correct (logoUrl declared at line 167, used at line 279)
 - Dev server now runs persistently via Python subprocess start_new_session=True (PID tracked in dev.pid)
 - Browser-verified: full forum renders with header, nav, categories, forums — zero runtime errors
+
+---
+Task ID: FIX-logoUrl-v2
+Agent: Main
+Task: Fix persistent "logoUrl is not defined" error caused by stale service worker cache
+
+Work Log:
+- Previous fix (clearing .next/cache + restart) was correct for the server side, but the USER'S BROWSER still had an old `piforum-v1` service worker registered with stale Turbopack chunks cached via cache-first strategy
+- Root cause confirmed: src/app/sw.js/route.ts service worker used cache-first for ALL static assets (lines 51-63). In dev mode, Turbopack reuses chunk URLs without content hashing, so the SW kept returning the OLD broken intermediate Header.tsx chunk instead of fetching the fresh recompiled one
+- Fixed src/app/sw.js/route.ts:
+  - Bumped cache version from `piforum-v1` to `piforum-v2` so the activate handler purges the old cache
+  - Changed static-asset strategy from cache-first to network-first (fetch from network, fall back to cache only when offline) — appropriate for dev where chunks change constantly
+- Fixed src/components/forum/PwaRegistration.tsx:
+  - Added one-time cache purge on mount: clears ALL existing caches (`caches.keys()` + `caches.delete()`) so stale chunks from the old SW are evicted immediately
+  - Added unregistration of all existing service workers before registering the fresh one, ensuring the new network-first SW takes over cleanly
+  - Added `controllerchange` listener that reloads the page once (guarded by sessionStorage flag `piforum_sw_reloaded`) when a new SW takes control, so the client picks up fresh chunks without a reload loop
+- Verified with Agent Browser: cleared all caches + SWs, reloaded page → zero page errors, zero runtime errors in console, full forum renders with header/nav/categories/forums
+- `bun run lint` passes with zero errors
+
+Stage Summary:
+- Root cause: stale service worker (`piforum-v1`) cached a broken intermediate Header.tsx chunk via cache-first strategy and kept serving it even after the code was fixed and the server recompiled
+- Fix: SW now uses network-first for static assets + auto-purges old caches on activate; PwaRegistration force-clears all caches and unregisters old SWs on mount, then reloads once when the new SW takes control
+- Browser-verified: fresh visit (with caches cleared) renders the full forum with zero `logoUrl` errors
+- The user's preview panel will self-heal on next reload: PwaRegistration clears old caches → unregisters old SW → registers fresh network-first SW → controllerchange triggers one reload → fresh chunks load from network

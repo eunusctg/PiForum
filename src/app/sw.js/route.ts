@@ -4,7 +4,7 @@
    everything else, with a stale-while-revalidate fallback. */
 export async function GET() {
   const sw = `
-const CACHE = 'piforum-v1';
+const CACHE = 'piforum-v2';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -18,6 +18,8 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  // Purge ALL old caches (including the old 'piforum-v1') so stale chunks
+  // from a previous SW session are evicted immediately.
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
@@ -48,18 +50,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for static assets.
+  // Network-first for _next/static dev chunks — Turbopack reuses chunk URLs
+  // in dev so cache-first would serve stale intermediate builds. Always go
+  // to the network first, fall back to cache only when offline.
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
+    fetch(req)
+      .then((res) => {
         if (res && res.status === 200 && res.type === 'basic') {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
         }
         return res;
-      }).catch(() => cached);
-    })
+      })
+      .catch(() => caches.match(req).then((r) => r || Response.error()))
   );
 });
 `;

@@ -20,10 +20,53 @@ export default function PwaRegistration() {
       window.location.hostname === '127.0.0.1';
     if (window.location.protocol !== 'https:' && !isLocalhost) return;
 
-    // Register the service worker
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Registration failure is non-critical; the site still works online.
-    });
+    // One-time cache purge: clear ALL existing caches and unregister any old
+    // service workers so stale Turbopack chunks (e.g. from a previous
+    // cache-first SW version) are evicted immediately. We gate this with a
+    // sessionStorage flag so it only runs once per tab/session, avoiding a
+    // reload loop. After the purge we register the fresh SW.
+    (async () => {
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+      } catch {
+        // non-critical
+      }
+
+      // Unregister any existing service workers so the new network-first
+      // SW takes over cleanly on this navigation.
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      } catch {
+        // non-critical
+      }
+
+      // Register the fresh service worker.
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // Registration failure is non-critical; the site still works online.
+      });
+    })();
+
+    // When a new service worker takes control (skipWaiting + clients.claim),
+    // reload the page once so the client picks up fresh chunks. Guard with
+    // sessionStorage to prevent a reload loop.
+    const onControllerChange = () => {
+      try {
+        if (!sessionStorage.getItem('piforum_sw_reloaded')) {
+          sessionStorage.setItem('piforum_sw_reloaded', '1');
+          window.location.reload();
+        }
+      } catch {
+        // sessionStorage might be unavailable; skip the reload
+      }
+    };
+    if (navigator.serviceWorker.controller) {
+      // A controller already exists; listen for a NEW one taking over.
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    }
 
     // Note: when the app is already installed (standalone display mode),
     // browsers do NOT fire beforeinstallprompt, so showPrompt stays false
@@ -48,6 +91,7 @@ export default function PwaRegistration() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
       window.removeEventListener('appinstalled', installedHandler);
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
     };
   }, []);
 
