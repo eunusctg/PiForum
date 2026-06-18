@@ -34,6 +34,8 @@ import {
   FlawsCallout,
 } from '@/components/forum/admin/shared';
 import { useToast } from '@/hooks/use-toast';
+import VerifiedIcon from '@/components/forum/VerifiedIcon';
+import VerifiedBadge from '@/components/forum/VerifiedBadge';
 
 /* All setting keys managed by this panel — saved atomically via /api/settings. */
 const KEYS = [
@@ -87,7 +89,7 @@ interface VerificationStats {
 }
 
 export default function AdminVerification() {
-  const { values, setValue, save, loading, error, saving, refetch, userIsAdmin, currentUser } = useAdminSettings();
+  const { values, setValue, setMany, save, loading, error, saving, refetch, userIsAdmin, currentUser } = useAdminSettings();
   const { toast } = useToast();
   const [users, setUsers] = useState<SimpleUser[]>([]);
   const [filter, setFilter] = useState<'unverified' | 'all'>('unverified');
@@ -114,15 +116,35 @@ export default function AdminVerification() {
     verified_badge_color: 'primary',
   };
 
-  const handleSave = useCallback(() => {
-    // Seed any empty key with its default so the persisted value matches
-    // what the admin sees in the form.
-    Object.entries(DEFAULTS).forEach(([k, def]) => {
-      if ((values[k] ?? '') === '') setValue(k, def);
+  const handleSave = useCallback(async () => {
+    if (!currentUser) return;
+    // Build the entries to save, filling empty values with their defaults so
+    // the persisted value matches what the admin sees in the form.
+    const entries = KEYS.map((k) => {
+      const raw = values[k] ?? '';
+      const val = raw === '' ? (DEFAULTS[k] ?? '') : raw;
+      return { key: k, value: val };
     });
-    // Defer save to next tick so state has flushed.
-    setTimeout(() => save(KEYS), 0);
-  }, [values, setValue, save]);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.id },
+        body: JSON.stringify({ settings: entries }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Sync local values state with what we just saved (so defaults stick).
+        const merged: Record<string, string> = { ...values };
+        entries.forEach((e) => { merged[e.key] = e.value; });
+        setMany(merged);
+        toast({ title: 'Settings Saved', description: 'Verification settings have been applied.' });
+      } else {
+        toast({ title: 'Save Failed', description: data.error || 'Unknown error', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Save Failed', description: 'Network error', variant: 'destructive' });
+    }
+  }, [currentUser, values, toast, setMany]);
 
   const fetchUsers = useCallback(async () => {
     if (!currentUser) return;
@@ -237,7 +259,7 @@ export default function AdminVerification() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <div className="neu-circle p-2.5"><BadgeCheck className="size-5 text-primary" /></div>
+        <div className="neu-circle p-2.5"><VerifiedIcon size="lg" /></div>
         <div>
           <h1 className="text-xl font-bold">User Verification System</h1>
           <p className="text-xs text-muted-foreground">Email, phone (OTP), ID review, verified badges & action requirements.</p>
@@ -395,7 +417,7 @@ export default function AdminVerification() {
 
       {/* ============ Verified Badge ============ */}
       <div className="neu-card p-6 space-y-5">
-        <SectionHeader icon={Award} title="Verified Badge" description="Cosmetic badge shown next to verified users' names across the site." />
+        <SectionHeader icon={Award} title="Verified Badge" description="Stunning seal-style badge shown next to verified users' names across the site." />
         <div className="flex items-center justify-between gap-4 py-2">
           <div className="space-y-0.5">
             <Label>Show Verified Badge</Label>
@@ -403,6 +425,43 @@ export default function AdminVerification() {
           </div>
           <Switch checked={parseBool('verified_badge_enabled', true)} onCheckedChange={(c) => setValue('verified_badge_enabled', String(c))} />
         </div>
+
+        {/* Live preview — shows the actual stunning badge in all sizes */}
+        <div className="neu-card-inset p-5 space-y-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <Award className="size-3.5" /> Live Preview
+          </div>
+          {/* Inline label preview (as it appears next to a username on profile pages) */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-medium">{v('verified_badge_text', 'Verified') === 'Verified' ? 'Ada Lovelace' : 'Sample User'}</span>
+            <VerifiedBadge size="md" showLabel force />
+          </div>
+          {/* Icon-only sizes preview */}
+          <div className="flex items-center gap-5 flex-wrap pt-1">
+            <div className="flex flex-col items-center gap-1.5">
+              <VerifiedIcon size="xs" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+              <span className="text-[10px] text-muted-foreground">xs</span>
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <VerifiedIcon size="sm" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+              <span className="text-[10px] text-muted-foreground">sm</span>
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <VerifiedIcon size="md" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+              <span className="text-[10px] text-muted-foreground">md</span>
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <VerifiedIcon size="lg" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+              <span className="text-[10px] text-muted-foreground">lg (animated)</span>
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <VerifiedIcon size="xl" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+              <span className="text-[10px] text-muted-foreground">xl (animated)</span>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">The lg/xl sizes include a subtle shimmer sweep. Hover any badge to see the lift effect.</p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="badgetext">Badge Text</Label>
@@ -495,7 +554,7 @@ export default function AdminVerification() {
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate flex items-center gap-1.5">
                     {u.displayName || u.username}
-                    {u.isVerified && <BadgeCheck className="size-3.5 text-primary" />}
+                    {u.isVerified && <VerifiedIcon size="sm" />}
                     {u.role >= 2 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">STAFF</span>}
                   </div>
                   <div className="text-xs text-muted-foreground truncate flex items-center gap-1"><Mail className="size-3" />{u.email}</div>

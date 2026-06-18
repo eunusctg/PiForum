@@ -686,3 +686,46 @@ Stage Summary:
 - Fix: SW now uses network-first for static assets + auto-purges old caches on activate; PwaRegistration force-clears all caches and unregisters old SWs on mount, then reloads once when the new SW takes control
 - Browser-verified: fresh visit (with caches cleared) renders the full forum with zero `logoUrl` errors
 - The user's preview panel will self-heal on next reload: PwaRegistration clears old caches → unregisters old SW → registers fresh network-first SW → controllerchange triggers one reload → fresh chunks load from network
+
+---
+Task ID: VERIFIED-SYSTEM
+Agent: Main
+Task: Add comprehensive user verification system to admin panel + stunning verified user icon
+
+Work Log:
+- Expanded AdminVerification panel (/admin/verification) from basic email-only to a full verification system:
+  • Stats overview (Total / Verified / Unverified / Verification Rate)
+  • Email Verification (require toggle, link expiry, resend cooldown, max resends, auto-verify staff, email subject/body)
+  • Phone (OTP) Verification (enable toggle, OTP length, OTP expiry, SMS provider dropdown: None/Twilio/Vonage/MessageBird)
+  • ID / Document Verification (enable toggle, allowed doc types, review mode: Manual/Auto/Disabled)
+  • Verified Badge (show toggle, badge text, badge color, LIVE PREVIEW with all 5 sizes)
+  • Action Requirements (require verified to post/thread/vote/message/link)
+  • Pending Verifications list with Verify/Revoke + "Verify All" bulk action
+- Fixed fetchUsers() to send x-user-id auth header (was returning 401)
+- Fixed save handler: built custom handleSave that merges DEFAULTS for empty keys so untouched fields persist with their displayed default value (was saving empty strings)
+- Created VerifiedIcon component (src/components/forum/VerifiedIcon.tsx): stunning SVG seal-style badge with:
+  • Scallop/star-burst seal background with gradient fill (blue→indigo default, gold, emerald, mono variants)
+  • Soft glow filter for depth
+  • Inner subtle white ring
+  • White checkmark
+  • Animated shimmer sweep on lg/xl sizes
+  • 5 sizes: xs(12px), sm(14px), md(16px), lg(20px), xl(28px)
+  • Hover lift + rotate effect
+- Created VerifiedBadge component (src/components/forum/VerifiedBadge.tsx): reads admin-configured text/color/enabled from global settings store; icon-only or icon+label pill variants; 5 color themes (primary/blue/green/gold/purple)
+- Added verified badge CSS to globals.css: .verified-icon-wrap, @keyframes verified-shimmer, .verified-badge-inline pill variants for all colors, golden theme override
+- Integrated VerifiedBadge into public UI:
+  • ThreadView: thread author name + post author sidebar
+  • ThreadList: author meta row
+  • MembersView: member card name
+  • ProfileView: large badge with label next to display name
+- Updated AdminVerification panel to use VerifiedIcon in header + pending list + live preview (replaced plain BadgeCheck lucide icon)
+- Verified end-to-end: admin verified 2 users (testuser123, verifytest) from panel → stunning blue seal badges appear next to their names on /members page and profile pages
+- VLM (vision model) confirmed: "colorful seal-style, featuring a checkmark... blue circular badges (xs, sm, md, lg, xl) next to a user name ('Ada Lovelace') with the 'Verified' label... shimmer effect on hover" in admin panel, and "verified badge icons (seal-style with checkmark) next to verifytest and testuser123" on members page
+- `bun run lint` passes with zero errors; zero runtime errors in browser
+
+Stage Summary:
+- Admin Verification panel is now a comprehensive multi-method verification system (email + phone OTP + ID review + verified badges + action requirements) with stats and bulk actions
+- Stunning verified badge: custom SVG seal with gradient, glow, shimmer animation, 5 sizes, 5 color themes, hover lift — used across the entire site
+- Badge text/color/visibility are admin-configurable from the panel and apply site-wide instantly via the settings store (no rebuild needed)
+- Verified users display the stunning badge next to their names in thread views, thread lists, member directory, and profile pages
+- All flaws/limitations documented honestly in the FlawsCallout (simulated OTP, manual ID review, no server-side rate limit, cosmetic badge, etc.)

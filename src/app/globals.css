@@ -728,6 +728,92 @@
 }
 
 /* ============================================================
+   VERIFIED BADGE — stunning seal-style icon with shimmer
+   ============================================================ */
+
+.verified-icon-wrap {
+  flex: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+  transition: transform 0.2s ease;
+}
+
+.verified-icon-wrap:hover {
+  transform: scale(1.15) rotate(-3deg);
+}
+
+/* Slow, premium shimmer sweep across the seal — only on lg/xl sizes */
+.verified-icon-anim .verified-icon-shimmer {
+  transform-origin: 50% 50%;
+  animation: verified-shimmer 3.5s ease-in-out infinite;
+}
+
+@keyframes verified-shimmer {
+  0%, 100% {
+    opacity: 0;
+    transform: translateX(-6px) translateY(-6px);
+  }
+  40% {
+    opacity: 0.6;
+  }
+  60% {
+    opacity: 0;
+    transform: translateX(6px) translateY(6px);
+  }
+}
+
+/* Inline label variant used next to usernames */
+.verified-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.05rem 0.4rem 0.05rem 0.3rem;
+  border-radius: 9999px;
+  line-height: 1.2;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.verified-badge-blue {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(79, 70, 229, 0.15));
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.verified-badge-gold {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.18), rgba(184, 134, 11, 0.18));
+  color: #b8860b;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
+.verified-badge-emerald {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(4, 120, 87, 0.15));
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.verified-badge-purple {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(126, 34, 206, 0.15));
+  color: #9333ea;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.verified-badge-primary {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.08));
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+/* Golden theme override — make verified badges gold by default */
+.gold .verified-badge-primary {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(184, 134, 11, 0.15));
+  color: #b8860b;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+}
+
+/* ============================================================
    NEUMORPHISM INTERACTION TRANSITIONS
    ============================================================ */
 

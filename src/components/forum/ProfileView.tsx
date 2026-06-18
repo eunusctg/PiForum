@@ -37,6 +37,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import VerifiedBadge from '@/components/forum/VerifiedBadge';
 
 /* ------------------------------------------------------------------ */
 /*  Profile View — view a user's full profile                          */
@@ -251,6 +252,7 @@ export default function ProfileView() {
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 {name}
               </h2>
+              {profile.isVerified && <VerifiedBadge size="lg" showLabel />}
               {profile.role > 0 && (
                 <Badge
                   variant={profile.role >= 2 ? 'default' : 'secondary'}

@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import VerifiedBadge from '@/components/forum/VerifiedBadge';
 
 /* ------------------------------------------------------------------ */
 /*  Members View — directory of community members                      */
@@ -295,8 +296,9 @@ function MemberCard({
           </Avatar>
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-sm sm:text-base group-hover:text-primary transition-colors truncate">
-            {name}
+          <h3 className="font-semibold text-sm sm:text-base group-hover:text-primary transition-colors truncate flex items-center gap-1.5">
+            <span className="truncate">{name}</span>
+            {member.isVerified && <VerifiedBadge size="sm" />}
           </h3>
           <p className="text-xs text-muted-foreground truncate">
             @{member.username}

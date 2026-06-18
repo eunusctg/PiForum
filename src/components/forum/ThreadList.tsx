@@ -30,6 +30,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import VerifiedBadge from '@/components/forum/VerifiedBadge';
 
 /* ------------------------------------------------------------------ */
 /*  Thread List — Shows threads within a specific forum               */
@@ -402,6 +403,7 @@ function ThreadRow({
             <span className="flex items-center gap-1">
               <User className="size-3" />
               {authorName}
+              {thread.author?.isVerified && <VerifiedBadge size="xs" />}
             </span>
             <span className="flex items-center gap-1">
               <Clock className="size-3" />

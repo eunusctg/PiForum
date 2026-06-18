@@ -43,6 +43,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import VerifiedBadge from '@/components/forum/VerifiedBadge';
 
 /* ------------------------------------------------------------------ */
 /*  Post data with extra fields from API                               */
@@ -675,6 +676,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
                   <span className="text-sm font-medium">
                     {threadData.author?.displayName || threadData.author?.username || 'Unknown'}
                   </span>
+                  {threadData.author?.isVerified && <VerifiedBadge size="sm" />}
                   {threadData.author && (
                     <Badge variant={getRoleBadgeVariant(threadData.author.role)} className="text-xs px-1.5 py-0 h-4">
                       {ROLE_LABELS[threadData.author.role as UserRole]}
@@ -998,7 +1000,10 @@ function PostCard({
             </Avatar>
           </div>
           <div className="sm:text-center">
-            <div className="text-sm font-medium truncate max-w-[120px]">{authorName}</div>
+            <div className="text-sm font-medium truncate max-w-[120px] flex items-center gap-1 justify-center">
+              <span className="truncate">{authorName}</span>
+              {author?.isVerified && <VerifiedBadge size="xs" />}
+            </div>
             {author && (
               <Badge variant={getRoleBadgeVariant(author.role)} className="text-xs px-1 py-0 h-4 mt-0.5">
                 {ROLE_LABELS[author.role as UserRole]}
