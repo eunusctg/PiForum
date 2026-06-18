@@ -13,6 +13,14 @@ const config: OpenNextConfig = {
       queue: "direct",
     },
   },
+  // Force the esbuild bundler to use the "workerd" export condition.
+  // This makes Prisma 7 resolve to its `edge.js` entry (WASM-only, no Rust
+  // engine, no fs.readdir) instead of `index.js` (which requires the 4.5 MiB
+  // query_compiler_fast_bg.wasm-base64.js file). Critical for staying under
+  // the 3 MiB compressed Worker size limit on the free plan.
+  cloudflare: {
+    useWorkerdCondition: true,
+  },
   edgeExternals: ["node:crypto"],
   middleware: {
     external: true,
