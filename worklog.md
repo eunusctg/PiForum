@@ -846,3 +846,34 @@ Stage Summary:
 - Site animations polished: smooth 0.18s transitions on all interactive elements, 5 new entrance animation utilities, skeleton shimmer, view-transition opt-in, and full prefers-reduced-motion accessibility support (disables all non-essential motion for users who request it).
 - Comprehensive OTP & authenticator system added: TOTP (Google Authenticator, Authy, 1Password — RFC 6238 compliant via otplib), WhatsApp Cloud API (1k/mo free), Telegram Bot API (free, no limits), Email OTP (SendGrid 100/day free). All 5 API routes work end-to-end (tested via curl). Admin panel has a stunning new "OTP & Authenticator Apps" section with 4-card provider status grid, per-provider credential fields, free-tier badges, and shared OTP settings.
 - All flaws documented honestly in the FlawsCallout (plaintext TOTP secrets, stubbed email dispatch, backup code rate limiting, sandbox debug codes).
+
+---
+Task ID: cf-build-script-fix-push
+Agent: main (orchestrator)
+Task: User asked to "push new build" — fix the Cloudflare Workers Build failure where `.open-next/worker.js` was missing because `bun run build` only ran `next build` (not OpenNext).
+
+Work Log:
+- Analyzed the failed Cloudflare build log:
+  - `bun install --frozen-lockfile` ✅ succeeded (862 packages in 20s — lockfile issue resolved)
+  - `next build` ✅ succeeded (77/77 pages compiled in 31s)
+  - `npx wrangler deploy` ❌ failed: "The entry-point file at '.open-next/worker.js' was not found"
+- Root cause: Cloudflare's build command `bun run build` invoked the `build` npm script, which was `next build` (just plain Next.js build, no OpenNext). OpenNext is what produces `.open-next/worker.js` and `.open-next/assets/` — without it, `wrangler deploy` has nothing to deploy.
+- Discovered that origin/master already had most of my earlier fixes:
+  - `@opennextjs/cloudflare` and `wrangler` were already in devDependencies
+  - `.npmrc` was already present (with legacy-peer-deps=true)
+  - `wrangler.toml` was already updated with Workers config
+  - `build: "next build"` was already clean (no cp -r)
+- The ONLY missing piece: `build` script didn't invoke OpenNext. Changed it from `"build": "next build"` to `"build": "npx opennextjs-cloudflare build"`.
+- Added `"build:next": "next build"` as a separate script for cases where plain Next.js build is needed (e.g., serv00/VPS deploys that don't use OpenNext).
+- Committed as `0f9b9d3` and pushed to origin/master via `git push origin HEAD:master`.
+- Push output: `c4ce90b..0f9b9d3  HEAD -> master` — commit is now live on GitHub.
+- Cloudflare Workers Build should auto-detect this push within ~30 seconds and trigger a new build.
+
+Stage Summary:
+- Single-file fix pushed to origin/master: package.json build script now runs OpenNext directly.
+- Expected Cloudflare build flow on next deploy:
+  1. `bun install --frozen-lockfile` → installs deps (including @opennextjs/cloudflare and wrangler from devDependencies)
+  2. `bun run build` → `npx opennextjs-cloudflare build` → runs `next build` internally + bundles Worker into `.open-next/worker.js` + assets into `.open-next/assets/`
+  3. `npx wrangler deploy` → reads wrangler.toml (main = ".open-next/worker.js", assets = ".open-next/assets") → deploys Worker to Cloudflare
+- User's next action: watch the new Cloudflare build at Workers & Pages → piforum → Deployments. Should succeed within ~5 minutes.
+- After successful deploy: user should push D1 schema (`npx wrangler d1 execute piforum --remote --file=migrations_d1/0001_init.sql`) and set secrets (`npx wrangler secret put NEXTAUTH_SECRET` etc.) from their Windows CMD.
