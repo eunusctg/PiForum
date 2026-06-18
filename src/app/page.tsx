@@ -9,11 +9,18 @@ import ForumHome from '@/components/forum/ForumHome';
 import ThreadList from '@/components/forum/ThreadList';
 import ThreadView from '@/components/forum/ThreadView';
 import NewThread from '@/components/forum/NewThread';
+import SearchView from '@/components/forum/SearchView';
+import MembersView from '@/components/forum/MembersView';
+import BookmarksView from '@/components/forum/BookmarksView';
+import NotificationsView from '@/components/forum/NotificationsView';
+import ProfileView from '@/components/forum/ProfileView';
+import TagsView from '@/components/forum/TagsView';
 import AdminDashboard from '@/components/forum/AdminDashboard';
 import AdminUsers from '@/components/forum/AdminUsers';
 import AdminCategories from '@/components/forum/AdminCategories';
 import AdminSettings from '@/components/forum/AdminSettings';
 import AdminSecurity from '@/components/forum/AdminSecurity';
+import AdminReports from '@/components/forum/AdminReports';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
@@ -124,6 +131,18 @@ export default function Home() {
         return <ThreadView threadId={viewParams.threadId || ''} />;
       case 'new-thread':
         return <NewThread forumId={viewParams.forumId || ''} />;
+      case 'search':
+        return <SearchView />;
+      case 'members':
+        return <MembersView />;
+      case 'bookmarks':
+        return <BookmarksView />;
+      case 'notifications':
+        return <NotificationsView />;
+      case 'profile':
+        return <ProfileView />;
+      case 'tags':
+        return <TagsView />;
       case 'admin-dashboard':
         return <AdminDashboard />;
       case 'admin-users':
@@ -134,6 +153,8 @@ export default function Home() {
         return <AdminSettings />;
       case 'admin-security':
         return <AdminSecurity />;
+      case 'admin-reports':
+        return <AdminReports />;
       default:
         return <ForumHome />;
     }
@@ -143,7 +164,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--neu-bg)' }}>
       <Header />
       <AuthModal />
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 w-full">
         {renderView()}
       </main>
       <footer className="mt-auto py-6">

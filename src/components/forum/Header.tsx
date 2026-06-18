@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useSyncExternalStore } from "react";
+import { useState, useCallback, useSyncExternalStore, useEffect } from "react";
 import {
   Sun,
   Moon,
@@ -13,6 +13,13 @@ import {
   ChevronDown,
   Palette,
   Check,
+  Search,
+  Users,
+  Tag,
+  Bookmark,
+  Bell,
+  MessageSquare,
+  Flag,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import type { ThemeMode as StoreThemeMode } from "@/lib/store";
@@ -32,7 +39,6 @@ export default function Header() {
   const {
     currentUser,
     isAdmin,
-    settings,
     getSetting,
     navigateTo,
     setCurrentUser,
@@ -44,6 +50,9 @@ export default function Header() {
   } = useAppStore();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Hydration-safe mounted detection without calling setState in an effect
   const mounted = useSyncExternalStore(
@@ -54,10 +63,41 @@ export default function Header() {
 
   const forumName = getSetting("forum_name", "PiForum");
 
+  // ---------- Fetch unread notification count ----------
+  useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+    let active = true;
+    async function loadUnread() {
+      try {
+        const res = await fetch("/api/notifications?unreadOnly=true", {
+          headers: { "x-user-id": currentUser!.id },
+        });
+        const data = await res.json();
+        if (active && data.success) {
+          setUnreadCount(data.data?.length ?? 0);
+        }
+      } catch {
+        // Non-critical
+      }
+    }
+    loadUnread();
+    const interval = setInterval(loadUnread, 30000); // refresh every 30s
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [currentUser]);
+
+  // Reset unread count when user logs out (derived state, no extra render needed)
+  const displayUnreadCount = currentUser ? unreadCount : 0;
+
   const handleNavigate = useCallback(
-    (view: AppView) => {
-      navigateTo(view);
+    (view: AppView, params?: Record<string, string>) => {
+      navigateTo(view, params);
       setMobileMenuOpen(false);
+      setSearchOpen(false);
     },
     [navigateTo]
   );
@@ -84,6 +124,17 @@ export default function Header() {
     [setThemeMode]
   );
 
+  const handleSearchSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (searchQuery.trim()) {
+        handleNavigate("search", { q: searchQuery.trim() });
+        setSearchQuery("");
+      }
+    },
+    [searchQuery, handleNavigate]
+  );
+
   const themeOptions: { mode: StoreThemeMode; label: string; icon: typeof Sun; swatch: string }[] = [
     { mode: "light", label: "Day", icon: Sun, swatch: "#e0e0e0" },
     { mode: "dark", label: "Night", icon: Moon, swatch: "#1e1e24" },
@@ -92,14 +143,12 @@ export default function Header() {
 
   const userIsAdmin = isAdmin();
 
-  const navLinks = [
-    { label: "Home", view: "home" as AppView, icon: Home, show: true },
-    {
-      label: "Admin Panel",
-      view: "admin-dashboard" as AppView,
-      icon: Shield,
-      show: userIsAdmin,
-    },
+  const navLinks: { label: string; view: AppView; icon: typeof Home; show: boolean }[] = [
+    { label: "Home", view: "home", icon: Home, show: true },
+    { label: "Forums", view: "home", icon: MessageSquare, show: true },
+    { label: "Members", view: "members", icon: Users, show: true },
+    { label: "Tags", view: "tags", icon: Tag, show: true },
+    { label: "Admin", view: "admin-dashboard", icon: Shield, show: userIsAdmin },
   ];
 
   return (
@@ -120,15 +169,35 @@ export default function Header() {
             </span>
           </button>
 
+          {/* Desktop Search Bar (center) */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="hidden md:flex items-center flex-1 max-w-md mx-4"
+          >
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search threads, members, tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                className="neu-input w-full h-9 pl-9 pr-3 text-sm placeholder:text-muted-foreground"
+                aria-label="Search"
+              />
+            </div>
+          </form>
+
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
             {navLinks.map(
-              (link) =>
+              (link, idx) =>
                 link.show && (
                   <button
-                    key={link.view}
+                    key={`${link.view}-${idx}`}
                     onClick={() => handleNavigate(link.view)}
-                    className="neu-btn px-4 py-2 text-sm font-medium flex items-center gap-2 transition-all hover:text-primary"
+                    className="neu-btn px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-all hover:text-primary"
                   >
                     <link.icon className="size-4" />
                     {link.label}
@@ -138,7 +207,45 @@ export default function Header() {
           </nav>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Mobile Search Toggle */}
+            <button
+              onClick={() => setSearchOpen(!searchOpen)}
+              className="neu-btn md:hidden flex items-center justify-center w-9 h-9 p-0"
+              aria-label="Search"
+            >
+              <Search className="size-4" />
+            </button>
+
+            {/* Bookmarks (logged-in only) */}
+            {currentUser && (
+              <button
+                onClick={() => handleNavigate("bookmarks")}
+                className="neu-btn hidden sm:flex items-center justify-center w-9 h-9 p-0"
+                aria-label="Bookmarks"
+                title="Bookmarks"
+              >
+                <Bookmark className="size-4" />
+              </button>
+            )}
+
+            {/* Notifications (logged-in only) */}
+            {currentUser && (
+              <button
+                onClick={() => handleNavigate("notifications")}
+                className="neu-btn relative flex items-center justify-center w-9 h-9 p-0"
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell className="size-4" />
+                {displayUnreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {displayUnreadCount > 99 ? "99+" : displayUnreadCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Theme Selector — Day / Night / Golden */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -205,7 +312,7 @@ export default function Header() {
                           {currentUser.username.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm font-medium max-w-[120px] truncate">
+                      <span className="text-sm font-medium max-w-[100px] truncate hidden lg:inline">
                         {currentUser.displayName || currentUser.username}
                       </span>
                       <ChevronDown className="size-3.5 text-muted-foreground" />
@@ -231,18 +338,47 @@ export default function Header() {
                       className="neu-btn cursor-pointer rounded-lg my-0.5 px-2 py-2"
                     >
                       <User className="size-4 mr-2" />
-                      Profile
+                      My Profile
                     </DropdownMenuItem>
-                    {userIsAdmin && (
-                      <DropdownMenuItem
-                        onClick={() => handleNavigate("admin-dashboard")}
-                        className="neu-btn cursor-pointer rounded-lg my-0.5 px-2 py-2"
-                      >
-                        <Shield className="size-4 mr-2" />
-                        Admin Panel
-                      </DropdownMenuItem>
-                    )}
+                    <DropdownMenuItem
+                      onClick={() => handleNavigate("bookmarks")}
+                      className="neu-btn cursor-pointer rounded-lg my-0.5 px-2 py-2"
+                    >
+                      <Bookmark className="size-4 mr-2" />
+                      Bookmarks
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleNavigate("notifications")}
+                      className="neu-btn cursor-pointer rounded-lg my-0.5 px-2 py-2"
+                    >
+                      <Bell className="size-4 mr-2" />
+                      Notifications
+                      {displayUnreadCount > 0 && (
+                        <span className="ml-auto text-xs bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 font-bold">
+                          {displayUnreadCount}
+                        </span>
+                      )}
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    {userIsAdmin && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => handleNavigate("admin-dashboard")}
+                          className="neu-btn cursor-pointer rounded-lg my-0.5 px-2 py-2"
+                        >
+                          <Shield className="size-4 mr-2" />
+                          Admin Panel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleNavigate("admin-reports")}
+                          className="neu-btn cursor-pointer rounded-lg my-0.5 px-2 py-2"
+                        >
+                          <Flag className="size-4 mr-2" />
+                          Reports
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuItem
                       onClick={handleLogout}
                       className="neu-btn cursor-pointer rounded-lg my-0.5 px-2 py-2 text-destructive focus:text-destructive"
@@ -257,13 +393,13 @@ export default function Header() {
               <div className="hidden md:flex items-center gap-2">
                 <button
                   onClick={() => handleOpenAuthModal("login")}
-                  className="neu-btn px-4 py-2 text-sm font-medium transition-all hover:text-primary"
+                  className="neu-btn px-3 py-2 text-sm font-medium transition-all hover:text-primary"
                 >
                   Login
                 </button>
                 <button
                   onClick={() => handleOpenAuthModal("register")}
-                  className="neu-btn px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-xl shadow-none hover:bg-primary/90"
+                  className="neu-btn px-3 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-xl shadow-none hover:bg-primary/90"
                 >
                   Register
                 </button>
@@ -286,15 +422,36 @@ export default function Header() {
           </div>
         </div>
 
+        {/* Mobile Search Bar (collapsible) */}
+        {searchOpen && (
+          <form
+            onSubmit={handleSearchSubmit}
+            className="md:hidden mt-3 pt-3 border-t border-border/30"
+          >
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search threads, members, tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="neu-input w-full h-11 pl-10 pr-4 text-sm placeholder:text-muted-foreground"
+                aria-label="Search"
+              />
+            </div>
+          </form>
+        )}
+
         {/* Mobile Menu Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden mt-3 pt-3 border-t border-border/30">
             <nav className="flex flex-col gap-2" aria-label="Mobile navigation">
               {navLinks.map(
-                (link) =>
+                (link, idx) =>
                   link.show && (
                     <button
-                      key={link.view}
+                      key={`m-${link.view}-${idx}`}
                       onClick={() => handleNavigate(link.view)}
                       className="neu-btn px-4 py-3 text-sm font-medium flex items-center gap-3 w-full text-left transition-all hover:text-primary"
                     >
@@ -336,17 +493,47 @@ export default function Header() {
                     className="neu-btn px-4 py-3 text-sm font-medium flex items-center gap-3 w-full text-left transition-all hover:text-primary"
                   >
                     <User className="size-4" />
-                    Profile
+                    My Profile
+                  </button>
+
+                  <button
+                    onClick={() => handleNavigate("bookmarks")}
+                    className="neu-btn px-4 py-3 text-sm font-medium flex items-center gap-3 w-full text-left transition-all hover:text-primary"
+                  >
+                    <Bookmark className="size-4" />
+                    Bookmarks
+                  </button>
+
+                  <button
+                    onClick={() => handleNavigate("notifications")}
+                    className="neu-btn px-4 py-3 text-sm font-medium flex items-center gap-3 w-full text-left transition-all hover:text-primary"
+                  >
+                    <Bell className="size-4" />
+                    Notifications
+                    {displayUnreadCount > 0 && (
+                      <span className="ml-auto text-xs bg-destructive text-destructive-foreground rounded-full px-2 py-0.5 font-bold">
+                        {displayUnreadCount}
+                      </span>
+                    )}
                   </button>
 
                   {userIsAdmin && (
-                    <button
-                      onClick={() => handleNavigate("admin-dashboard")}
-                      className="neu-btn px-4 py-3 text-sm font-medium flex items-center gap-3 w-full text-left transition-all hover:text-primary"
-                    >
-                      <Shield className="size-4" />
-                      Admin Panel
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleNavigate("admin-dashboard")}
+                        className="neu-btn px-4 py-3 text-sm font-medium flex items-center gap-3 w-full text-left transition-all hover:text-primary"
+                      >
+                        <Shield className="size-4" />
+                        Admin Panel
+                      </button>
+                      <button
+                        onClick={() => handleNavigate("admin-reports")}
+                        className="neu-btn px-4 py-3 text-sm font-medium flex items-center gap-3 w-full text-left transition-all hover:text-primary"
+                      >
+                        <Flag className="size-4" />
+                        Reports
+                      </button>
+                    </>
                   )}
 
                   <button

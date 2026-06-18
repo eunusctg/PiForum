@@ -20,9 +20,17 @@ model User {
   email         String   @unique
   displayName   String?
   avatarUrl     String?
+  bio           String?
+  signature     String?
+  location      String?
+  website       String?
   role          Int      @default(0) // 0=User, 1=Moderator, 2=Admin, 3=SuperAdmin
   banned        Boolean  @default(false)
   banReason     String?
+  postCount     Int      @default(0)
+  threadCount   Int      @default(0)
+  reputation    Int      @default(0)
+  lastSeenAt    DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -30,6 +38,13 @@ model User {
   posts         Post[]
   votes         PostVote[]
   securityLogs  SecurityLog[]
+  notifications Notification[]
+  bookmarks     Bookmark[]
+  subscriptions Subscription[]
+  reports       Report[]    @relation("ReporterReports")    // reports filed by this user
+  reportedBy    Report[]    @relation("TargetUserReports")  // reports against this user
+  pollVotes     PollVote[]
+  userSettings  UserSetting[]
 }
 
 model Category {
@@ -37,6 +52,7 @@ model Category {
   name        String
   description String?
   icon        String?
+  color       String?
   sortOrder   Int      @default(0)
   accessLevel Int      @default(0) // 0=Public, 1=Registered, 2=Admin
   createdAt   DateTime @default(now())
@@ -60,6 +76,7 @@ model Forum {
 
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   threads     Thread[]
+  subscriptions Subscription[]
 }
 
 model Thread {
@@ -71,15 +88,22 @@ model Thread {
   views      Int      @default(0)
   pinned     Boolean  @default(false)
   locked     Boolean  @default(false)
+  featured   Boolean  @default(false)
+  solved     Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   forum      Forum    @relation(fields: [forumId], references: [id], onDelete: Cascade)
   author     User     @relation(fields: [authorId], references: [id])
   posts      Post[]
+  tags       ThreadTag[]
+  bookmarks  Bookmark[]
+  subscriptions Subscription[]
+  poll       Poll?
 
   @@index([forumId])
   @@index([authorId])
+  @@index([createdAt])
 }
 
 model Post {
@@ -87,6 +111,7 @@ model Post {
   threadId   String
   authorId   String
   content    String
+  editedAt   DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -157,4 +182,145 @@ model InstallConfig {
   adminFirebaseUid  String?
   forumName         String  @default("PiForum")
   forumDescription  String  @default("A modern neumorphic forum")
+}
+
+/* ============================================================
+   NEW MODELS — Extended forum features
+   ============================================================ */
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  color     String?
+  usageCount Int     @default(0)
+  createdAt DateTime @default(now())
+
+  threads   ThreadTag[]
+}
+
+model ThreadTag {
+  id        String   @id @default(cuid())
+  threadId  String
+  tagId     String
+
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, tagId])
+  @@index([tagId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   // recipient
+  actorId   String?  // who triggered the notification
+  type      String   // 'reply' | 'mention' | 'vote' | 'bookmark' | 'system' | 'report'
+  title     String
+  body      String?
+  link      String?  // URL/path to navigate to
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  threadId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadId])
+  @@index([userId])
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String
+  forumId   String?
+  threadId  String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  forum     Forum?   @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  thread    Thread?  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String
+  reason      String   // 'spam' | 'harassment' | 'off-topic' | 'inappropriate' | 'other'
+  details     String?
+  targetType  String   // 'thread' | 'post' | 'user'
+  targetId    String
+  targetUserId String?  // when reporting a user
+  status      String   @default("pending") // 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+  resolution  String?
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime @default(now())
+
+  reporter    User     @relation("ReporterReports", fields: [reporterId], references: [id])
+  targetUser  User?    @relation("TargetUserReports", fields: [targetUserId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Poll {
+  id          String   @id @default(cuid())
+  threadId    String   @unique
+  question    String
+  allowMultiple Boolean @default(false)
+  closesAt    DateTime?
+  createdAt   DateTime @default(now())
+
+  thread      Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  options     PollOption[]
+}
+
+model PollOption {
+  id        String   @id @default(cuid())
+  pollId    String
+  text      String
+  createdAt DateTime @default(now())
+
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes     PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  optionId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@unique([optionId, userId])
+}
+
+model UserSetting {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
 }

@@ -132,3 +132,202 @@ Stage Summary:
   cubic-bezier transitions, theme-aware etched text, and consistent 18px card radii
 - Theme switching works via header dropdown (Day/Night/Golden) with localStorage persistence
 - All utilities (cards, buttons, inputs, badges, FAB, circles, dividers) are fully theme-aware
+
+---
+Task ID: 5
+Agent: Backend API Builder
+Task: Build 13 backend API routes for PiForum extended features
+
+Work Log:
+- Read worklog + api-helpers.ts + db.ts + prisma schema to ground new routes in existing conventions
+- Inspected existing routes (users, users/[id], threads, posts, posts/[id], auth/verify, seed) for param-promise style, error/success response shape, and `_count` -> count promotion pattern
+- Verified Prisma 6.11 client type for SQLite StringFilter — confirmed `mode: 'insensitive'` is NOT supported (the task description's claim was incorrect). Used plain `contains` since SQLite LIKE is already case-insensitive for ASCII
+- Created /api/auth/me/route.ts — GET, requireAuth, updates lastSeenAt and reflects it on the returned user
+- Created /api/members/route.ts — public paginated browse with q search (username/displayName) and sort (newest/oldest/reputation/posts). Email stripped via destructuring on serializeUser output
+- Created /api/tags/route.ts — GET (ordered by usageCount desc, optional q filter) + POST (auth-required, auto-slugs name, 409 on slug collision)
+- Created /api/search/route.ts — GET cross-entity search across threads/posts/users/tags with type filter; each category capped at 25; users mapped through serializeUser minus email
+- Created /api/bookmarks/route.ts — GET (auth, include thread.author + thread.forum, newest first) + POST (auth, 409 on duplicate via userId_threadId compound unique)
+- Created /api/bookmarks/[threadId]/route.ts — GET returns { bookmarked } + DELETE removes by compound key (404 if missing)
+- Created /api/notifications/route.ts — GET (auth, optional unreadOnly, capped at 50), PUT (mark one by id or all by user), POST (auth; non-admins cannot forge actorId; admins required for type=system). Because the Notification schema only has a `user` relation (no `actor` relation), implemented an `attachActors` helper that batch-resolves actorId -> user rows and merges them onto each notification
+- Created /api/notifications/[id]/route.ts — DELETE (auth, findFirst on [id + userId] for ownership, 404 if not found)
+- Created /api/reports/route.ts — POST (auth, validates targetType/reason against allow-lists, requires targetUserId when reporting a user) + GET (admin, paginated, optional status filter, includes reporter + targetUser)
+- Created /api/reports/[id]/route.ts — GET (admin, single by id) + PUT (admin, validates status against reviewing/resolved/dismissed, sets resolvedAt + resolvedBy)
+- Created /api/profile/[id]/route.ts — GET (public, serializeUser + recent 10 threads + post count) + PUT (auth, owner-or-admin only, validates http(s) URLs for website & avatarUrl via URL constructor)
+- Created /api/user/settings/route.ts — GET (auth, returns { key: value } map) + PUT (auth, upserts array of { key, value } inside a $transaction, returns full updated map)
+- Created /api/activity/route.ts — GET, fetches latest 10 threads + 10 posts in parallel, normalises each to { type, id, createdAt, ... } and sorts by createdAt desc, slices to 20
+- Ran `bun run lint` — clean for all 13 new files. Only remaining lint error is in `src/components/forum/NotificationsView.tsx` (a frontend file created by a parallel agent) — left untouched per instructions
+- Ran `tsc --noEmit` — zero errors in any of the 13 new files (25 pre-existing errors remain in seed/route.ts, components/forum/*.tsx, examples/*, skills/*; none introduced by this task)
+
+Stage Summary:
+- Files created (13):
+  - src/app/api/auth/me/route.ts
+  - src/app/api/members/route.ts
+  - src/app/api/tags/route.ts
+  - src/app/api/search/route.ts
+  - src/app/api/bookmarks/route.ts
+  - src/app/api/bookmarks/[threadId]/route.ts
+  - src/app/api/notifications/route.ts
+  - src/app/api/notifications/[id]/route.ts
+  - src/app/api/reports/route.ts
+  - src/app/api/reports/[id]/route.ts
+  - src/app/api/profile/[id]/route.ts
+  - src/app/api/user/settings/route.ts
+  - src/app/api/activity/route.ts
+- Endpoints exposed (22 handlers total):
+  - GET /api/auth/me
+  - GET /api/members
+  - GET /api/tags, POST /api/tags
+  - GET /api/search
+  - GET /api/bookmarks, POST /api/bookmarks
+  - GET /api/bookmarks/[threadId], DELETE /api/bookmarks/[threadId]
+  - GET /api/notifications, PUT /api/notifications, POST /api/notifications
+  - DELETE /api/notifications/[id]
+  - POST /api/reports, GET /api/reports
+  - GET /api/reports/[id], PUT /api/reports/[id]
+  - GET /api/profile/[id], PUT /api/profile/[id]
+  - GET /api/user/settings, PUT /api/user/settings
+  - GET /api/activity
+- Key decisions:
+  - All responses follow `{ success, data?, error? }` via existing successResponse/errorResponse/serverErrorResponse helpers
+  - All catch params typed `e: any` per project eslint rule
+  - Used Prisma compound unique keys directly: `userId_threadId` for Bookmark, `userId_key` for UserSetting
+  - Notification `actor` is resolved via a manual batch lookup helper because the schema only declares a `user` (recipient) relation — actorId is a plain string
+  - Skipped `mode: 'insensitive'` despite the task brief mentioning it — verified at runtime that Prisma 6.11 on SQLite rejects `mode` for StringFilter, and SQLite's LIKE is already case-insensitive for ASCII
+  - Non-admin users cannot forge `actorId` when creating notifications (forced to their own id); system-type notifications require admin
+  - Profile updates validate `website` and `avatarUrl` via URL constructor (must be http/https)
+  - Public member/search endpoints strip `email` from serializeUser output via destructure
+  - Activity feed normalises thread/post rows into a discriminated union before merge-sorting on createdAt
+  - Lint clean for all 13 new files; one pre-existing frontend lint error in NotificationsView.tsx (parallel agent's file) left untouched per "DO NOT touch any frontend files" instruction
+
+---
+Task ID: 8
+Agent: Frontend Views Builder
+Task: Build 6 new frontend views (Search, Members, Bookmarks, Notifications, Profile, Tags)
+
+Work Log:
+- Read worklog and existing components (ForumHome, ThreadList, AdminSettings) to align with established patterns: 'use client' directive, useAppStore hook, fetch('/api/...') with { success, data, error } shape, Loader2 spinner, Skeleton loaders, formatDistanceToNow, neumorphism utility classes (neu-card, neu-btn, neu-circle, neu-input, neu-badge, neu-divider, neu-card-inset)
+- Reviewed lib/types.ts (ForumUser, Thread, Post, Tag, NotificationItem, Bookmark, SearchResult), lib/store.ts (currentUser, navigateTo, viewParams, setAuthModalOpen, etc.), prisma schema (Tag, Notification, Bookmark models), and api-helpers.ts (requireAdmin/requireAuth, successResponse/errorResponse)
+- Confirmed existing shadcn/ui primitives available: avatar, badge, button, dialog, input, label, textarea, select, skeleton, tabs
+- Built SearchView.tsx: full-text search with 5 tabs (All/Threads/Posts/Members/Tags), 400ms debounce via useRef+setTimeout, query highlight via <mark>, stripMarkdown helper for content previews, friendly empty/error states, auto-focus input, reads viewParams.q as initial query, navigates threads → 'thread', users → 'profile', tags → 'search' with new query
+- Built MembersView.tsx: responsive grid (1/2/3 cols), neu-circle avatars, role badge, bio, location, 3-stat footer (threads/posts/reputation), debounced search input (350ms), Select-based sort (Newest/Oldest/Most Posts/Top Reputation) with client-side sortMembers() fallback, Prev/Page X/Next pagination using neu-btn, calls /api/members primary with /api/users admin fallback, click → 'profile' view with userId
+- Built BookmarksView.tsx: login-required CTA card when no currentUser (calls setAuthModalOpen(true)), lists bookmarks with author avatar, title (clickable), forum name, author, reply count, "Bookmarked X ago" timestamp, unbookmark button with fill-current bookmark icon and Loader2 spinner during DELETE /api/bookmarks/[threadId], useToast for success/error feedback, empty state with BookmarkX icon + "Browse Forums" CTA → home
+- Built NotificationsView.tsx: login-required CTA, list of notifications with type-specific icons (Reply/AtSign/ThumbsUp/BookmarkIcon/Flag/Info/Bell) rendered through NotificationTypeIcon component (declared at module level to satisfy react-hooks/static-components lint rule), unread dot badge, bg-primary/5 highlight for unread, "Mark all as read" button → PUT /api/notifications with { all: true }, per-notification delete button → DELETE /api/notifications/[id], click parses notification.link URL and extracts ?view=... param to call navigateTo(view, params) with fallback path parsing for /threads/[id] and /users/[id], empty state with Bell icon
+- Built ProfileView.tsx: reads viewParams.userId or falls back to currentUser.id, large neu-circle avatar (size-28), displayName + role badge + @username, bio, meta row (location/website/joined/last seen), signature block, 4-stat grid (threads/posts/reputation/last seen) using StatCard component, Recent Threads section (latest 5), user-not-found state with UserX icon and back-to-home CTA, error state with retry, EditProfileDialog with shadcn Dialog (displayName, avatarUrl with live preview, bio, location, website, signature fields) PUT /api/profile/[id] on save, updates both local profile state and store currentUser via setCurrentUser
+- Built TagsView.tsx: neumorphic pill badges in flex-wrap cloud, each tag uses neu-badge class with color dot accent (when tag.color set) and small count pill, click → navigateTo('search', { q: tagName }) with toast confirmation, size variation by usageCount (popular tags render larger) for cloud effect, Select sort (Popular/Alphabetical with TrendingUp/ArrowDownAZ icons), filter input, empty state with Hash icon, total tag count and total usage summary in header
+- Ran ESLint — initial error in NotificationsView: "Cannot create components during render" because getNotificationIcon() returned a component type and <Icon /> was rendered. Fixed by replacing the helper with a NotificationTypeIcon component declared at module scope that switches on type and returns the appropriate icon as JSX
+- Re-ran ESLint — zero errors, zero warnings
+- Ran bun run build — compiles successfully in 8s, all 6 new components integrated cleanly. Confirmed during build that the API routes I depend on (/api/search, /api/members, /api/bookmarks, /api/bookmarks/[threadId], /api/notifications, /api/notifications/[id], /api/profile/[id], /api/tags) are all registered and present in the route table
+
+Stage Summary:
+- Files created (6):
+  - src/components/forum/SearchView.tsx
+  - src/components/forum/MembersView.tsx
+  - src/components/forum/BookmarksView.tsx
+  - src/components/forum/NotificationsView.tsx
+  - src/components/forum/ProfileView.tsx
+  - src/components/forum/TagsView.tsx
+- Components exposed (all default exports):
+  - SearchView — full-text search with 5 tabs and 400ms debounce
+  - MembersView — member directory with grid layout, search, sort, pagination
+  - BookmarksView — login-gated bookmark manager with unbookmark action
+  - NotificationsView — login-gated notification inbox with mark-all-read, delete, deep-link navigation
+  - ProfileView — full profile page with stats grid, recent threads, edit dialog (own profile)
+  - TagsView — tag cloud/grid with sort and click-to-search
+- Key UI decisions:
+  - Consistent max-w-5xl mx-auto container, neu-card p-6 pattern, mobile-first responsive (sm:/md:/lg: prefixes)
+  - Back button (ArrowLeft) in neu-btn at top-left of every view for predictable navigation
+  - Loader2 spinner used for all async actions, Skeleton used for all initial data loading
+  - Login-required views (Bookmarks, Notifications) show friendly CTA cards with LogIn icon that trigger setAuthModalOpen(true)
+  - All views gracefully handle: loading, empty, error, and not-found states
+  - Notification click parses the link URL for ?view=... query param and calls navigateTo with extracted params — supports deep-linking to threads, profiles, forums, etc.
+  - Profile edit dialog uses shadcn Dialog primitive with avatar live preview, fires PUT /api/profile/[id] and updates both local state and store.currentUser
+  - Search query highlighting via <mark> with bg-primary/20 — works across thread titles, post content, user names, and usernames
+  - Tag cloud uses size variation based on usageCount (3 tiers) to visually emphasize popular tags while keeping all tags accessible
+  - MembersView calls /api/members as primary endpoint (paginated, public) and falls back to /api/users (admin-only) for sort/search/filter when /api/members is unavailable
+  - All 6 components use only existing shadcn/ui primitives, existing neumorphism utilities, and existing types — no new UI primitives created, no existing files modified
+
+---
+Task ID: 9
+Agent: AdminSettings Enhancer
+Task: Enhance AdminSettings with 9 comprehensive sections (Features, Posting Rules, SEO, Email, Analytics added)
+
+Work Log:
+- Read worklog and existing AdminSettings.tsx to understand current 4-section structure (General, Appearance, Registration & Access, Upload) and the fetch/save pattern (GET /api/settings → state → PUT /api/settings with all settings array → setSettings(store update))
+- Read lib/store.ts to confirm `setSettings` accepts ForumSetting[] ({ id, key, value }) and merges into a settings map used by Header
+- Read lib/types.ts to confirm ForumSetting shape and ForumUser role gating
+- Read src/app/api/seed/route.ts default settings list to enumerate every seeded key (forum_tagline, maintenance_message, posts_per_page, threads_per_page, min_username_length, max_username_length, min_password_length, allow_guest_viewing, allow_thread_voting, allow_post_voting, allow_bookmarks, allow_tags, allow_polls, allow_signatures, allow_avatars, require_email_verification, seo_keywords, seo_meta_description, analytics_enabled, analytics_id, smtp_enabled, smtp_host, smtp_port, smtp_username, smtp_from_email, smtp_from_name, footer_text, show_online_users, show_statistics, show_birthdays, rate_limit_posts, rate_limit_threads, word_censorship, banned_words) and verify default values
+- Inspected shadcn ui/separator.tsx and ui/switch.tsx to confirm available props and class merging
+- Inspected globals.css to confirm `.neu-divider`, `.neu-card`, `.neu-input`, `.neu-circle` utility class definitions and their theme-aware variants
+- Completely rewrote AdminSettings.tsx as a single `'use client'` default export with 9 sections in the required order
+- Section 1 (General): kept existing forum_name/forum_description/logo_url/favicon_url flows, added forum_tagline input between description and logo; preserved Upload button + image preview pattern for logo & favicon
+- Section 2 (Appearance): kept existing Day/Night/Golden theme selector with color swatches, active ring, palette/sun/moon icons, and toast-on-change
+- Section 3 (Features) NEW: 9 Switch toggles for allow_guest_viewing, allow_thread_voting, allow_post_voting, allow_bookmarks, allow_tags, allow_polls, allow_signatures, allow_avatars, require_email_verification — each rendered via a ToggleRow sub-component with label + description, separated by neu-divider grooves
+- Section 4 (Posting Rules) NEW: 2-column responsive grid of 7 number inputs (posts_per_page, threads_per_page, min_username_length, max_username_length, min_password_length, rate_limit_posts, rate_limit_threads) each with a hint caption noting the default, plus a banned_words textarea. Used shadcn Separator between the number-grid and the banned-words textarea to satisfy the `Separator` import requirement
+- Section 5 (Registration & Access): expanded existing pair of toggles to include a maintenance_message Textarea that is conditionally rendered only when maintenance_mode is true
+- Section 6 (SEO) NEW: seo_keywords input, seo_meta_description textarea with maxLength=160 + live character counter that turns destructive red when the limit is exceeded, footer_text input, and three Switch toggles (show_online_users, show_statistics, show_birthdays)
+- Section 7 (Email / SMTP) NEW: smtp_enabled Switch that conditionally reveals a 2-column grid of smtp_host (full-width), smtp_port (with hint listing common ports 25/465/587/2525), smtp_username, smtp_from_email (type=email), smtp_from_name
+- Section 8 (Analytics) NEW: analytics_enabled Switch that conditionally reveals an analytics_id input with placeholder "G-XXXXXXXXXX or UA-XXXXXXXX-X" and a hint
+- Section 9 (Upload Settings): kept existing max_upload_size number input (with formatFileSize hint) and allowed_file_types textarea unchanged
+- Added `SEO_META_MAX = 160` module-level constant; truncated meta description input value to the cap on change and via maxLength attribute
+- Added a `parseBool(val, fallback)` helper for consistent boolean parsing of stored string values (undefined/empty → fallback, 'true' → true, anything else → false) so that feature toggles round-trip cleanly
+- Added two file-local sub-components to reduce duplication: `SectionHeader({ icon, title, description })` renders the icon + title + optional description pattern used by all 9 sections, and `ToggleRow({ label, description, checked, onCheckedChange })` renders the label/description + Switch layout used by Features, Registration, SEO, SMTP, and Analytics sections
+- Updated the Save All handler to PUT all ~40 settings keys in a single request (General + Features + Posting Rules + Registration & Access + SEO + Email + Analytics + Upload) and then call `setSettings(forumSettings)` on the store with the full array shaped as `{ id, key, value }` so global UI (e.g. Header forum_name) updates instantly
+- Imported all lucide-react icons required by the spec: Settings, ArrowLeft, Shield, Loader2, Upload, Save, Globe, Lock, Cloud, Palette, Sun, Moon, Check (existing) plus SlidersHorizontal (Features), ListChecks (Posting Rules), Search (SEO), Mail (Email), BarChart3 (Analytics)
+- Preserved loading skeleton state (now shows 5 skeleton cards instead of 3 to reflect the longer page), error+retry state, and the non-admin Access Denied state with Shield icon and Back to Home button
+- All state variables typed (string for text/number inputs, boolean for toggles); all inputs controlled; no `any` types introduced
+- Ran `bunx eslint src/components/forum/AdminSettings.tsx` — clean (zero errors, zero warnings). The single project-wide lint error remaining (`Header.tsx` setState-in-effect) is a pre-existing issue in a file I was instructed not to touch
+- Ran `bunx tsc --noEmit` — zero TypeScript errors in AdminSettings.tsx (all remaining errors are in other pre-existing files: seed/route.ts, AdminUsers.tsx, ThreadList.tsx, ThreadView.tsx, examples/, skills/)
+
+Stage Summary:
+- Files modified (1): src/components/forum/AdminSettings.tsx — complete rewrite (512 → ~870 lines)
+- Sections added/expanded: 5 new sections (Features, Posting Rules, SEO, Email/SMTP, Analytics), 1 expanded section (Registration & Access now includes maintenance_message), 1 expanded section (General now includes forum_tagline). Total 9 sections rendered in the order specified.
+- Settings keys now managed by the UI: 40 (up from 8) — covers every seeded key except `word_censorship` (the task spec only requested `banned_words`)
+- Key decisions:
+  - Used a `ToggleRow` sub-component to keep all 18 toggle rows visually consistent and DRY across Features, Registration & Access, SEO, Email/SMTP, and Analytics sections
+  - Used a `SectionHeader` sub-component to keep all 9 section headers consistent (icon + title + optional description)
+  - Booleans parsed via a single `parseBool(val, fallback)` helper rather than ad-hoc `!== 'false'` / `=== 'true'` checks — clearer intent, easier to audit
+  - SEO meta description counter uses both `maxLength` attribute and a `.slice(0, 160)` on change for defense-in-depth, with the counter text turning `text-destructive` if the limit is exceeded
+  - Conditional rendering (not collapsibility) used for maintenance_message, SMTP fields, and analytics_id per the task spec — keeping all sections always-open
+  - Used shadcn `Separator` once inside the Posting Rules section (between the rate-limit grid and the banned-words textarea) to satisfy the "use Separator" requirement while keeping the neumorphic `neu-divider` groove divs for in-section toggle separators
+  - Save handler still PUTs all settings in a single batch and then calls `setSettings()` on the Zustand store so the Header forum_name updates instantly without a reload
+  - Did NOT touch any other file; the pre-existing `Header.tsx` setState-in-effect lint error was left untouched per instructions
+
+---
+Task ID: MAIN-FINAL
+Agent: Main Orchestrator
+Task: Add all features, settings, auth, polish golden theme, remove white shadows, add dummy data, more menus, full backend
+
+Work Log:
+- Removed all pure-white neumorphism shadows from Day theme (replaced #ffffff with soft #f5f5f7 off-white)
+- Polished Golden theme: luxe two-tone metallic sheen, deep bronze shadows (#8B6A08), champagne highlights (#FFF1BD), radial gradient overlay on cards, refined text contrast (#2E2200 on #D4AF37)
+- Extended Prisma schema: added Tag, ThreadTag, Notification, Bookmark, Subscription, Report, Poll, PollOption, PollVote, UserSetting models; extended User (bio, signature, location, website, postCount, threadCount, reputation, lastSeenAt), Thread (featured, solved), Post (editedAt)
+- Created /api/seed endpoint: 10 dummy users with full profiles, 5 categories, 15 forums, 14 threads with markdown content, ~40 posts, 15 tags with usage counts, 3 admin notifications, 40 default settings
+- Updated /api-helpers.ts: added Bearer token support, slugify, getPagination, getQueryParam, serializeUser, requireModerator
+- Dispatched Task ID 5 (subagent): built 13 backend API routes (auth/me, members, tags, search, bookmarks, bookmarks/[threadId], notifications, notifications/[id], reports, reports/[id], profile/[id], user/settings, activity)
+- Dispatched Task ID 8 (subagent): built 6 new frontend views (SearchView, MembersView, BookmarksView, NotificationsView, ProfileView, TagsView)
+- Dispatched Task ID 9 (subagent): rewrote AdminSettings with 9 sections (General, Appearance, Features, Posting Rules, Registration & Access, SEO, Email/SMTP, Analytics, Upload Settings)
+- Built AdminReports component for moderation queue with status filtering
+- Updated Header: added Home/Forums/Members/Tags/Admin nav, Bookmarks/Notifications icons with unread badge, integrated search bar, profile dropdown with full menu
+- Updated AdminDashboard: added 5-tab admin nav (Users, Categories, Settings, Reports, Security), Seed Data banner with one-click seeding
+- Updated page.tsx router: wired up all 17 views (home, forum, thread, new-thread, search, members, bookmarks, notifications, profile, tags, admin-dashboard, admin-users, admin-categories, admin-settings, admin-security, admin-reports)
+- Fixed API response shape mismatches in MembersView, NotificationsView, BookmarksView, ProfileView, AdminReports (extracted nested arrays/objects from `data.data` wrapper)
+- Restarted dev server with fresh .next cache to load new Prisma client (was stale)
+- Ran Seed Data via UI: confirmed 201 response, 10 users + 14 threads + ~40 posts created
+- Browser-verified all features: Home (categories + forums), Members (12 users with avatars/bios/stats), Tags (15 tags with usage counts), Search (sourdough query → 1 thread), Notifications (3 admin notifications), Bookmarks (created via API + viewed), Profile (Amelia Cooks with stats + recent threads), AdminReports (empty state with filter tabs), AdminSettings (9 sections), Thread view (breadcrumb + replies + voting + reply form)
+- VLM-verified all 3 themes:
+  - Day: light, good contrast, NO harsh white shadows (replaced with soft off-white)
+  - Night: dark, good contrast, no white shadows
+  - Golden: warm, cohesive, polished, luxurious, NO pure white shadows, subtle metallic depth
+- Lint: 0 errors, 0 warnings
+- Dev server: 0 errors, all routes returning 200
+
+Stage Summary:
+- Complete forum CMS with 17 views, 35+ API routes, 3 themes (Day/Night/Golden), neumorphism design
+- All white shadows removed from Day theme (replaced with #f5f5f7)
+- Golden theme polished with luxe metallic sheen (radial gradient on cards, deeper bronze shadows, champagne highlights)
+- 10 dummy users + 14 dummy threads + ~40 dummy posts seeded (login: alex@piforum.dev / password123)
+- 9 comprehensive admin settings sections covering 40 settings keys
+- Full feature set: search, members directory, tags cloud, bookmarks, notifications, user profiles, content reports, polls schema
+- Auth system: login/register with password hashing, JWT-like token (firebaseUid), role-based access (User/Mod/Admin/SuperAdmin), localStorage persistence
+- Mobile-responsive header with search bar, theme selector, notification badge, profile dropdown
+- All features wired end-to-end and browser-verified

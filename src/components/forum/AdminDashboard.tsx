@@ -14,11 +14,15 @@ import {
   Loader2,
   Clock,
   UserPlus,
+  Flag,
+  Sparkles,
+  Database,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import {
   BarChart,
   Bar,
@@ -55,11 +59,13 @@ function generateUserGrowthData() {
 
 export default function AdminDashboard() {
   const { currentUser, isAdmin, navigateTo } = useAppStore();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<ForumStats | null>(null);
   const [activityData] = useState(generateActivityData);
   const [userGrowthData] = useState(generateUserGrowthData);
+  const [seeding, setSeeding] = useState(false);
 
   // Admin guard
   const userIsAdmin = isAdmin();
@@ -81,6 +87,44 @@ export default function AdminDashboard() {
       setLoading(false);
     }
   }, []);
+
+  // ---------- Seed sample data ----------
+  const handleSeed = useCallback(async (force: boolean) => {
+    if (!currentUser) return;
+    try {
+      setSeeding(true);
+      const res = await fetch('/api/seed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser.id,
+        },
+        body: JSON.stringify({ force }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({
+          title: 'Sample Data Seeded',
+          description: `Created ${data.data.usersCreated} users, ${data.data.threadsCreated} threads, ${data.data.postsCreated} posts.`,
+        });
+        fetchStats();
+      } else {
+        toast({
+          title: 'Seeding Failed',
+          description: data.error || 'Unknown error',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Seeding Failed',
+        description: 'Network error',
+        variant: 'destructive',
+      });
+    } finally {
+      setSeeding(false);
+    }
+  }, [currentUser, toast, fetchStats]);
 
   useEffect(() => {
     if (!userIsAdmin) return;
@@ -177,11 +221,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* Admin Quick Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
           { label: 'Users', view: 'admin-users' as const, icon: Users },
           { label: 'Categories', view: 'admin-categories' as const, icon: Settings },
           { label: 'Settings', view: 'admin-settings' as const, icon: Settings },
+          { label: 'Reports', view: 'admin-reports' as const, icon: Flag },
           { label: 'Security', view: 'admin-security' as const, icon: Shield },
         ].map((item) => (
           <button
@@ -193,6 +238,39 @@ export default function AdminDashboard() {
             {item.label}
           </button>
         ))}
+      </div>
+
+      {/* Seed Data Banner */}
+      <div className="neu-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="neu-circle p-3 shrink-0">
+          <Database className="size-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            Sample Data
+            <Sparkles className="size-4 text-primary" />
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Populate the forum with dummy users, categories, threads, posts, and tags to explore all features. Dummy login: <code className="font-mono">alex@piforum.dev</code> / <code className="font-mono">password123</code>.
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button
+            onClick={() => handleSeed(false)}
+            disabled={seeding}
+            className="neu-btn px-4 py-2 text-sm font-medium"
+          >
+            {seeding ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Sparkles className="size-4 mr-1.5" />}
+            Seed Data
+          </Button>
+          <Button
+            onClick={() => handleSeed(true)}
+            disabled={seeding}
+            className="neu-btn px-4 py-2 text-sm font-medium"
+          >
+            Re-seed
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards Row */}

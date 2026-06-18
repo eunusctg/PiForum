@@ -29,11 +29,34 @@ export function generateUUID(): string {
   return crypto.randomUUID();
 }
 
+// Slugify helper (for tags, etc.)
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 // Admin check helper
 export async function getAuthenticatedUser(request: Request) {
-  const userId = request.headers.get('x-user-id');
+  // Support both x-user-id header (legacy) and Authorization: Bearer <token>
+  let userId = request.headers.get('x-user-id');
+
+  if (!userId) {
+    const auth = request.headers.get('authorization') || request.headers.get('Authorization');
+    if (auth?.startsWith('Bearer ')) {
+      const token = auth.slice(7);
+      // Token is firebaseUid
+      const user = await db.user.findUnique({ where: { firebaseUid: token } });
+      return user;
+    }
+  }
+
   if (!userId) return null;
-  
+
   const user = await db.user.findUnique({ where: { id: userId } });
   return user;
 }
@@ -52,6 +75,14 @@ export async function requireAuth(request: Request) {
   return { error: null, user };
 }
 
+export async function requireModerator(request: Request) {
+  const user = await getAuthenticatedUser(request);
+  if (!user) return { error: errorResponse('Authentication required', 401), user: null };
+  if (user.banned) return { error: errorResponse('Your account has been banned', 403), user: null };
+  if (user.role < 1) return { error: errorResponse('Moderator access required', 403), user: null };
+  return { error: null, user };
+}
+
 // Parse request body safely
 export async function parseBody(request: Request) {
   try {
@@ -59,4 +90,43 @@ export async function parseBody(request: Request) {
   } catch {
     return null;
   }
+}
+
+// Get query params from URL
+export function getQueryParam(request: Request, key: string): string | null {
+  const url = new URL(request.url);
+  return url.searchParams.get(key);
+}
+
+// Pagination helper
+export function getPagination(request: Request) {
+  const url = new URL(request.url);
+  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '25', 10)));
+  return { page, limit, skip: (page - 1) * limit };
+}
+
+// Serialize user for client (strips sensitive fields)
+export function serializeUser(user: any) {
+  return {
+    id: user.id,
+    firebaseUid: user.firebaseUid,
+    username: user.username,
+    email: user.email,
+    displayName: user.displayName,
+    avatarUrl: user.avatarUrl,
+    bio: user.bio ?? null,
+    signature: user.signature ?? null,
+    location: user.location ?? null,
+    website: user.website ?? null,
+    role: user.role,
+    banned: user.banned,
+    banReason: user.banReason,
+    postCount: user.postCount ?? 0,
+    threadCount: user.threadCount ?? 0,
+    reputation: user.reputation ?? 0,
+    lastSeenAt: user.lastSeenAt,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
 }

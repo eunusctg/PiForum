@@ -1,0 +1,968 @@
+     1→@import "tailwindcss";
+     2→@import "tw-animate-css";
+     3→
+     4→@custom-variant dark (&:is(.dark *));
+     5→
+     6→@theme inline {
+     7→  --color-background: var(--background);
+     8→  --color-foreground: var(--foreground);
+     9→  --color-card: var(--card);
+    10→  --color-card-foreground: var(--card-foreground);
+    11→  --color-popover: var(--popover);
+    12→  --color-popover-foreground: var(--popover-foreground);
+    13→  --color-primary: var(--primary);
+    14→  --color-primary-foreground: var(--primary-foreground);
+    15→  --color-secondary: var(--secondary);
+    16→  --color-secondary-foreground: var(--secondary-foreground);
+    17→  --color-muted: var(--muted);
+    18→  --color-muted-foreground: var(--muted-foreground);
+    19→  --color-accent: var(--accent);
+    20→  --color-accent-foreground: var(--accent-foreground);
+    21→  --color-destructive: var(--destructive);
+    22→  --color-destructive-foreground: var(--destructive-foreground);
+    23→  --color-border: var(--border);
+    24→  --color-input: var(--input);
+    25→  --color-ring: var(--ring);
+    26→  --color-chart-1: var(--chart-1);
+    27→  --color-chart-2: var(--chart-2);
+    28→  --color-chart-3: var(--chart-3);
+    29→  --color-chart-4: var(--chart-4);
+    30→  --color-chart-5: var(--chart-5);
+    31→  --color-sidebar: var(--sidebar);
+    32→  --color-sidebar-foreground: var(--sidebar-foreground);
+    33→  --color-sidebar-primary: var(--sidebar-primary);
+    34→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    35→  --color-sidebar-accent: var(--sidebar-accent);
+    36→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    37→  --color-sidebar-border: var(--sidebar-border);
+    38→  --color-sidebar-ring: var(--sidebar-ring);
+    39→  --radius-sm: calc(var(--radius) - 4px);
+    40→  --radius-md: calc(var(--radius) - 2px);
+    41→  --radius-lg: var(--radius);
+    42→  --radius-xl: calc(var(--radius) + 4px);
+    43→  --font-sans: var(--font-geist-sans);
+    44→  --font-mono: var(--font-geist-mono);
+    45→  --color-neu-bg: var(--neu-bg);
+    46→  --shadow-neu: var(--neu-shadow);
+    47→  --shadow-neu-inset: var(--neu-shadow-inset);
+    48→  --shadow-neu-sm: var(--neu-shadow-sm);
+    49→  --shadow-neu-inset-sm: var(--neu-shadow-inset-sm);
+    50→}
+    51→
+    52→/* ============================================================
+    53→   DAY THEME (Light) — Soft Grey Neumorphism, base: #e0e0e0
+    54→   Repolished: deeper dual-shadows, warmer indigo accent,
+    55→   crisper text contrast, refined hover lifts.
+    56→   ============================================================ */
+    57→:root {
+    58→  --radius: 1rem;
+    59→
+    60→  /* Core Neumorphism tokens — refined shadow depths */
+    61→  --neu-bg: #e6e6e8;
+    62→  --neu-shadow: 9px 9px 18px #c2c2c5, -9px -9px 18px #ffffff;
+    63→  --neu-shadow-inset: inset 9px 9px 18px #c2c2c5, inset -9px -9px 18px #ffffff;
+    64→  --neu-shadow-sm: 5px 5px 10px #c2c2c5, -5px -5px 10px #ffffff;
+    65→  --neu-shadow-inset-sm: inset 5px 5px 10px #c2c2c5, inset -5px -5px 10px #ffffff;
+    66→  --neu-shadow-lg: 14px 14px 28px #b8b8bc, -14px -14px 28px #ffffff;
+    67→
+    68→  /* shadcn/ui overrides adapted for #e6e6e8 base */
+    69→  --background: #e6e6e8;
+    70→  --foreground: #1f2937;
+    71→  --card: #e9e9eb;
+    72→  --card-foreground: #1f2937;
+    73→  --popover: #ececee;
+    74→  --popover-foreground: #1f2937;
+    75→  --primary: #6366f1;
+    76→  --primary-foreground: #ffffff;
+    77→  --secondary: #d8d8db;
+    78→  --secondary-foreground: #1f2937;
+    79→  --muted: #d2d2d5;
+    80→  --muted-foreground: #5b6470;
+    81→  --accent: #dcdce0;
+    82→  --accent-foreground: #1f2937;
+    83→  --destructive: #dc2626;
+    84→  --destructive-foreground: #ffffff;
+    85→  --border: #c4c4c8;
+    86→  --input: #c4c4c8;
+    87→  --ring: #6366f1;
+    88→  --chart-1: #6366f1;
+    89→  --chart-2: #10b981;
+    90→  --chart-3: #f59e0b;
+    91→  --chart-4: #ec4899;
+    92→  --chart-5: #06b6d4;
+    93→  --sidebar: #dcdce0;
+    94→  --sidebar-foreground: #1f2937;
+    95→  --sidebar-primary: #6366f1;
+    96→  --sidebar-primary-foreground: #ffffff;
+    97→  --sidebar-accent: #d2d2d6;
+    98→  --sidebar-accent-foreground: #1f2937;
+    99→  --sidebar-border: #c4c4c8;
+   100→  --sidebar-ring: #6366f1;
+   101→}
+   102→
+   103→/* ============================================================
+   104→   NIGHT THEME (Dark) — Deep Bronze Espresso, base: #2A1F0A
+   105→   Repolished: luminous bronze highlights, near-black shadows,
+   106→   gold accents for a luxurious dark companion to Golden mode.
+   107→   ============================================================ */
+   108→.dark {
+   109→  /* Core Neumorphism tokens */
+   110→  --neu-bg: #2A1F0A;
+   111→  --neu-shadow: 10px 10px 20px #0D0900, -10px -10px 20px #5C4516;
+   112→  --neu-shadow-inset: inset 10px 10px 20px #0D0900, inset -10px -10px 20px #5C4516;
+   113→  --neu-shadow-sm: 5px 5px 12px #0D0900, -5px -5px 12px #5C4516;
+   114→  --neu-shadow-inset-sm: inset 5px 5px 12px #0D0900, inset -5px -5px 12px #5C4516;
+   115→  --neu-shadow-lg: 16px 16px 32px #050300, -16px -16px 32px #6E5520;
+   116→
+   117→  /* shadcn/ui overrides adapted for dark bronze base */
+   118→  --background: #2A1F0A;
+   119→  --foreground: #FFEAA7;
+   120→  --card: #2E230B;
+   121→  --card-foreground: #FFEAA7;
+   122→  --popover: #32260E;
+   123→  --popover-foreground: #FFEAA7;
+   124→  --primary: #D4AF37;
+   125→  --primary-foreground: #2A1F0A;
+   126→  --secondary: #3D2E10;
+   127→  --secondary-foreground: #FFEAA7;
+   128→  --muted: #3D2E10;
+   129→  --muted-foreground: #C9A845;
+   130→  --accent: #3D2E10;
+   131→  --accent-foreground: #FFEAA7;
+   132→  --destructive: #DC2626;
+   133→  --destructive-foreground: #FFFDF3;
+   134→  --border: #5C4516;
+   135→  --input: #3D2E10;
+   136→  --ring: #D4AF37;
+   137→  --chart-1: #D4AF37;
+   138→  --chart-2: #FFEAA7;
+   139→  --chart-3: #E5C158;
+   140→  --chart-4: #AA820A;
+   141→  --chart-5: #FFFDF3;
+   142→  --sidebar: #1F1707;
+   143→  --sidebar-foreground: #FFEAA7;
+   144→  --sidebar-primary: #D4AF37;
+   145→  --sidebar-primary-foreground: #2A1F0A;
+   146→  --sidebar-accent: #3D2E10;
+   147→  --sidebar-accent-foreground: #FFEAA7;
+   148→  --sidebar-border: #5C4516;
+   149→  --sidebar-ring: #D4AF37;
+   150→}
+   151→
+   152→/* ============================================================
+   153→   GOLDEN THEME — Metallic Gold Neumorphism (selectable)
+   154→   Base: #D4AF37 | Highlight: #FFEAA7 | Shadow: #AA820A
+   155→   Accent: #FFFDF3 | Text: #4A3500
+   156→   Repolished: richer metallic sheen, deeper bronze drop shadow,
+   157→   champagne top-gloss, refined pressed states.
+   158→   Applied via .gold class on <html>. Overrides :root and .dark.
+   159→   ============================================================ */
+   160→.gold {
+   161→  /* Core Golden Neumorphism tokens */
+   162→  --neu-bg: #D4AF37;
+   163→  --neu-shadow: 10px 10px 20px #9C760A, -10px -10px 20px #FFEFB8;
+   164→  --neu-shadow-inset: inset 10px 10px 20px #9C760A, inset -10px -10px 20px #FFEFB8;
+   165→  --neu-shadow-sm: 5px 5px 12px #9C760A, -5px -5px 12px #FFEFB8;
+   166→  --neu-shadow-inset-sm: inset 5px 5px 12px #9C760A, inset -5px -5px 12px #FFEFB8;
+   167→  --neu-shadow-lg: 16px 16px 32px #876400, -16px -16px 32px #FFF5D0;
+   168→
+   169→  /* Golden palette constants for reuse */
+   170→  --gold-base: #D4AF37;
+   171→  --gold-soft: #E5C158;
+   172→  --gold-highlight: #FFEAA7;
+   173→  --gold-shadow: #AA820A;
+   174→  --gold-champagne: #FFFDF3;
+   175→  --gold-text: #4A3500;
+   176→  --gold-text-muted: #7A5C07;
+   177→
+   178→  /* shadcn/ui tokens adapted for golden base */
+   179→  --background: #D4AF37;
+   180→  --foreground: #3D2D00;
+   181→  --card: #D8B43C;
+   182→  --card-foreground: #3D2D00;
+   183→  --popover: #DBB741;
+   184→  --popover-foreground: #3D2D00;
+   185→  --primary: #FFFDF3;
+   186→  --primary-foreground: #4A3500;
+   187→  --secondary: #C9A02E;
+   188→  --secondary-foreground: #3D2D00;
+   189→  --muted: #C9A02E;
+   190→  --muted-foreground: #6E5206;
+   191→  --accent: #FFEAA7;
+   192→  --accent-foreground: #3D2D00;
+   193→  --destructive: #B91C1C;
+   194→  --destructive-foreground: #FFFDF3;
+   195→  --border: #AA820A;
+   196→  --input: #C9A02E;
+   197→  --ring: #AA820A;
+   198→  --chart-1: #4A3500;
+   199→  --chart-2: #AA820A;
+   200→  --chart-3: #FFEAA7;
+   201→  --chart-4: #E5C158;
+   202→  --chart-5: #7A5C07;
+   203→  --sidebar: #C9A02E;
+   204→  --sidebar-foreground: #3D2D00;
+   205→  --sidebar-primary: #FFFDF3;
+   206→  --sidebar-primary-foreground: #4A3500;
+   207→  --sidebar-accent: #E5C158;
+   208→  --sidebar-accent-foreground: #3D2D00;
+   209→  --sidebar-border: #AA820A;
+   210→  --sidebar-ring: #AA820A;
+   211→}
+   212→
+   213→/* ============================================================
+   214→   BASE LAYER
+   215→   ============================================================ */
+   216→@layer base {
+   217→  * {
+   218→    @apply border-border outline-ring/50;
+   219→  }
+   220→
+   221→  body {
+   222→    @apply bg-background text-foreground;
+   223→    background-color: var(--neu-bg);
+   224→    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 1.0625rem);
+   225→    line-height: 1.6;
+   226→  }
+   227→
+   228→  /* Responsive typography scale */
+   229→  h1 {
+   230→    font-size: clamp(1.75rem, 1.25rem + 2.5vw, 2.75rem);
+   231→    line-height: 1.2;
+   232→    font-weight: 700;
+   233→  }
+   234→
+   235→  h2 {
+   236→    font-size: clamp(1.375rem, 1rem + 1.875vw, 2.125rem);
+   237→    line-height: 1.25;
+   238→    font-weight: 650;
+   239→  }
+   240→
+   241→  h3 {
+   242→    font-size: clamp(1.125rem, 0.875rem + 1.25vw, 1.625rem);
+   243→    line-height: 1.3;
+   244→    font-weight: 600;
+   245→  }
+   246→
+   247→  h4 {
+   248→    font-size: clamp(1rem, 0.875rem + 0.625vw, 1.25rem);
+   249→    line-height: 1.35;
+   250→    font-weight: 600;
+   251→  }
+   252→
+   253→  h5 {
+   254→    font-size: clamp(0.9375rem, 0.85rem + 0.4375vw, 1.0625rem);
+   255→    line-height: 1.4;
+   256→    font-weight: 550;
+   257→  }
+   258→
+   259→  h6 {
+   260→    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 0.9375rem);
+   261→    line-height: 1.45;
+   262→    font-weight: 550;
+   263→  }
+   264→
+   265→  p {
+   266→    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 1.0625rem);
+   267→    line-height: 1.65;
+   268→  }
+   269→
+   270→  small {
+   271→    font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);
+   272→  }
+   273→}
+   274→
+   275→/* ============================================================
+   276→   NEUMORPHISM UTILITY CLASSES — Repolished
+   277→   ============================================================ */
+   278→
+   279→/* Raised card — soft extruded surface with subtle top-gloss */
+   280→.neu-card {
+   281→  background-color: var(--neu-bg);
+   282→  border-radius: 18px;
+   283→  box-shadow: var(--neu-shadow);
+   284→  transition: box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+   285→              transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+   286→  position: relative;
+   287→}
+   288→
+   289→.neu-card:hover {
+   290→  box-shadow: var(--neu-shadow-lg);
+   291→  transform: translateY(-2px);
+   292→}
+   293→
+   294→/* Pressed / inset card — sunken surface */
+   295→.neu-card-inset {
+   296→  background-color: var(--neu-bg);
+   297→  border-radius: 18px;
+   298→  box-shadow: var(--neu-shadow-inset);
+   299→  transition: box-shadow 0.35s ease;
+   300→}
+   301→
+   302→/* Raised button — interactive extruded element */
+   303→.neu-btn {
+   304→  background-color: var(--neu-bg);
+   305→  border-radius: 12px;
+   306→  box-shadow: var(--neu-shadow-sm);
+   307→  transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+   308→              transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+   309→              color 0.2s ease;
+   310→  cursor: pointer;
+   311→  user-select: none;
+   312→}
+   313→
+   314→.neu-btn:hover {
+   315→  box-shadow: var(--neu-shadow);
+   316→  transform: translateY(-1px);
+   317→}
+   318→
+   319→.neu-btn:active,
+   320→.neu-btn-inset {
+   321→  background-color: var(--neu-bg);
+   322→  border-radius: 12px;
+   323→  box-shadow: var(--neu-shadow-inset-sm);
+   324→  transform: translateY(0);
+   325→  cursor: pointer;
+   326→  user-select: none;
+   327→}
+   328→
+   329→/* Inset input field — sunken entry surface with focus ring */
+   330→.neu-input {
+   331→  background-color: var(--neu-bg);
+   332→  border-radius: 12px;
+   333→  box-shadow: var(--neu-shadow-inset-sm);
+   334→  border: none;
+   335→  outline: none;
+   336→  transition: box-shadow 0.25s ease;
+   337→}
+   338→
+   339→.neu-input:focus {
+   340→  box-shadow: var(--neu-shadow-inset), 0 0 0 2px var(--ring);
+   341→}
+   342→
+   343→.neu-input::placeholder {
+   344→  color: var(--muted-foreground);
+   345→  opacity: 0.7;
+   346→}
+   347→
+   348→/* Flat surface — no shadow, base colour only */
+   349→.neu-flat {
+   350→  background-color: var(--neu-bg);
+   351→  border-radius: 18px;
+   352→  box-shadow: none;
+   353→  transition: box-shadow 0.3s ease;
+   354→}
+   355→
+   356→/* ============================================================
+   357→   CUSTOM SCROLLBAR
+   358→   ============================================================ */
+   359→
+   360→/* WebKit / Blink */
+   361→::-webkit-scrollbar {
+   362→  width: 8px;
+   363→  height: 8px;
+   364→}
+   365→
+   366→::-webkit-scrollbar-track {
+   367→  background: var(--neu-bg);
+   368→  border-radius: 9999px;
+   369→}
+   370→
+   371→::-webkit-scrollbar-thumb {
+   372→  background: var(--border);
+   373→  border-radius: 9999px;
+   374→  border: 2px solid var(--neu-bg);
+   375→}
+   376→
+   377→::-webkit-scrollbar-thumb:hover {
+   378→  background: var(--muted-foreground);
+   379→}
+   380→
+   381→::-webkit-scrollbar-corner {
+   382→  background: var(--neu-bg);
+   383→}
+   384→
+   385→/* Firefox */
+   386→* {
+   387→  scrollbar-width: thin;
+   388→  scrollbar-color: var(--border) var(--neu-bg);
+   389→}
+   390→
+   391→/* ============================================================
+   392→   FIREWORK CELEBRATION ANIMATION
+   393→   ============================================================ */
+   394→
+   395→/* Full-screen overlay for the installation wizard completion step */
+   396→.fireworks-container {
+   397→  position: fixed;
+   398→  inset: 0;
+   399→  pointer-events: none;
+   400→  z-index: 9999;
+   401→  overflow: hidden;
+   402→}
+   403→
+   404→/* Individual firework burst origin */
+   405→.firework {
+   406→  position: absolute;
+   407→  width: 6px;
+   408→  height: 6px;
+   409→  border-radius: 50%;
+   410→  animation: firework-burst 1.2s ease-out forwards;
+   411→}
+   412→
+   413→.firework::before,
+   414→.firework::after {
+   415→  content: "";
+   416→  position: absolute;
+   417→  width: 6px;
+   418→  height: 6px;
+   419→  border-radius: 50%;
+   420→}
+   421→
+   422→/* Staggered positions and colour variants */
+   423→.firework:nth-child(1) {
+   424→  left: 15%;
+   425→  top: 25%;
+   426→  animation-delay: 0s;
+   427→  --fw-color: #ff6b6b;
+   428→  background: var(--fw-color);
+   429→  box-shadow:
+   430→    -30px -50px 0 var(--fw-color),
+   431→    30px -50px 0 var(--fw-color),
+   432→    -50px -25px 0 var(--fw-color),
+   433→    50px -25px 0 var(--fw-color),
+   434→    -55px 5px 0 var(--fw-color),
+   435→    55px 5px 0 var(--fw-color),
+   436→    -40px 35px 0 var(--fw-color),
+   437→    40px 35px 0 var(--fw-color),
+   438→    -15px 55px 0 var(--fw-color),
+   439→    15px 55px 0 var(--fw-color),
+   440→    0 -60px 0 var(--fw-color),
+   441→    0 60px 0 var(--fw-color);
+   442→}
+   443→
+   444→.firework:nth-child(2) {
+   445→  left: 50%;
+   446→  top: 15%;
+   447→  animation-delay: 0.35s;
+   448→  --fw-color: #ffd93d;
+   449→  background: var(--fw-color);
+   450→  box-shadow:
+   451→    -25px -45px 0 var(--fw-color),
+   452→    25px -45px 0 var(--fw-color),
+   453→    -45px -20px 0 var(--fw-color),
+   454→    45px -20px 0 var(--fw-color),
+   455→    -50px 10px 0 var(--fw-color),
+   456→    50px 10px 0 var(--fw-color),
+   457→    -35px 40px 0 var(--fw-color),
+   458→    35px 40px 0 var(--fw-color),
+   459→    -10px 50px 0 var(--fw-color),
+   460→    10px 50px 0 var(--fw-color),
+   461→    0 -55px 0 var(--fw-color),
+   462→    0 55px 0 var(--fw-color);
+   463→}
+   464→
+   465→.firework:nth-child(3) {
+   466→  left: 80%;
+   467→  top: 30%;
+   468→  animation-delay: 0.7s;
+   469→  --fw-color: #6bcb77;
+   470→  background: var(--fw-color);
+   471→  box-shadow:
+   472→    -28px -48px 0 var(--fw-color),
+   473→    28px -48px 0 var(--fw-color),
+   474→    -48px -22px 0 var(--fw-color),
+   475→    48px -22px 0 var(--fw-color),
+   476→    -52px 8px 0 var(--fw-color),
+   477→    52px 8px 0 var(--fw-color),
+   478→    -38px 38px 0 var(--fw-color),
+   479→    38px 38px 0 var(--fw-color),
+   480→    -12px 52px 0 var(--fw-color),
+   481→    12px 52px 0 var(--fw-color),
+   482→    0 -58px 0 var(--fw-color),
+   483→    0 58px 0 var(--fw-color);
+   484→}
+   485→
+   486→.firework:nth-child(4) {
+   487→  left: 35%;
+   488→  top: 50%;
+   489→  animation-delay: 1.05s;
+   490→  --fw-color: #4d96ff;
+   491→  background: var(--fw-color);
+   492→  box-shadow:
+   493→    -22px -42px 0 var(--fw-color),
+   494→    22px -42px 0 var(--fw-color),
+   495→    -42px -18px 0 var(--fw-color),
+   496→    42px -18px 0 var(--fw-color),
+   497→    -48px 12px 0 var(--fw-color),
+   498→    48px 12px 0 var(--fw-color),
+   499→    -32px 36px 0 var(--fw-color),
+   500→    32px 36px 0 var(--fw-color),
+   501→    -8px 48px 0 var(--fw-color),
+   502→    8px 48px 0 var(--fw-color),
+   503→    0 -52px 0 var(--fw-color),
+   504→    0 52px 0 var(--fw-color);
+   505→}
+   506→
+   507→.firework:nth-child(5) {
+   508→  left: 65%;
+   509→  top: 60%;
+   510→  animation-delay: 1.4s;
+   511→  --fw-color: #c084fc;
+   512→  background: var(--fw-color);
+   513→  box-shadow:
+   514→    -26px -46px 0 var(--fw-color),
+   515→    26px -46px 0 var(--fw-color),
+   516→    -46px -24px 0 var(--fw-color),
+   517→    46px -24px 0 var(--fw-color),
+   518→    -54px 6px 0 var(--fw-color),
+   519→    54px 6px 0 var(--fw-color),
+   520→    -36px 40px 0 var(--fw-color),
+   521→    36px 40px 0 var(--fw-color),
+   522→    -14px 54px 0 var(--fw-color),
+   523→    14px 54px 0 var(--fw-color),
+   524→    0 -56px 0 var(--fw-color),
+   525→    0 56px 0 var(--fw-color);
+   526→}
+   527→
+   528→.firework:nth-child(6) {
+   529→  left: 25%;
+   530→  top: 70%;
+   531→  animation-delay: 1.75s;
+   532→  --fw-color: #f472b6;
+   533→  background: var(--fw-color);
+   534→  box-shadow:
+   535→    -24px -44px 0 var(--fw-color),
+   536→    24px -44px 0 var(--fw-color),
+   537→    -44px -20px 0 var(--fw-color),
+   538→    44px -20px 0 var(--fw-color),
+   539→    -50px 10px 0 var(--fw-color),
+   540→    50px 10px 0 var(--fw-color),
+   541→    -34px 38px 0 var(--fw-color),
+   542→    34px 38px 0 var(--fw-color),
+   543→    -10px 50px 0 var(--fw-color),
+   544→    10px 50px 0 var(--fw-color),
+   545→    0 -54px 0 var(--fw-color),
+   546→    0 54px 0 var(--fw-color);
+   547→}
+   548→
+   549→/* Flicker/sparkle particles rendered as small pseudo-elements */
+   550→.firework-particle {
+   551→  position: absolute;
+   552→  width: 4px;
+   553→  height: 4px;
+   554→  border-radius: 50%;
+   555→  opacity: 0;
+   556→  animation: firework-sparkle 1s ease-out forwards;
+   557→}
+   558→
+   559→.firework-particle:nth-child(1) { --fp-x: -60px; --fp-y: -10px; --fp-color: #ff6b6b; animation-delay: 0.2s; }
+   560→.firework-particle:nth-child(2) { --fp-x: 55px;  --fp-y: -30px; --fp-color: #ffd93d; animation-delay: 0.4s; }
+   561→.firework-particle:nth-child(3) { --fp-x: -40px; --fp-y: 50px;  --fp-color: #6bcb77; animation-delay: 0.6s; }
+   562→.firework-particle:nth-child(4) { --fp-x: 45px;  --fp-y: 40px;  --fp-color: #4d96ff; animation-delay: 0.8s; }
+   563→.firework-particle:nth-child(5) { --fp-x: 0;     --fp-y: -65px; --fp-color: #c084fc; animation-delay: 1.0s; }
+   564→.firework-particle:nth-child(6) { --fp-x: -50px; --fp-y: 45px;  --fp-color: #f472b6; animation-delay: 1.2s; }
+   565→.firework-particle:nth-child(7) { --fp-x: 60px;  --fp-y: 15px;  --fp-color: #22d3ee; animation-delay: 1.4s; }
+   566→.firework-particle:nth-child(8) { --fp-x: -20px; --fp-y: -55px; --fp-color: #fb923c; animation-delay: 1.6s; }
+   567→
+   568→.firework-particle::before {
+   569→  content: "";
+   570→  position: absolute;
+   571→  width: 100%;
+   572→  height: 100%;
+   573→  border-radius: 50%;
+   574→  background: var(--fp-color);
+   575→  box-shadow: 0 0 6px 2px var(--fp-color);
+   576→}
+   577→
+   578→@keyframes firework-burst {
+   579→  0% {
+   580→    transform: scale(0);
+   581→    opacity: 1;
+   582→  }
+   583→  50% {
+   584→    transform: scale(1);
+   585→    opacity: 1;
+   586→  }
+   587→  100% {
+   588→    transform: scale(1.2);
+   589→    opacity: 0;
+   590→  }
+   591→}
+   592→
+   593→@keyframes firework-sparkle {
+   594→  0% {
+   595→    transform: translate(0, 0) scale(0);
+   596→    opacity: 1;
+   597→  }
+   598→  40% {
+   599→    opacity: 1;
+   600→  }
+   601→  100% {
+   602→    transform: translate(var(--fp-x), var(--fp-y)) scale(1.5);
+   603→    opacity: 0;
+   604→  }
+   605→}
+   606→
+   607→/* Full celebration sequence — loop a few times then stop */
+   608→@keyframes fireworks-cycle {
+   609→  0% { opacity: 0; }
+   610→  5% { opacity: 1; }
+   611→  85% { opacity: 1; }
+   612→  100% { opacity: 0; }
+   613→}
+   614→
+   615→.fireworks-container {
+   616→  animation: fireworks-cycle 5s ease-in-out forwards;
+   617→}
+   618→
+   619→/* Confetti-like trailing spark */
+   620→.firework-trail {
+   621→  position: absolute;
+   622→  width: 3px;
+   623→  height: 3px;
+   624→  border-radius: 50%;
+   625→  opacity: 0;
+   626→  animation: firework-trail-fall 2s ease-in forwards;
+   627→}
+   628→
+   629→.firework-trail:nth-child(odd) {
+   630→  background: #ffd93d;
+   631→  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+   632→}
+   633→
+   634→.firework-trail:nth-child(even) {
+   635→  background: #ff6b6b;
+   636→  animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+   637→}
+   638→
+   639→@keyframes firework-trail-fall {
+   640→  0% {
+   641→    transform: translateY(-20vh) rotate(0deg);
+   642→    opacity: 1;
+   643→  }
+   644→  100% {
+   645→    transform: translateY(100vh) rotate(720deg);
+   646→    opacity: 0;
+   647→  }
+   648→}
+   649→
+   650→/* Celebration glow pulse behind content */
+   651→.celebration-glow {
+   652→  position: fixed;
+   653→  inset: 0;
+   654→  pointer-events: none;
+   655→  z-index: 9998;
+   656→  background: radial-gradient(circle at 50% 50%, var(--primary) 0%, transparent 70%);
+   657→  opacity: 0;
+   658→  animation: glow-pulse 3s ease-in-out infinite;
+   659→}
+   660→
+   661→@keyframes glow-pulse {
+   662→  0%, 100% { opacity: 0; }
+   663→  50% { opacity: 0.08; }
+   664→}
+   665→
+   666→/* ============================================================
+   667→   NEUMORPHISM INTERACTION TRANSITIONS
+   668→   ============================================================ */
+   669→
+   670→/* Smooth shadow transitions for any element toggling raised/inset */
+   671→.neu-transition {
+   672→  transition:
+   673→    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+   674→    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+   675→    background-color 0.3s ease;
+   676→}
+   677→
+   678→/* Hover lift for interactive cards */
+   679→.neu-hover-lift:hover {
+   680→  box-shadow: var(--neu-shadow);
+   681→  transform: translateY(-2px);
+   682→}
+   683→
+   684→/* Press sink for active / focus-within */
+   685→.neu-press:active,
+   686→.neu-press-active {
+   687→  box-shadow: var(--neu-shadow-inset-sm);
+   688→  transform: translateY(1px);
+   689→}
+   690→
+   691→/* ============================================================
+   692→   ADDITIONAL NEUMORPHISM SURFACE HELPERS
+   693→   ============================================================ */
+   694→
+   695→/* Concave well — deeper inset for containers */
+   696→.neu-well {
+   697→  background-color: var(--neu-bg);
+   698→  border-radius: 18px;
+   699→  box-shadow: var(--neu-shadow-inset);
+   700→  padding: 1.5rem;
+   701→}
+   702→
+   703→/* Convex bump — raised surface for emphasis */
+   704→.neu-bump {
+   705→  background-color: var(--neu-bg);
+   706→  border-radius: 18px;
+   707→  box-shadow: var(--neu-shadow);
+   708→  transition: box-shadow 0.3s ease, transform 0.3s ease;
+   709→}
+   710→
+   711→.neu-bump:hover {
+   712→  box-shadow: var(--neu-shadow-lg);
+   713→  transform: translateY(-1px);
+   714→}
+   715→
+   716→/* Circular neumorphic element (avatars, icons) */
+   717→.neu-circle {
+   718→  background-color: var(--neu-bg);
+   719→  border-radius: 50%;
+   720→  box-shadow: var(--neu-shadow-sm);
+   721→  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+   722→              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+   723→}
+   724→
+   725→.neu-circle:hover {
+   726→  box-shadow: var(--neu-shadow);
+   727→  transform: translateY(-2px);
+   728→}
+   729→
+   730→.neu-circle-inset {
+   731→  background-color: var(--neu-bg);
+   732→  border-radius: 50%;
+   733→  box-shadow: var(--neu-shadow-inset-sm);
+   734→}
+   735→
+   736→/* Divider with subtle neumorphic groove */
+   737→.neu-divider {
+   738→  height: 2px;
+   739→  background: var(--neu-bg);
+   740→  border-radius: 1px;
+   741→  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 -1px 2px rgba(255, 255, 255, 0.6);
+   742→}
+   743→
+   744→.dark .neu-divider {
+   745→  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 -1px 2px rgba(255, 234, 167, 0.08);
+   746→}
+   747→
+   748→.gold .neu-divider {
+   749→  box-shadow: inset 0 1px 2px rgba(74, 53, 0, 0.25), inset 0 -1px 2px rgba(255, 234, 167, 0.7);
+   750→}
+   751→
+   752→/* Toggle switch neumorphic track */
+   753→.neu-toggle-track {
+   754→  background-color: var(--neu-bg);
+   755→  border-radius: 9999px;
+   756→  box-shadow: var(--neu-shadow-inset-sm);
+   757→  transition: box-shadow 0.3s ease;
+   758→}
+   759→
+   760→.neu-toggle-thumb {
+   761→  border-radius: 50%;
+   762→  box-shadow: var(--neu-shadow-sm);
+   763→  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+   764→              box-shadow 0.3s ease;
+   765→}
+   766→
+   767→/* ============================================================
+   768→   NEUMORPHISM-ENHANCED FORM CONTROLS
+   769→   ============================================================ */
+   770→
+   771→/* Checkbox / radio neumorphic style */
+   772→.neu-checkbox {
+   773→  appearance: none;
+   774→  width: 22px;
+   775→  height: 22px;
+   776→  background-color: var(--neu-bg);
+   777→  border-radius: 6px;
+   778→  box-shadow: var(--neu-shadow-sm);
+   779→  cursor: pointer;
+   780→  transition: box-shadow 0.2s ease, background-color 0.2s ease;
+   781→}
+   782→
+   783→.neu-checkbox:checked {
+   784→  box-shadow: var(--neu-shadow-inset-sm);
+   785→  background-color: var(--neu-bg);
+   786→}
+   787→
+   788→/* ============================================================
+   789→   TYPOGRAPHY & ELEMENT ENHANCEMENTS — Repolished (theme-aware)
+   790→   ============================================================ */
+   791→
+   792→/* Engraved heading text — incised metal-etched look.
+   793→   Theme-aware etching tuned per surface. */
+   794→.neu-etched-text {
+   795→  color: var(--foreground);
+   796→}
+   797→
+   798→:root .neu-etched-text {
+   799→  text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.6), -1px -1px 1px rgba(0, 0, 0, 0.18);
+   800→}
+   801→
+   802→.dark .neu-etched-text {
+   803→  text-shadow: 1px 1px 1px rgba(255, 234, 167, 0.18), -1px -1px 1px rgba(0, 0, 0, 0.5);
+   804→}
+   805→
+   806→.gold .neu-etched-text {
+   807→  text-shadow: 1px 1px 1px rgba(255, 234, 167, 0.6), -1px -1px 1px rgba(74, 53, 0, 0.35);
+   808→}
+   809→
+   810→/* Inverse etching for primary/light fill backgrounds */
+   811→.neu-etched-text-light {
+   812→  color: var(--primary-foreground);
+   813→  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.15), -1px -1px 1px rgba(255, 255, 255, 0.55);
+   814→}
+   815→
+   816→/* Concave pill badge — tiny sunken well for tags & category labels.
+   817→   Theme-aware: uses --muted-foreground text on the surface color,
+   818→   with a subtle etched highlight tuned per theme. */
+   819→.neu-badge {
+   820→  display: inline-flex;
+   821→  align-items: center;
+   822→  gap: 0.25rem;
+   823→  padding: 0.25rem 0.75rem;
+   824→  font-size: 0.72rem;
+   825→  font-weight: 600;
+   826→  letter-spacing: 0.02em;
+   827→  color: var(--foreground);
+   828→  background-color: var(--neu-bg);
+   829→  border-radius: 9999px;
+   830→  box-shadow: var(--neu-shadow-inset-sm);
+   831→  border: none;
+   832→  transition: box-shadow 0.25s ease, color 0.2s ease, transform 0.2s ease;
+   833→}
+   834→
+   835→.neu-badge:hover {
+   836→  color: var(--primary);
+   837→  box-shadow: var(--neu-shadow-sm);
+   838→  transform: translateY(-1px);
+   839→}
+   840→
+   841→/* Etched text effect per theme */
+   842→:root .neu-badge,
+   843→:root .neu-thread-title {
+   844→  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6), 0 -1px 0 rgba(0, 0, 0, 0.08);
+   845→}
+   846→
+   847→.dark .neu-badge,
+   848→.dark .neu-thread-title {
+   849→  text-shadow: 0 1px 0 rgba(255, 234, 167, 0.15), 0 -1px 0 rgba(0, 0, 0, 0.4);
+   850→}
+   851→
+   852→.gold .neu-badge,
+   853→.gold .neu-thread-title {
+   854→  text-shadow: 0 1px 0 rgba(255, 234, 167, 0.6), 0 -1px 0 rgba(74, 53, 0, 0.25);
+   855→}
+   856→
+   857→/* Thread title — crisp engraved heading */
+   858→.neu-thread-title {
+   859→  color: var(--foreground);
+   860→  font-weight: 650;
+   861→  letter-spacing: -0.01em;
+   862→  transition: color 0.2s ease, text-shadow 0.2s ease;
+   863→}
+   864→
+   865→.neu-thread-title:hover {
+   866→  color: var(--primary);
+   867→}
+   868→
+   869→.dark .neu-thread-title:hover {
+   870→  color: var(--gold-highlight, #FFEAA7);
+   871→}
+   872→
+   873→.gold .neu-thread-title:hover {
+   874→  color: var(--gold-text);
+   875→}
+   876→
+   877→/* Active/highlighted badge variant — primary accent fill */
+   878→.neu-badge-active {
+   879→  background-color: var(--primary);
+   880→  color: var(--primary-foreground);
+   881→  box-shadow: var(--neu-shadow-sm);
+   882→  text-shadow: none;
+   883→}
+   884→
+   885→.neu-badge-active:hover {
+   886→  color: var(--primary-foreground);
+   887→}
+   888→
+   889→/* Floating Action Button — raised dome with primary active state */
+   890→.neu-fab {
+   891→  position: fixed;
+   892→  bottom: 1.5rem;
+   893→  right: 1.5rem;
+   894→  z-index: 50;
+   895→  display: flex;
+   896→  align-items: center;
+   897→  justify-content: center;
+   898→  width: 3.5rem;
+   899→  height: 3.5rem;
+   900→  border-radius: 50%;
+   901→  background-color: var(--neu-bg);
+   902→  color: var(--foreground);
+   903→  box-shadow: var(--neu-shadow);
+   904→  cursor: pointer;
+   905→  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+   906→              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+   907→              color 0.2s ease,
+   908→              background-color 0.2s ease;
+   909→}
+   910→
+   911→.neu-fab:hover {
+   912→  transform: translateY(-4px);
+   913→  box-shadow: var(--neu-shadow-lg);
+   914→  color: var(--primary);
+   915→}
+   916→
+   917→.neu-fab:active {
+   918→  transform: translateY(0);
+   919→  box-shadow: var(--neu-shadow-inset-sm);
+   920→  background-color: var(--primary);
+   921→  color: var(--primary-foreground);
+   922→}
+   923→
+   924→/* ============================================================
+   925→   RESPONSIVE NEUMORPHISM ADJUSTMENTS
+   926→   ============================================================ */
+   927→
+   928→@media (max-width: 640px) {
+   929→  /* Reduce shadow intensity on small screens for cleaner look */
+   930→  :root {
+   931→    --neu-shadow: 6px 6px 12px #c2c2c5, -6px -6px 12px #ffffff;
+   932→    --neu-shadow-inset: inset 6px 6px 12px #c2c2c5, inset -6px -6px 12px #ffffff;
+   933→    --neu-shadow-sm: 3px 3px 6px #c2c2c5, -3px -3px 6px #ffffff;
+   934→    --neu-shadow-inset-sm: inset 3px 3px 6px #c2c2c5, inset -3px -3px 6px #ffffff;
+   935→    --neu-shadow-lg: 9px 9px 18px #b8b8bc, -9px -9px 18px #ffffff;
+   936→  }
+   937→
+   938→  .dark {
+   939→    --neu-shadow: 6px 6px 12px #0D0900, -6px -6px 12px #5C4516;
+   940→    --neu-shadow-inset: inset 6px 6px 12px #0D0900, inset -6px -6px 12px #5C4516;
+   941→    --neu-shadow-sm: 3px 3px 6px #0D0900, -3px -3px 6px #5C4516;
+   942→    --neu-shadow-inset-sm: inset 3px 3px 6px #0D0900, inset -3px -3px 6px #5C4516;
+   943→    --neu-shadow-lg: 10px 10px 20px #050300, -10px -10px 20px #6E5520;
+   944→  }
+   945→
+   946→  .gold {
+   947→    --neu-shadow: 6px 6px 12px #9C760A, -6px -6px 12px #FFEFB8;
+   948→    --neu-shadow-inset: inset 6px 6px 12px #9C760A, inset -6px -6px 12px #FFEFB8;
+   949→    --neu-shadow-sm: 3px 3px 6px #9C760A, -3px -3px 6px #FFEFB8;
+   950→    --neu-shadow-inset-sm: inset 3px 3px 6px #9C760A, inset -3px -3px 6px #FFEFB8;
+   951→    --neu-shadow-lg: 10px 10px 20px #876400, -10px -10px 20px #FFF5D0;
+   952→  }
+   953→
+   954→  .neu-card,
+   955→  .neu-card-inset,
+   956→  .neu-bump,
+   957→  .neu-well {
+   958→    border-radius: 14px;
+   959→  }
+   960→
+   961→  .neu-fab {
+   962→    width: 3rem;
+   963→    height: 3rem;
+   964→    bottom: 1rem;
+   965→    right: 1rem;
+   966→  }
+   967→}
+   968→
