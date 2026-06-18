@@ -40,23 +40,25 @@ function isWorkersRuntime(): boolean {
 }
 
 async function buildClient(): Promise<PrismaClient> {
+  // Always import from the default entry (`@prisma/client`). With an adapter,
+  // Prisma 6.x skips the Rust query engine entirely and uses the driver
+  // adapter to talk to D1 — no fs.readdir needed.
+  const [{ PrismaClient: BasePrismaClient }] = await Promise.all([
+    import('@prisma/client'),
+  ])
+
   if (isWorkersRuntime()) {
     try {
-      const [{ getCloudflareContext }, { PrismaD1 }, edgeMod] =
-        await Promise.all([
-          import('@opennextjs/cloudflare'),
-          import('@prisma/adapter-d1'),
-          import('@prisma/client/edge'),
-        ])
+      const [{ getCloudflareContext }, { PrismaD1 }] = await Promise.all([
+        import('@opennextjs/cloudflare'),
+        import('@prisma/adapter-d1'),
+      ])
       const ctx = (await getCloudflareContext({ async: true })) as {
         env: CloudflareEnv
       }
       const d1 = ctx?.env?.DB
       if (d1) {
-        const EdgePrismaClient = (
-          edgeMod as { PrismaClient: typeof PrismaClient }
-        ).PrismaClient
-        return new EdgePrismaClient({ adapter: new PrismaD1(d1) })
+        return new BasePrismaClient({ adapter: new PrismaD1(d1) })
       }
     } catch (err) {
       console.error('[db] Workers Prisma init failed:', err)
@@ -64,12 +66,8 @@ async function buildClient(): Promise<PrismaClient> {
     }
   }
 
-  // Local Node.js dev path
-  const nodeMod = await import('@prisma/client')
-  const NodePrismaClient = (
-    nodeMod as { PrismaClient: typeof PrismaClient }
-  ).PrismaClient
-  return new NodePrismaClient({
+  // Local Node.js dev path — plain PrismaClient using DATABASE_URL.
+  return new BasePrismaClient({
     log:
       process.env.NODE_ENV !== 'production' ? ['error', 'warn'] : ['error'],
   })
