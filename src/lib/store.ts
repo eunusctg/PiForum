@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import type { AppView, ForumUser, Category, Forum, Thread, Post, InstallConfig, ForumSetting } from "@/lib/types";
 
+export type ThemeMode = "light" | "dark" | "gold";
+
 interface AppState {
   // Navigation
   currentView: AppView;
@@ -14,6 +16,10 @@ interface AppState {
   authToken: string | null;
   setAuthToken: (token: string | null) => void;
   isAdmin: () => boolean;
+
+  // Theme — "light" (Day), "dark" (Night), "gold" (Golden)
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
 
   // Install
   isInstalled: boolean;
@@ -71,6 +77,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   isAdmin: () => {
     const user = get().currentUser;
     return user !== null && user.role >= 2;
+  },
+
+  // Theme — persisted to localStorage, restored lazily
+  themeMode: "light",
+  setThemeMode: (mode) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("piforum_theme", mode);
+    }
+    set({ themeMode: mode });
   },
 
   // Install

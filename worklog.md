@@ -55,3 +55,35 @@ Stage Summary:
 - Text contrast: #4A3500 on #D4AF37 achieves ~5.2:1 ratio (passes WCAG AA for normal text)
 - New utility classes: neu-etched-text, neu-thread-title, neu-badge, neu-badge-active, neu-fab
 - All existing components automatically inherit the golden theme via CSS variable overrides
+
+---
+Task ID: 3
+Agent: Main
+Task: Restore day/night modes as previous + add Golden as a 3rd selectable theme in settings
+
+Work Log:
+- Restored original Day theme (:root) — #e0e0e0 base neumorphism (soft grey)
+- Restored original Night theme (.dark) — #1e1e24 base neumorphism (dark slate)
+- Added new .gold theme class — Metallic Gold #D4AF37 neumorphism (#FFEAA7 highlight / #AA820A shadow)
+- Added mobile responsive shadow adjustments for all 3 themes (:root, .dark, .gold)
+- Added ThemeMode type ('light' | 'dark' | 'gold') to Zustand store with localStorage persistence (key: piforum_theme)
+- Created ThemeManager client component: coordinates next-themes (light/dark) + custom .gold class on <html>
+  - gold mode: removes .dark, adds .gold, keeps next-themes in light for state consistency
+  - light/dark mode: removes .gold, delegates to next-themes class toggling
+  - restores persisted theme on mount
+- Wired ThemeManager into layout.tsx inside ThemeProvider
+- Replaced Header simple light/dark toggle with a 3-option theme dropdown (Day / Night / Golden)
+  - each option shows icon + color swatch + active checkmark
+  - trigger icon changes based on current theme (Sun/Moon/Palette)
+- Added "Appearance" theme selector card to AdminSettings with 3 visual theme cards (Day/Night/Golden)
+- Browser-verified: Day renders #e0e0e0, Night renders #1e1e24, Golden renders #D4AF37
+- Verified theme persists across page reload (localStorage)
+- Verified <html> className switches correctly: "light" / "dark" / "light gold"
+- All API routes 200, ESLint passes with zero errors/warnings
+
+Stage Summary:
+- 3 selectable themes: Day (original light), Night (original dark), Golden (new gold luxury)
+- Theme selector accessible to ALL users via header dropdown (palette icon)
+- Theme selector also available in Admin Settings → Appearance section
+- Selection persisted in localStorage (piforum_theme) and survives reloads
+- Original day/night aesthetics fully restored; golden is purely opt-in

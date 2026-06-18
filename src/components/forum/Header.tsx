@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useSyncExternalStore } from "react";
-import { useTheme } from "next-themes";
 import {
   Sun,
   Moon,
@@ -12,8 +11,11 @@ import {
   Shield,
   Home,
   ChevronDown,
+  Palette,
+  Check,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import type { ThemeMode as StoreThemeMode } from "@/lib/store";
 import { ROLE_LABELS, UserRole } from "@/lib/types";
 import type { AppView } from "@/lib/types";
 import {
@@ -37,9 +39,10 @@ export default function Header() {
     setAuthToken,
     setAuthModalOpen,
     setAuthModalTab,
+    themeMode,
+    setThemeMode,
   } = useAppStore();
 
-  const { theme, setTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Hydration-safe mounted detection without calling setState in an effect
@@ -74,9 +77,18 @@ export default function Header() {
     [setAuthModalTab, setAuthModalOpen]
   );
 
-  const toggleTheme = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }, [theme, setTheme]);
+  const handleSelectTheme = useCallback(
+    (mode: StoreThemeMode) => {
+      setThemeMode(mode);
+    },
+    [setThemeMode]
+  );
+
+  const themeOptions: { mode: StoreThemeMode; label: string; icon: typeof Sun; swatch: string }[] = [
+    { mode: "light", label: "Day", icon: Sun, swatch: "#e0e0e0" },
+    { mode: "dark", label: "Night", icon: Moon, swatch: "#1e1e24" },
+    { mode: "gold", label: "Golden", icon: Palette, swatch: "#D4AF37" },
+  ];
 
   const userIsAdmin = isAdmin();
 
@@ -127,18 +139,54 @@ export default function Header() {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="neu-btn flex items-center justify-center w-9 h-9 p-0"
-              aria-label={mounted && theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {mounted && theme === "dark" ? (
-                <Sun className="size-4 text-amber-400" />
-              ) : (
-                <Moon className="size-4 text-slate-600" />
-              )}
-            </button>
+            {/* Theme Selector — Day / Night / Golden */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="neu-btn flex items-center justify-center w-9 h-9 p-0"
+                  aria-label="Select theme"
+                  title="Theme settings"
+                >
+                  {mounted && themeMode === "dark" ? (
+                    <Moon className="size-4 text-indigo-300" />
+                  ) : themeMode === "gold" ? (
+                    <Palette className="size-4 text-amber-700" />
+                  ) : (
+                    <Sun className="size-4 text-amber-500" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="neu-card w-48 p-2 border-0"
+              >
+                <DropdownMenuLabel className="px-2 py-1.5 flex items-center gap-2">
+                  <Palette className="size-4" />
+                  <span className="text-sm font-semibold">Theme</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {themeOptions.map((opt) => {
+                  const Icon = opt.icon;
+                  const active = themeMode === opt.mode;
+                  return (
+                    <DropdownMenuItem
+                      key={opt.mode}
+                      onClick={() => handleSelectTheme(opt.mode)}
+                      className="neu-btn cursor-pointer rounded-lg my-0.5 px-2 py-2 flex items-center gap-2"
+                    >
+                      <Icon className="size-4" />
+                      <span className="text-sm flex-1">{opt.label}</span>
+                      <span
+                        className="size-3 rounded-full border border-border/40"
+                        style={{ backgroundColor: opt.swatch }}
+                        aria-hidden
+                      />
+                      {active && <Check className="size-3.5 text-primary" />}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* User Section - Desktop */}
             {currentUser ? (

@@ -50,17 +50,106 @@
 }
 
 /* ============================================================
-   LIGHT THEME — Golden Neumorphism
-   Base: Metallic Gold #D4AF37
-   Highlight (top-left): #FFEAA7 (warm luminous cream)
-   Shadow (bottom-right): #AA820A (deep bronze)
-   Accent: #FFFDF3 (champagne high-gloss)
-   Text Primary: #4A3500 (deep espresso brown)
-   Text Secondary: #7A5C07 (muted antique gold)
+   DAY THEME (Light) — Neumorphism base: #e0e0e0
    ============================================================ */
 :root {
   --radius: 1rem;
 
+  /* Core Neumorphism tokens */
+  --neu-bg: #e0e0e0;
+  --neu-shadow: 9px 9px 16px #bebebe, -9px -9px 16px #ffffff;
+  --neu-shadow-inset: inset 9px 9px 16px #bebebe, inset -9px -9px 16px #ffffff;
+  --neu-shadow-sm: 5px 5px 10px #bebebe, -5px -5px 10px #ffffff;
+  --neu-shadow-inset-sm: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff;
+
+  /* shadcn/ui overrides adapted for #e0e0e0 base */
+  --background: #e0e0e0;
+  --foreground: #2d2d2d;
+  --card: #e0e0e0;
+  --card-foreground: #2d2d2d;
+  --popover: #e0e0e0;
+  --popover-foreground: #2d2d2d;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #d5d5d5;
+  --secondary-foreground: #2d2d2d;
+  --muted: #c8c8c8;
+  --muted-foreground: #6b6b6b;
+  --accent: #d5d5d5;
+  --accent-foreground: #2d2d2d;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #c0c0c0;
+  --input: #c0c0c0;
+  --ring: #6366f1;
+  --chart-1: #6366f1;
+  --chart-2: #22c55e;
+  --chart-3: #f59e0b;
+  --chart-4: #ec4899;
+  --chart-5: #06b6d4;
+  --sidebar: #d8d8d8;
+  --sidebar-foreground: #2d2d2d;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #d0d0d0;
+  --sidebar-accent-foreground: #2d2d2d;
+  --sidebar-border: #c0c0c0;
+  --sidebar-ring: #6366f1;
+}
+
+/* ============================================================
+   NIGHT THEME (Dark) — Neumorphism base: #1e1e24
+   ============================================================ */
+.dark {
+  /* Core Neumorphism tokens */
+  --neu-bg: #1e1e24;
+  --neu-shadow: 9px 9px 16px #131317, -9px -9px 16px #292931;
+  --neu-shadow-inset: inset 9px 9px 16px #131317, inset -9px -9px 16px #292931;
+  --neu-shadow-sm: 5px 5px 10px #131317, -5px -5px 10px #292931;
+  --neu-shadow-inset-sm: inset 5px 5px 10px #131317, inset -5px -5px 10px #292931;
+
+  /* shadcn/ui overrides adapted for #1e1e24 base */
+  --background: #1e1e24;
+  --foreground: #e0e0e0;
+  --card: #1e1e24;
+  --card-foreground: #e0e0e0;
+  --popover: #1e1e24;
+  --popover-foreground: #e0e0e0;
+  --primary: #818cf8;
+  --primary-foreground: #1e1e24;
+  --secondary: #2a2a32;
+  --secondary-foreground: #e0e0e0;
+  --muted: #2a2a32;
+  --muted-foreground: #8888a0;
+  --accent: #2a2a32;
+  --accent-foreground: #e0e0e0;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #2e2e38;
+  --input: #2e2e38;
+  --ring: #818cf8;
+  --chart-1: #818cf8;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
+  --chart-4: #f472b6;
+  --chart-5: #22d3ee;
+  --sidebar: #1a1a20;
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: #818cf8;
+  --sidebar-primary-foreground: #1e1e24;
+  --sidebar-accent: #2a2a32;
+  --sidebar-accent-foreground: #e0e0e0;
+  --sidebar-border: #2e2e38;
+  --sidebar-ring: #818cf8;
+}
+
+/* ============================================================
+   GOLDEN THEME — Metallic Gold Neumorphism (selectable)
+   Base: #D4AF37 | Highlight: #FFEAA7 | Shadow: #AA820A
+   Accent: #FFFDF3 | Text: #4A3500
+   Applied via .gold class on <html>. Overrides :root and .dark.
+   ============================================================ */
+.gold {
   /* Core Golden Neumorphism tokens */
   --neu-bg: #D4AF37;
   --neu-shadow: 9px 9px 16px #AA820A, -9px -9px 16px #FFEAA7;
@@ -110,56 +199,6 @@
   --sidebar-accent-foreground: #4A3500;
   --sidebar-border: #AA820A;
   --sidebar-ring: #AA820A;
-}
-
-/* ============================================================
-   DARK THEME — Deep Bronze Espresso Gold
-   Base: #2A1F0A (dark espresso bronze)
-   Highlight (top-left): #5C4516 (warm bronze glow)
-   Shadow (bottom-right): #0D0900 (near-black)
-   Accent: #D4AF37 (metallic gold)
-   ============================================================ */
-.dark {
-  /* Core Neumorphism tokens */
-  --neu-bg: #2A1F0A;
-  --neu-shadow: 9px 9px 16px #0D0900, -9px -9px 16px #5C4516;
-  --neu-shadow-inset: inset 9px 9px 16px #0D0900, inset -9px -9px 16px #5C4516;
-  --neu-shadow-sm: 5px 5px 10px #0D0900, -5px -5px 10px #5C4516;
-  --neu-shadow-inset-sm: inset 5px 5px 10px #0D0900, inset -5px -5px 10px #5C4516;
-
-  /* shadcn/ui overrides adapted for dark bronze base */
-  --background: #2A1F0A;
-  --foreground: #FFEAA7;
-  --card: #2A1F0A;
-  --card-foreground: #FFEAA7;
-  --popover: #2A1F0A;
-  --popover-foreground: #FFEAA7;
-  --primary: #D4AF37;
-  --primary-foreground: #2A1F0A;
-  --secondary: #3D2E10;
-  --secondary-foreground: #FFEAA7;
-  --muted: #3D2E10;
-  --muted-foreground: #B89530;
-  --accent: #3D2E10;
-  --accent-foreground: #FFEAA7;
-  --destructive: #DC2626;
-  --destructive-foreground: #FFFDF3;
-  --border: #5C4516;
-  --input: #3D2E10;
-  --ring: #D4AF37;
-  --chart-1: #D4AF37;
-  --chart-2: #FFEAA7;
-  --chart-3: #E5C158;
-  --chart-4: #AA820A;
-  --chart-5: #FFFDF3;
-  --sidebar: #1F1707;
-  --sidebar-foreground: #FFEAA7;
-  --sidebar-primary: #D4AF37;
-  --sidebar-primary-foreground: #2A1F0A;
-  --sidebar-accent: #3D2E10;
-  --sidebar-accent-foreground: #FFEAA7;
-  --sidebar-border: #5C4516;
-  --sidebar-ring: #D4AF37;
 }
 
 /* ============================================================
@@ -827,17 +866,24 @@
 @media (max-width: 640px) {
   /* Reduce shadow intensity on small screens for cleaner look */
   :root {
+    --neu-shadow: 6px 6px 12px #bebebe, -6px -6px 12px #ffffff;
+    --neu-shadow-inset: inset 6px 6px 12px #bebebe, inset -6px -6px 12px #ffffff;
+    --neu-shadow-sm: 3px 3px 6px #bebebe, -3px -3px 6px #ffffff;
+    --neu-shadow-inset-sm: inset 3px 3px 6px #bebebe, inset -3px -3px 6px #ffffff;
+  }
+
+  .dark {
+    --neu-shadow: 6px 6px 12px #131317, -6px -6px 12px #292931;
+    --neu-shadow-inset: inset 6px 6px 12px #131317, inset -6px -6px 12px #292931;
+    --neu-shadow-sm: 3px 3px 6px #131317, -3px -3px 6px #292931;
+    --neu-shadow-inset-sm: inset 3px 3px 6px #131317, inset -3px -3px 6px #292931;
+  }
+
+  .gold {
     --neu-shadow: 6px 6px 12px #AA820A, -6px -6px 12px #FFEAA7;
     --neu-shadow-inset: inset 6px 6px 12px #AA820A, inset -6px -6px 12px #FFEAA7;
     --neu-shadow-sm: 3px 3px 6px #AA820A, -3px -3px 6px #FFEAA7;
     --neu-shadow-inset-sm: inset 3px 3px 6px #AA820A, inset -3px -3px 6px #FFEAA7;
-  }
-
-  .dark {
-    --neu-shadow: 6px 6px 12px #0D0900, -6px -6px 12px #5C4516;
-    --neu-shadow-inset: inset 6px 6px 12px #0D0900, inset -6px -6px 12px #5C4516;
-    --neu-shadow-sm: 3px 3px 6px #0D0900, -3px -3px 6px #5C4516;
-    --neu-shadow-inset-sm: inset 3px 3px 6px #0D0900, inset -3px -3px 6px #5C4516;
   }
 
   .neu-card,

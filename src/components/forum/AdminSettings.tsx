@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/lib/store';
+import type { ThemeMode } from '@/lib/store';
 import {
   Settings,
   ArrowLeft,
@@ -12,6 +13,10 @@ import {
   Globe,
   Lock,
   Cloud,
+  Palette,
+  Sun,
+  Moon,
+  Check,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -27,7 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 /* ------------------------------------------------------------------ */
 
 export default function AdminSettings() {
-  const { currentUser, isAdmin, navigateTo, setSettings } = useAppStore();
+  const { currentUser, isAdmin, navigateTo, setSettings, themeMode, setThemeMode } = useAppStore();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -350,6 +355,53 @@ export default function AdminSettings() {
               <span className="text-xs text-muted-foreground">{faviconUrl}</span>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Appearance / Theme Selector */}
+      <div className="neu-card p-6 space-y-5">
+        <div className="flex items-center gap-2">
+          <Palette className="size-5 text-primary" />
+          <h2 className="text-lg font-semibold">Appearance</h2>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Choose the visual theme for the forum. The selection is stored locally
+          on this device.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {([
+            { mode: 'light', label: 'Day', desc: 'Soft grey neumorphism', icon: Sun, swatch: '#e0e0e0' },
+            { mode: 'dark', label: 'Night', desc: 'Dark slate neumorphism', icon: Moon, swatch: '#1e1e24' },
+            { mode: 'gold', label: 'Golden', desc: 'Metallic gold luxury', icon: Palette, swatch: '#D4AF37' },
+          ] as { mode: ThemeMode; label: string; desc: string; icon: typeof Sun; swatch: string }[]).map((opt) => {
+            const Icon = opt.icon;
+            const active = themeMode === opt.mode;
+            return (
+              <button
+                key={opt.mode}
+                onClick={() => {
+                  setThemeMode(opt.mode);
+                  toast({ title: 'Theme Updated', description: `Switched to ${opt.label} mode` });
+                }}
+                className={`neu-btn p-4 flex flex-col items-start gap-2 text-left transition-all ${
+                  active ? 'ring-2 ring-primary' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2 w-full">
+                  <span
+                    className="size-8 rounded-full flex items-center justify-center border border-border/40"
+                    style={{ backgroundColor: opt.swatch }}
+                  >
+                    <Icon className="size-4 text-foreground" style={{ color: opt.mode === 'dark' ? '#e0e0e0' : opt.mode === 'gold' ? '#4A3500' : '#6b6b6b' }} />
+                  </span>
+                  <span className="text-sm font-semibold flex-1">{opt.label}</span>
+                  {active && <Check className="size-4 text-primary" />}
+                </div>
+                <span className="text-xs text-muted-foreground">{opt.desc}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
