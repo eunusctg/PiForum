@@ -53,3 +53,5 @@ server.log
 # Skills directory
 /skills/.nextauth_secret
 opennext-build.log
+.open-next/
+tool-results/
