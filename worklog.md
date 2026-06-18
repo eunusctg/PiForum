@@ -87,3 +87,48 @@ Stage Summary:
 - Theme selector also available in Admin Settings → Appearance section
 - Selection persisted in localStorage (piforum_theme) and survives reloads
 - Original day/night aesthetics fully restored; golden is purely opt-in
+
+---
+Task ID: 4
+Agent: Main
+Task: Restore previous deep bronze dark theme & repolish all three themes
+
+Work Log:
+- Restored Night theme to deep bronze espresso gold palette:
+  - Base #2A1F0A, highlight #5C4516, shadow #0D0900, accent #D4AF37 (gold)
+  - Text #FFEAA7 (cream) on bronze for ~12:1 AAA contrast
+  - Card surface #2E230B (slightly lifted), popover #32260E
+- Repolished Day theme (soft grey):
+  - Base shifted to #e6e6e8 for cleaner extrusion
+  - Deeper dual-shadows (#c2c2c5 / #ffffff), new --neu-shadow-lg for elevated hover
+  - Text #1f2937 (slate-800) for crisper contrast on light surface
+  - Card #e9e9eb, popover #ececee (subtle layering)
+- Repolished Golden theme (metallic gold):
+  - Deeper bronze drop shadow #9C760A, brighter champagne top-gloss #FFEFB8
+  - Text #3D2D00 (deeper espresso) for stronger contrast on gold
+  - Card #D8B43C (slightly lifted gold), popover #DBB741
+  - New --neu-shadow-lg #876400 / #FFF5D0 for dramatic hover elevation
+- Added --neu-shadow-lg token to all 3 themes + mobile responsive variants
+- Polished neumorphism utilities:
+  - .neu-card: 18px radius, cubic-bezier transitions, hover lifts -2px with shadow-lg
+  - .neu-btn: smoother 0.25s cubic-bezier, color transition added
+  - .neu-input: placeholder styling, refined focus ring
+  - .neu-circle: hover lift -2px, longer 0.3s transitions
+  - .neu-bump: new hover state with shadow-lg elevation
+  - .neu-badge: theme-aware etched text shadows (light/dark/gold variants)
+  - .neu-thread-title: theme-aware etching, hover color shifts to primary
+  - .neu-badge-active: uses --primary fill (theme-aware, not hardcoded gold)
+  - .neu-fab: hover lift -4px with shadow-lg, active state fills with primary
+- Theme-aware dividers: separate groove shadows for :root, .dark, .gold
+- Removed duplicate/orphaned .neu-thread-title definitions (consolidated into one theme-aware block)
+- Updated mobile responsive (@media max-width:640px) shadows for all 3 themes with --neu-shadow-lg
+- Browser-verified all 3 themes: Day (light), Night (dark/deep bronze), Golden (light gold)
+- Verified thread list renders correctly in each theme
+- All API routes 200, ESLint passes with zero errors
+
+Stage Summary:
+- Night theme restored to luxurious deep bronze espresso (#2A1F0A) with gold accents
+- All 3 themes repolished with: deeper shadows, new elevation tier (--neu-shadow-lg),
+  cubic-bezier transitions, theme-aware etched text, and consistent 18px card radii
+- Theme switching works via header dropdown (Day/Night/Golden) with localStorage persistence
+- All utilities (cards, buttons, inputs, badges, FAB, circles, dividers) are fully theme-aware
