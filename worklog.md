@@ -980,3 +980,37 @@ Stage Summary:
     https://piforum.eu.cc
 - ⚠️ Note: DNS propagation for the apex custom domains may take 1-5 minutes; users may see intermittent 522/1043 until SSL certs finish issuing (usually <2 min)
 - ⏳ Remaining (optional, for full feature functionality): set ZAI_API_KEY, SMTP_* secrets via `wrangler secret put <NAME>` when those features are needed
+
+---
+Task ID: DB-FIX
+Agent: Main (Database Connection fix)
+Task: Fix the InstallWizard 'Database Connection — SQLite / Prisma' red check on Cloudflare Workers
+
+Work Log:
+- Diagnosed: original src/lib/db.ts used plain PrismaClient() with no adapter, which tries to open a local SQLite file (no filesystem on Workers)
+- Diagnosed: Prisma 6.x with adapter still loads the Rust query engine for query planning; the Rust engine calls fs.readdir to detect OpenSSL, which is not implemented on Cloudflare Workers (unenv shim) → '[unenv] fs.readdir is not implemented yet!'
+- Diagnosed: Prisma 7.x uses WASM-only engine (no Rust, no fs.readdir) but the default index.js entry requires a 4.5 MiB base64-encoded WASM file, pushing the Worker bundle to 3.4 MiB compressed (over the 3 MiB free-plan limit)
+- Diagnosed: Prisma 7's edge.js entry uses @prisma/client/runtime/wasm-compiler-edge.js instead — no base64 file needed
+
+Fixes applied:
+1. Upgraded @prisma/client + @prisma/adapter-d1 to 7.8.0 (WASM-only engine)
+2. prisma/schema.prisma: removed 'url' (Prisma 7 moved it to prisma.config.ts; not needed for client-only usage with D1 adapter)
+3. scripts/cleanup-prisma-engines.mjs (new): deletes unused per-database WASM engines, native Rust binary, replaces .prisma/client/index.js with edge.js content, deletes the now-orphaned 4.5 MiB base64 WASM file
+4. scripts/patch-unenv-fs.mjs (new): patches unenv's fs.readdir to throw ENOENT (instead of 'not implemented') so Prisma's platform detection skips OpenSSL gracefully
+5. package.json: build script now runs `prisma generate && node scripts/cleanup-prisma-engines.mjs && next build`; postinstall runs `prisma generate + patch-unenv-fs`
+6. src/lib/db.ts: rewritten to detect Workers runtime, dynamic-import @prisma/client + @prisma/adapter-d1 + @opennextjs/cloudflare, wrap env.DB with PrismaD1. Exposes 'db' as a recursive Proxy so call sites stay unchanged (`await db.user.findMany()`)
+7. src/lib/cf-fs-stub.ts (new): runtime fs stub installer (legacy backup)
+8. next.config.ts: calls initOpenNextCloudflareForDev() for local dev
+9. open-next.config.ts: explicitly set cloudflare.useWorkerdCondition = true
+
+Deployed via direct wrangler upload (Cloudflare Build was failing silently on bundle size):
+- Worker Version 69c455c8-c956-4427-864b-03e60e40c040 deployed at 100% traffic
+- Bundle: 13.18 MiB uncompressed / 2.93 MiB compressed (under 3 MiB free-plan limit)
+
+Stage Summary:
+- ✅ /api/install/check returns {success:true,data:{installed:false}} — Database Connection check now PASSES
+- ✅ Home page returns HTTP 200 on piforum.eu.cc
+- ✅ Worker bundle fits under Cloudflare's 3 MiB free-plan compressed limit
+- ✅ All fixes pushed to origin/master (commits 8fbe667 + efa26b9) so Cloudflare Build will pick them up on next push
+- ⚠️ piforum.eu.org returns HTTP 403 to curl — that's Cloudflare Bot Fight Mode on that zone; user can access from a browser
+- ⚠️ The Cloudflare Build was failing silently because of the bundle size limit. Until the user upgrades to Workers Paid plan OR keeps using the direct wrangler upload path, the CF Build will keep failing. The current live deployment was done via direct wrangler upload from the sandbox.
