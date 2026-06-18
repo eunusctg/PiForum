@@ -642,3 +642,23 @@ Stage Summary:
 - 13 new API routes, 20 new admin components, 21 new App Router pages, 4 new backend route handlers (sitemap/robots/manifest/sw), dynamic generateMetadata, PWA registration, JSON-LD + analytics injection.
 - All flaws honestly documented via FlawsCallout in each system's admin panel (SMTP-fallback verification, no rate limits, not-yet-wired OAuth/2FA/Akismet/reCAPTCHA, sitemap scaling limits, PWA offline-content limits, etc.).
 - Files created: ~45 new files. Files modified: store.ts, types.ts, api-helpers.ts, layout.tsx, page.tsx, ForumShell.tsx, Header.tsx, AuthModal.tsx, auth login/register/verify routes, profile/members/users routes, prisma/schema.prisma.
+
+---
+Task ID: FIX-logoUrl
+Agent: Main
+Task: Fix runtime ReferenceError "logoUrl is not defined" in Header.tsx
+
+Work Log:
+- Investigated Header.tsx: confirmed `logoUrl` IS declared at line 167 (`const logoUrl = getSetting("logo_url", "");`) and used at line 279 (`{logoUrl ? (`), both in the same function scope — code was correct
+- Noted the error's reported line (276) didn't even reference `logoUrl` (it's at line 279), confirming a source-map mismatch from a stale Turbopack HMR module
+- Diagnosed root cause: Turbopack HMR served an intermediate version of Header.tsx where the `logoUrl` usage was added but the declaration hadn't been picked up yet (stale module cache)
+- Cleared `.next/cache` directory to force fresh recompile
+- Restarted dev server using Python subprocess with `start_new_session=True` for robust process detachment (previous `nohup`/`setsid`/`disown` approaches failed — sandbox killed process group when Bash command returned)
+- Verified with Agent Browser: page loads with title "PiForum — PiForum", zero page errors, Header renders correctly with logo, search, navigation, theme selector, and auth buttons, forum home displays all categories and forums
+
+Stage Summary:
+- `logoUrl is not defined` error was NOT a code bug — it was a stale Turbopack HMR module cache issue
+- Fix: cleared `.next/cache` + restarted dev server fresh
+- Header.tsx code was already correct (logoUrl declared at line 167, used at line 279)
+- Dev server now runs persistently via Python subprocess start_new_session=True (PID tracked in dev.pid)
+- Browser-verified: full forum renders with header, nav, categories, forums — zero runtime errors
