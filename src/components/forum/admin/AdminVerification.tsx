@@ -76,7 +76,11 @@ interface SimpleUser {
   displayName: string | null;
   avatarUrl: string | null;
   isVerified: boolean;
+  verifiedAt: string | null;
   role: number;
+  postCount: number;
+  threadCount: number;
+  reputation: number;
   createdAt: string;
 }
 
@@ -92,10 +96,46 @@ export default function AdminVerification() {
   const { values, setValue, setMany, save, loading, error, saving, refetch, userIsAdmin, currentUser } = useAdminSettings();
   const { toast } = useToast();
   const [users, setUsers] = useState<SimpleUser[]>([]);
+  const [allUsers, setAllUsers] = useState<SimpleUser[]>([]);
   const [filter, setFilter] = useState<'unverified' | 'all'>('unverified');
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
+  const [verifiedSearch, setVerifiedSearch] = useState('');
   const [stats, setStats] = useState<VerificationStats>({ total: 0, verified: 0, unverified: 0, pending: 0, rate: 0 });
+
+  /* All currently-verified users, optionally filtered by the directory search box. */
+  const verifiedUsers = allUsers.filter((u) => u.isVerified);
+  const filteredVerified = verifiedUsers.filter((u) => {
+    if (!verifiedSearch.trim()) return true;
+    const q = verifiedSearch.toLowerCase();
+    return (
+      u.username.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      (u.displayName || '').toLowerCase().includes(q)
+    );
+  });
+
+  /* Human-readable "verified X ago" / "verified on Y" label. */
+  const formatVerifiedAt = (iso: string | null): string => {
+    if (!iso) return 'Verified';
+    try {
+      const d = new Date(iso);
+      const diff = Date.now() - d.getTime();
+      const days = Math.floor(diff / 86400000);
+      if (days < 1) {
+        const hrs = Math.floor(diff / 3600000);
+        if (hrs < 1) {
+          const mins = Math.floor(diff / 60000);
+          return mins < 1 ? 'Verified just now' : `Verified ${mins}m ago`;
+        }
+        return `Verified ${hrs}h ago`;
+      }
+      if (days < 30) return `Verified ${days}d ago`;
+      return `Verified on ${d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}`;
+    } catch {
+      return 'Verified';
+    }
+  };
 
   /* Default values for every numeric/text key. When a key has never been
      saved, the form shows these defaults — but on save the underlying value
@@ -155,16 +195,22 @@ export default function AdminVerification() {
       });
       const data = await res.json();
       if (data.success) {
-        let list: SimpleUser[] = (data.data?.users || data.data || []).map((u: any) => ({
+        const list: SimpleUser[] = (data.data?.users || data.data || []).map((u: any) => ({
           id: u.id,
           username: u.username,
           email: u.email,
           displayName: u.displayName,
           avatarUrl: u.avatarUrl,
           isVerified: u.isVerified ?? false,
+          verifiedAt: u.verifiedAt ?? null,
           role: u.role ?? 0,
+          postCount: u.postCount ?? 0,
+          threadCount: u.threadCount ?? 0,
+          reputation: u.reputation ?? 0,
           createdAt: u.createdAt,
         }));
+        // Keep the full list for the Verified Users Directory
+        setAllUsers(list);
         // Derive stats from the full list before filtering
         const total = list.length;
         const verified = list.filter((u) => u.isVerified).length;
@@ -175,8 +221,9 @@ export default function AdminVerification() {
           pending: 0,
           rate: total ? Math.round((verified / total) * 100) : 0,
         });
-        if (filter === 'unverified') list = list.filter((u) => !u.isVerified);
-        setUsers(list);
+        let display = list;
+        if (filter === 'unverified') display = display.filter((u) => !u.isVerified);
+        setUsers(display);
       }
     } catch {
       // non-critical
@@ -204,7 +251,20 @@ export default function AdminVerification() {
           title: unverify ? 'Verification Revoked' : 'User Verified',
           description: unverify ? 'The user is no longer verified.' : 'The user is now verified.',
         });
+        // Update both the pending list and the full directory list in-place
         setUsers((prev) => prev.filter((u) => u.id !== userId));
+        setAllUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, isVerified: !unverify, verifiedAt: unverify ? null : new Date().toISOString() } : u)));
+        // Refresh stats locally
+        setStats((prev) => {
+          const delta = unverify ? -1 : 1;
+          const newVerified = Math.max(0, prev.verified + delta);
+          return {
+            ...prev,
+            verified: newVerified,
+            unverified: prev.total - newVerified,
+            rate: prev.total ? Math.round((newVerified / prev.total) * 100) : 0,
+          };
+        });
       } else {
         toast({ title: 'Action Failed', description: data.error || 'Unknown error', variant: 'destructive' });
       }
@@ -296,6 +356,107 @@ export default function AdminVerification() {
           <div className="text-2xl font-bold text-primary">{stats.rate}%</div>
         </div>
       </div>
+
+      {/* ============ Verified Users Directory ============ */}
+      <div className="neu-card p-6 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <SectionHeader
+            icon={Award}
+            title="Verified Users Directory"
+            description="All users who currently hold the verified badge. Search, inspect, or revoke verification."
+          />
+          <div className="flex items-center gap-2">
+            <div className="neu-well px-3 py-1.5 flex items-center gap-1.5 text-xs font-semibold">
+              <VerifiedIcon size="sm" />
+              <span>{verifiedUsers.length} verified</span>
+            </div>
+            <button onClick={fetchUsers} className="neu-btn px-3 py-1.5 text-xs flex items-center gap-1.5">
+              <RefreshCw className="size-3.5" /> Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Search box */}
+        <div className="relative">
+          <Filter className="size-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Input
+            value={verifiedSearch}
+            onChange={(e) => setVerifiedSearch(e.target.value)}
+            placeholder="Search verified users by name, username, or email…"
+            className="neu-input pl-9 py-2.5"
+          />
+        </div>
+
+        {loadingUsers ? (
+          <div className="flex items-center justify-center py-10"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
+        ) : filteredVerified.length === 0 ? (
+          <div className="neu-card-inset p-8 text-center space-y-2">
+            <div className="flex justify-center"><div className="neu-circle p-3 opacity-60"><VerifiedIcon size="lg" variant="mono" /></div></div>
+            <div className="text-sm font-medium">
+              {verifiedUsers.length === 0 ? 'No verified users yet' : 'No matches for your search'}
+            </div>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              {verifiedUsers.length === 0
+                ? 'Verify users from the “Pending Verifications” list at the bottom of this page to populate this directory.'
+                : 'Try a different name, username, or email.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[28rem] overflow-y-auto custom-scroll pr-1">
+            {filteredVerified.map((u) => (
+              <div key={u.id} className="neu-card-inset p-4 space-y-3 group hover:shadow-md transition-shadow">
+                <div className="flex items-start gap-3">
+                  <div className="relative shrink-0">
+                    <Avatar className="size-11 neu-circle">
+                      {u.avatarUrl ? <AvatarImage src={u.avatarUrl} alt={u.username} /> : null}
+                      <AvatarFallback className="text-xs font-semibold">{u.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    {/* Stunning verified badge pinned to the avatar corner */}
+                    <span className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 shadow-sm">
+                      <VerifiedIcon size="md" />
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold truncate flex items-center gap-1.5">
+                      {u.displayName || u.username}
+                      {u.role >= 2 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold shrink-0">
+                          {u.role >= 3 ? 'SUPER' : 'STAFF'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">@{u.username}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Mail className="size-3 shrink-0" />
+                  <span className="truncate">{u.email}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                    <Clock className="size-3" />
+                    {formatVerifiedAt(u.verifiedAt)}
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span title="Threads"><span className="font-semibold text-foreground">{u.threadCount}</span> t</span>
+                    <span title="Posts"><span className="font-semibold text-foreground">{u.postCount}</span> p</span>
+                    <span title="Reputation"><span className="font-semibold text-foreground">{u.reputation}</span> rep</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleVerify(u.id, true)}
+                  disabled={acting === u.id}
+                  className="neu-btn w-full px-3 py-1.5 text-xs flex items-center justify-center gap-1.5 text-destructive hover:text-destructive"
+                >
+                  {acting === u.id ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />}
+                  Revoke Verification
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
 
       {/* ============ Email Verification ============ */}
       <div className="neu-card p-6 space-y-5">
