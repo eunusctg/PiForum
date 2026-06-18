@@ -1,0 +1,581 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback } from 'react';
+     4→import { useAppStore } from '@/lib/store';
+     5→import {
+     6→  BadgeCheck,
+     7→  RefreshCw,
+     8→  Check,
+     9→  X,
+    10→  Mail,
+    11→  Loader2,
+    12→  ShieldAlert,
+    13→  Phone,
+    14→  IdCard,
+    15→  Clock,
+    16→  Gauge,
+    17→  Award,
+    18→  Filter,
+    19→  Users as UsersIcon,
+    20→  Activity,
+    21→  KeyRound,
+    22→} from 'lucide-react';
+    23→import { Input } from '@/components/ui/input';
+    24→import { Label } from '@/components/ui/label';
+    25→import { Switch } from '@/components/ui/switch';
+    26→import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+    27→import {
+    28→  useAdminSettings,
+    29→  AdminGate,
+    30→  SettingsLoadingSkeleton,
+    31→  SettingsError,
+    32→  SaveBar,
+    33→  SectionHeader,
+    34→  FlawsCallout,
+    35→} from '@/components/forum/admin/shared';
+    36→import { useToast } from '@/hooks/use-toast';
+    37→import VerifiedIcon from '@/components/forum/VerifiedIcon';
+    38→import VerifiedBadge from '@/components/forum/VerifiedBadge';
+    39→
+    40→/* All setting keys managed by this panel — saved atomically via /api/settings. */
+    41→const KEYS = [
+    42→  // Email verification
+    43→  'require_email_verification',
+    44→  'verification_expiry_hours',
+    45→  'verification_email_subject',
+    46→  'verification_email_body',
+    47→  'admin_auto_verify_staff',
+    48→  // Resend & rate limiting
+    49→  'verification_resend_cooldown_minutes',
+    50→  'verification_max_resends',
+    51→  // Phone / OTP verification
+    52→  'enable_phone_verification',
+    53→  'phone_otp_length',
+    54→  'phone_otp_expiry_minutes',
+    55→  'phone_otp_provider',
+    56→  // ID / document verification
+    57→  'enable_id_verification',
+    58→  'id_allowed_types',
+    59→  'id_review_mode',
+    60→  // Verified badge
+    61→  'verified_badge_enabled',
+    62→  'verified_badge_text',
+    63→  'verified_badge_color',
+    64→  // Action requirements (which actions require a verified account)
+    65→  'require_verified_to_post',
+    66→  'require_verified_to_thread',
+    67→  'require_verified_to_vote',
+    68→  'require_verified_to_message',
+    69→  'require_verified_to_link',
+    70→];
+    71→
+    72→interface SimpleUser {
+    73→  id: string;
+    74→  username: string;
+    75→  email: string;
+    76→  displayName: string | null;
+    77→  avatarUrl: string | null;
+    78→  isVerified: boolean;
+    79→  role: number;
+    80→  createdAt: string;
+    81→}
+    82→
+    83→interface VerificationStats {
+    84→  total: number;
+    85→  verified: number;
+    86→  unverified: number;
+    87→  pending: number;
+    88→  rate: number;
+    89→}
+    90→
+    91→export default function AdminVerification() {
+    92→  const { values, setValue, setMany, save, loading, error, saving, refetch, userIsAdmin, currentUser } = useAdminSettings();
+    93→  const { toast } = useToast();
+    94→  const [users, setUsers] = useState<SimpleUser[]>([]);
+    95→  const [filter, setFilter] = useState<'unverified' | 'all'>('unverified');
+    96→  const [loadingUsers, setLoadingUsers] = useState(false);
+    97→  const [acting, setActing] = useState<string | null>(null);
+    98→  const [stats, setStats] = useState<VerificationStats>({ total: 0, verified: 0, unverified: 0, pending: 0, rate: 0 });
+    99→
+   100→  /* Default values for every numeric/text key. When a key has never been
+   101→     saved, the form shows these defaults — but on save the underlying value
+   102→     is still empty. We merge these defaults into the values before saving so
+   103→     untouched fields persist as their displayed default rather than ''. */
+   104→  const DEFAULTS: Record<string, string> = {
+   105→    verification_expiry_hours: '24',
+   106→    verification_resend_cooldown_minutes: '5',
+   107→    verification_max_resends: '5',
+   108→    verification_email_subject: 'Verify your email',
+   109→    verification_email_body: 'Click the link below to verify your email: {{verify_link}}',
+   110→    phone_otp_length: '6',
+   111→    phone_otp_expiry_minutes: '10',
+   112→    phone_otp_provider: 'none',
+   113→    id_allowed_types: 'passport,drivers_license,national_id',
+   114→    id_review_mode: 'manual',
+   115→    verified_badge_text: 'Verified',
+   116→    verified_badge_color: 'primary',
+   117→  };
+   118→
+   119→  const handleSave = useCallback(async () => {
+   120→    if (!currentUser) return;
+   121→    // Build the entries to save, filling empty values with their defaults so
+   122→    // the persisted value matches what the admin sees in the form.
+   123→    const entries = KEYS.map((k) => {
+   124→      const raw = values[k] ?? '';
+   125→      const val = raw === '' ? (DEFAULTS[k] ?? '') : raw;
+   126→      return { key: k, value: val };
+   127→    });
+   128→    try {
+   129→      const res = await fetch('/api/settings', {
+   130→        method: 'PUT',
+   131→        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.id },
+   132→        body: JSON.stringify({ settings: entries }),
+   133→      });
+   134→      const data = await res.json();
+   135→      if (data.success) {
+   136→        // Sync local values state with what we just saved (so defaults stick).
+   137→        const merged: Record<string, string> = { ...values };
+   138→        entries.forEach((e) => { merged[e.key] = e.value; });
+   139→        setMany(merged);
+   140→        toast({ title: 'Settings Saved', description: 'Verification settings have been applied.' });
+   141→      } else {
+   142→        toast({ title: 'Save Failed', description: data.error || 'Unknown error', variant: 'destructive' });
+   143→      }
+   144→    } catch {
+   145→      toast({ title: 'Save Failed', description: 'Network error', variant: 'destructive' });
+   146→    }
+   147→  }, [currentUser, values, toast, setMany]);
+   148→
+   149→  const fetchUsers = useCallback(async () => {
+   150→    if (!currentUser) return;
+   151→    try {
+   152→      setLoadingUsers(true);
+   153→      const res = await fetch('/api/users?limit=100', {
+   154→        headers: { 'x-user-id': currentUser.id },
+   155→      });
+   156→      const data = await res.json();
+   157→      if (data.success) {
+   158→        let list: SimpleUser[] = (data.data?.users || data.data || []).map((u: any) => ({
+   159→          id: u.id,
+   160→          username: u.username,
+   161→          email: u.email,
+   162→          displayName: u.displayName,
+   163→          avatarUrl: u.avatarUrl,
+   164→          isVerified: u.isVerified ?? false,
+   165→          role: u.role ?? 0,
+   166→          createdAt: u.createdAt,
+   167→        }));
+   168→        // Derive stats from the full list before filtering
+   169→        const total = list.length;
+   170→        const verified = list.filter((u) => u.isVerified).length;
+   171→        setStats({
+   172→          total,
+   173→          verified,
+   174→          unverified: total - verified,
+   175→          pending: 0,
+   176→          rate: total ? Math.round((verified / total) * 100) : 0,
+   177→        });
+   178→        if (filter === 'unverified') list = list.filter((u) => !u.isVerified);
+   179→        setUsers(list);
+   180→      }
+   181→    } catch {
+   182→      // non-critical
+   183→    } finally {
+   184→      setLoadingUsers(false);
+   185→    }
+   186→  }, [filter, currentUser]);
+   187→
+   188→  useEffect(() => {
+   189→    if (userIsAdmin) fetchUsers();
+   190→  }, [fetchUsers, userIsAdmin]);
+   191→
+   192→  const handleVerify = async (userId: string, unverify = false) => {
+   193→    if (!currentUser) return;
+   194→    try {
+   195→      setActing(userId);
+   196→      const res = await fetch('/api/admin/verify-user', {
+   197→        method: 'POST',
+   198→        headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.id },
+   199→        body: JSON.stringify({ userId, unverify }),
+   200→      });
+   201→      const data = await res.json();
+   202→      if (data.success) {
+   203→        toast({
+   204→          title: unverify ? 'Verification Revoked' : 'User Verified',
+   205→          description: unverify ? 'The user is no longer verified.' : 'The user is now verified.',
+   206→        });
+   207→        setUsers((prev) => prev.filter((u) => u.id !== userId));
+   208→      } else {
+   209→        toast({ title: 'Action Failed', description: data.error || 'Unknown error', variant: 'destructive' });
+   210→      }
+   211→    } catch {
+   212→      toast({ title: 'Action Failed', description: 'Network error', variant: 'destructive' });
+   213→    } finally {
+   214→      setActing(null);
+   215→    }
+   216→  };
+   217→
+   218→  const handleBulkVerify = async () => {
+   219→    if (!currentUser) return;
+   220→    const unverified = users.filter((u) => !u.isVerified);
+   221→    if (unverified.length === 0) {
+   222→      toast({ title: 'Nothing to do', description: 'No unverified users in the current list.' });
+   223→      return;
+   224→    }
+   225→    try {
+   226→      setActing('bulk');
+   227→      let ok = 0;
+   228→      for (const u of unverified) {
+   229→        const res = await fetch('/api/admin/verify-user', {
+   230→          method: 'POST',
+   231→          headers: { 'Content-Type': 'application/json', 'x-user-id': currentUser.id },
+   232→          body: JSON.stringify({ userId: u.id }),
+   233→        });
+   234→        if (res.ok) ok++;
+   235→      }
+   236→      toast({
+   237→        title: 'Bulk Verification Complete',
+   238→        description: `Verified ${ok} of ${unverified.length} users.`,
+   239→      });
+   240→      fetchUsers();
+   241→    } catch {
+   242→      toast({ title: 'Bulk Action Failed', description: 'Network error', variant: 'destructive' });
+   243→    } finally {
+   244→      setActing(null);
+   245→    }
+   246→  };
+   247→
+   248→  if (!userIsAdmin) return <AdminGate />;
+   249→  if (loading) return <SettingsLoadingSkeleton />;
+   250→  if (error) return <SettingsError message={error} onRetry={refetch} />;
+   251→
+   252→  const parseBool = (k: string, fallback: boolean) => (values[k] === undefined ? fallback : values[k] === 'true');
+   253→  const v = (k: string, def = '') => values[k] ?? def;
+   254→  const num = (k: string, def: number) => {
+   255→    const n = parseInt(v(k, String(def)), 10);
+   256→    return Number.isFinite(n) ? n : def;
+   257→  };
+   258→
+   259→  return (
+   260→    <div className="space-y-5">
+   261→      <div className="flex items-center gap-3">
+   262→        <div className="neu-circle p-2.5"><VerifiedIcon size="lg" /></div>
+   263→        <div>
+   264→          <h1 className="text-xl font-bold">User Verification System</h1>
+   265→          <p className="text-xs text-muted-foreground">Email, phone (OTP), ID review, verified badges & action requirements.</p>
+   266→        </div>
+   267→      </div>
+   268→
+   269→      <FlawsCallout
+   270→        flaws={[
+   271→          'When SMTP is not configured, verification links are surfaced directly in the UI instead of being emailed — this defeats the purpose of email verification (anyone with the link can verify).',
+   272→          'Phone OTP verification in this build is simulated: the OTP is returned in the API response and shown in the UI. A real SMS provider (e.g. Twilio) is required for genuine phone verification.',
+   273→          'ID/document verification is a manual admin-review queue only. There is no automated identity provider (Persona, Stripe Identity, Onfido) integration — the admin must visually inspect and approve.',
+   274→          'There is no rate limit on resend requests enforced server-side in this build (the cooldown here is advisory); a malicious client can bypass it. Enforce limits at the API or edge in production.',
+   275→          'Admin manual verification bypasses email entirely and is logged but not reversible from the user side.',
+   276→          'Verified badges are cosmetic and do not cryptographically prove identity — they can be spoofed in screenshots.',
+   277→        ]}
+   278→      />
+   279→
+   280→      {/* Stats overview */}
+   281→      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+   282→        <div className="neu-card p-4 space-y-1">
+   283→          <div className="flex items-center gap-2 text-xs text-muted-foreground"><UsersIcon className="size-3.5" /> Total Users</div>
+   284→          <div className="text-2xl font-bold">{stats.total}</div>
+   285→        </div>
+   286→        <div className="neu-card p-4 space-y-1">
+   287→          <div className="flex items-center gap-2 text-xs text-muted-foreground"><BadgeCheck className="size-3.5 text-emerald-500" /> Verified</div>
+   288→          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.verified}</div>
+   289→        </div>
+   290→        <div className="neu-card p-4 space-y-1">
+   291→          <div className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldAlert className="size-3.5 text-amber-500" /> Unverified</div>
+   292→          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.unverified}</div>
+   293→        </div>
+   294→        <div className="neu-card p-4 space-y-1">
+   295→          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Activity className="size-3.5 text-primary" /> Verification Rate</div>
+   296→          <div className="text-2xl font-bold text-primary">{stats.rate}%</div>
+   297→        </div>
+   298→      </div>
+   299→
+   300→      {/* ============ Email Verification ============ */}
+   301→      <div className="neu-card p-6 space-y-5">
+   302→        <SectionHeader icon={Mail} title="Email Verification" description="Require new users to verify their email address before participating." />
+   303→        <div className="flex items-center justify-between gap-4 py-2">
+   304→          <div className="space-y-0.5">
+   305→            <Label>Require Email Verification</Label>
+   306→            <p className="text-xs text-muted-foreground">New users must verify their email before they can post.</p>
+   307→          </div>
+   308→          <Switch checked={parseBool('require_email_verification', false)} onCheckedChange={(c) => setValue('require_email_verification', String(c))} />
+   309→        </div>
+   310→        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   311→          <div className="space-y-2">
+   312→            <Label htmlFor="expiry" className="flex items-center gap-1.5"><Clock className="size-3.5" /> Link Expiry (hours)</Label>
+   313→            <Input id="expiry" type="number" min="1" value={v('verification_expiry_hours', '24')} onChange={(e) => setValue('verification_expiry_hours', e.target.value)} className="neu-input px-3 py-2.5" />
+   314→          </div>
+   315→          <div className="space-y-2">
+   316→            <Label htmlFor="cooldown" className="flex items-center gap-1.5"><Gauge className="size-3.5" /> Resend Cooldown (minutes)</Label>
+   317→            <Input id="cooldown" type="number" min="0" value={v('verification_resend_cooldown_minutes', '5')} onChange={(e) => setValue('verification_resend_cooldown_minutes', e.target.value)} className="neu-input px-3 py-2.5" />
+   318→            <p className="text-xs text-muted-foreground">0 = no cooldown (not recommended).</p>
+   319→          </div>
+   320→        </div>
+   321→        <div className="space-y-2">
+   322→          <Label htmlFor="maxresend">Max Resend Attempts (per pending window)</Label>
+   323→          <Input id="maxresend" type="number" min="1" value={v('verification_max_resends', '5')} onChange={(e) => setValue('verification_max_resends', e.target.value)} className="neu-input px-3 py-2.5" />
+   324→        </div>
+   325→        <div className="flex items-center justify-between gap-4 py-2">
+   326→          <div className="space-y-0.5">
+   327→            <Label>Auto-verify Staff</Label>
+   328→            <p className="text-xs text-muted-foreground">Automatically verify accounts created by admins for staff.</p>
+   329→          </div>
+   330→          <Switch checked={parseBool('admin_auto_verify_staff', false)} onCheckedChange={(c) => setValue('admin_auto_verify_staff', String(c))} />
+   331→        </div>
+   332→        <div className="space-y-2">
+   333→          <Label htmlFor="subject">Verification Email Subject</Label>
+   334→          <Input id="subject" value={v('verification_email_subject', 'Verify your email')} onChange={(e) => setValue('verification_email_subject', e.target.value)} className="neu-input px-3 py-2.5" />
+   335→        </div>
+   336→        <div className="space-y-2">
+   337→          <Label htmlFor="body">Verification Email Body</Label>
+   338→          <textarea
+   339→            id="body"
+   340→            value={v('verification_email_body', 'Click the link below to verify your email: {{verify_link}}')}
+   341→            onChange={(e) => setValue('verification_email_body', e.target.value)}
+   342→            className="neu-input px-3 py-2.5 min-h-[90px] resize-none w-full rounded-xl"
+   343→          />
+   344→          <p className="text-xs text-muted-foreground">Use <code className="font-mono">{'{{verify_link}}'}</code> as the placeholder for the verification URL.</p>
+   345→        </div>
+   346→      </div>
+   347→
+   348→      {/* ============ Phone / OTP Verification ============ */}
+   349→      <div className="neu-card p-6 space-y-5">
+   350→        <SectionHeader icon={Phone} title="Phone (OTP) Verification" description="Optional one-time-passcode verification via SMS. Requires an SMS provider." />
+   351→        <div className="flex items-center justify-between gap-4 py-2">
+   352→          <div className="space-y-0.5">
+   353→            <Label>Enable Phone Verification</Label>
+   354→            <p className="text-xs text-muted-foreground">Ask users to verify a phone number with an OTP code.</p>
+   355→          </div>
+   356→          <Switch checked={parseBool('enable_phone_verification', false)} onCheckedChange={(c) => setValue('enable_phone_verification', String(c))} />
+   357→        </div>
+   358→        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+   359→          <div className="space-y-2">
+   360→            <Label htmlFor="otplen">OTP Length (digits)</Label>
+   361→            <Input id="otplen" type="number" min="4" max="8" value={v('phone_otp_length', '6')} onChange={(e) => setValue('phone_otp_length', e.target.value)} className="neu-input px-3 py-2.5" />
+   362→          </div>
+   363→          <div className="space-y-2">
+   364→            <Label htmlFor="otpexp">OTP Expiry (minutes)</Label>
+   365→            <Input id="otpexp" type="number" min="1" value={v('phone_otp_expiry_minutes', '10')} onChange={(e) => setValue('phone_otp_expiry_minutes', e.target.value)} className="neu-input px-3 py-2.5" />
+   366→          </div>
+   367→          <div className="space-y-2">
+   368→            <Label htmlFor="otpprov">SMS Provider</Label>
+   369→            <select
+   370→              id="otpprov"
+   371→              value={v('phone_otp_provider', 'none')}
+   372→              onChange={(e) => setValue('phone_otp_provider', e.target.value)}
+   373→              className="neu-input px-3 py-2.5 w-full rounded-xl bg-transparent"
+   374→            >
+   375→              <option value="none">None (simulated)</option>
+   376→              <option value="twilio">Twilio</option>
+   377→              <option value="vonage">Vonage / Nexmo</option>
+   378→              <option value="messagebird">MessageBird</option>
+   379→            </select>
+   380→          </div>
+   381→        </div>
+   382→        <div className="neu-card-inset p-3 text-xs text-muted-foreground flex items-start gap-2">
+   383→          <ShieldAlert className="size-4 text-amber-500 shrink-0 mt-0.5" />
+   384→          <span>When the provider is <strong>None</strong>, OTPs are shown in the UI for development — never enable this on a live site. Enter provider credentials in <strong>System → Backup</strong> (or via environment variables) once a real provider is selected.</span>
+   385→        </div>
+   386→      </div>
+   387→
+   388→      {/* ============ ID / Document Verification ============ */}
+   389→      <div className="neu-card p-6 space-y-5">
+   390→        <SectionHeader icon={IdCard} title="ID / Document Verification" description="Optional manual review of government-issued ID for high-trust accounts." />
+   391→        <div className="flex items-center justify-between gap-4 py-2">
+   392→          <div className="space-y-0.5">
+   393→            <Label>Enable ID Verification</Label>
+   394→            <p className="text-xs text-muted-foreground">Allow users to submit an ID document for admin review.</p>
+   395→          </div>
+   396→          <Switch checked={parseBool('enable_id_verification', false)} onCheckedChange={(c) => setValue('enable_id_verification', String(c))} />
+   397→        </div>
+   398→        <div className="space-y-2">
+   399→          <Label htmlFor="idtypes">Allowed Document Types</Label>
+   400→          <Input id="idtypes" value={v('id_allowed_types', 'passport,drivers_license,national_id')} onChange={(e) => setValue('id_allowed_types', e.target.value)} className="neu-input px-3 py-2.5" />
+   401→          <p className="text-xs text-muted-foreground">Comma-separated list. Submitted documents appear in the pending queue below for manual approval.</p>
+   402→        </div>
+   403→        <div className="space-y-2">
+   404→          <Label htmlFor="idmode">Review Mode</Label>
+   405→          <select
+   406→            id="idmode"
+   407→            value={v('id_review_mode', 'manual')}
+   408→            onChange={(e) => setValue('id_review_mode', e.target.value)}
+   409→            className="neu-input px-3 py-2.5 w-full rounded-xl bg-transparent"
+   410→          >
+   411→            <option value="manual">Manual (admin reviews each)</option>
+   412→            <option value="auto_approve">Auto-approve on upload (not recommended)</option>
+   413→            <option value="disabled">Disabled — collect only, no review</option>
+   414→          </select>
+   415→        </div>
+   416→      </div>
+   417→
+   418→      {/* ============ Verified Badge ============ */}
+   419→      <div className="neu-card p-6 space-y-5">
+   420→        <SectionHeader icon={Award} title="Verified Badge" description="Stunning seal-style badge shown next to verified users' names across the site." />
+   421→        <div className="flex items-center justify-between gap-4 py-2">
+   422→          <div className="space-y-0.5">
+   423→            <Label>Show Verified Badge</Label>
+   424→            <p className="text-xs text-muted-foreground">Display a badge next to verified users' names.</p>
+   425→          </div>
+   426→          <Switch checked={parseBool('verified_badge_enabled', true)} onCheckedChange={(c) => setValue('verified_badge_enabled', String(c))} />
+   427→        </div>
+   428→
+   429→        {/* Live preview — shows the actual stunning badge in all sizes */}
+   430→        <div className="neu-card-inset p-5 space-y-4">
+   431→          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+   432→            <Award className="size-3.5" /> Live Preview
+   433→          </div>
+   434→          {/* Inline label preview (as it appears next to a username on profile pages) */}
+   435→          <div className="flex items-center gap-3 flex-wrap">
+   436→            <span className="text-sm font-medium">{v('verified_badge_text', 'Verified') === 'Verified' ? 'Ada Lovelace' : 'Sample User'}</span>
+   437→            <VerifiedBadge size="md" showLabel force />
+   438→          </div>
+   439→          {/* Icon-only sizes preview */}
+   440→          <div className="flex items-center gap-5 flex-wrap pt-1">
+   441→            <div className="flex flex-col items-center gap-1.5">
+   442→              <VerifiedIcon size="xs" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+   443→              <span className="text-[10px] text-muted-foreground">xs</span>
+   444→            </div>
+   445→            <div className="flex flex-col items-center gap-1.5">
+   446→              <VerifiedIcon size="sm" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+   447→              <span className="text-[10px] text-muted-foreground">sm</span>
+   448→            </div>
+   449→            <div className="flex flex-col items-center gap-1.5">
+   450→              <VerifiedIcon size="md" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+   451→              <span className="text-[10px] text-muted-foreground">md</span>
+   452→            </div>
+   453→            <div className="flex flex-col items-center gap-1.5">
+   454→              <VerifiedIcon size="lg" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+   455→              <span className="text-[10px] text-muted-foreground">lg (animated)</span>
+   456→            </div>
+   457→            <div className="flex flex-col items-center gap-1.5">
+   458→              <VerifiedIcon size="xl" variant={v('verified_badge_color', 'primary') === 'gold' ? 'gold' : v('verified_badge_color', 'primary') === 'green' ? 'emerald' : 'default'} />
+   459→              <span className="text-[10px] text-muted-foreground">xl (animated)</span>
+   460→            </div>
+   461→          </div>
+   462→          <p className="text-xs text-muted-foreground">The lg/xl sizes include a subtle shimmer sweep. Hover any badge to see the lift effect.</p>
+   463→        </div>
+   464→
+   465→        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   466→          <div className="space-y-2">
+   467→            <Label htmlFor="badgetext">Badge Text</Label>
+   468→            <Input id="badgetext" value={v('verified_badge_text', 'Verified')} onChange={(e) => setValue('verified_badge_text', e.target.value)} className="neu-input px-3 py-2.5" />
+   469→          </div>
+   470→          <div className="space-y-2">
+   471→            <Label htmlFor="badgecolor">Badge Color</Label>
+   472→            <select
+   473→              id="badgecolor"
+   474→              value={v('verified_badge_color', 'primary')}
+   475→              onChange={(e) => setValue('verified_badge_color', e.target.value)}
+   476→              className="neu-input px-3 py-2.5 w-full rounded-xl bg-transparent"
+   477→            >
+   478→              <option value="primary">Primary (theme)</option>
+   479→              <option value="blue">Blue</option>
+   480→              <option value="green">Green</option>
+   481→              <option value="gold">Gold</option>
+   482→              <option value="purple">Purple</option>
+   483→            </select>
+   484→          </div>
+   485→        </div>
+   486→      </div>
+   487→
+   488→      {/* ============ Action Requirements ============ */}
+   489→      <div className="neu-card p-6 space-y-5">
+   490→        <SectionHeader icon={KeyRound} title="Action Requirements" description="Require a verified account to perform specific actions. Toggles are advisory unless enforced in each API route." />
+   491→        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+   492→          {[
+   493→            { key: 'require_verified_to_post', label: 'Post replies', desc: 'Must be verified to reply in threads.' },
+   494→            { key: 'require_verified_to_thread', label: 'Create threads', desc: 'Must be verified to start new threads.' },
+   495→            { key: 'require_verified_to_vote', label: 'Vote on posts', desc: 'Must be verified to upvote/downvote.' },
+   496→            { key: 'require_verified_to_message', label: 'Send messages', desc: 'Must be verified to DM other users.' },
+   497→            { key: 'require_verified_to_link', label: 'Post links', desc: 'Must be verified to include URLs in posts.' },
+   498→          ].map((row) => (
+   499→            <div key={row.key} className="neu-card-inset p-3 flex items-center justify-between gap-3">
+   500→              <div className="space-y-0.5 min-w-0">
+   501→                <Label className="text-sm">{row.label}</Label>
+   502→                <p className="text-xs text-muted-foreground truncate">{row.desc}</p>
+   503→              </div>
+   504→              <Switch checked={parseBool(row.key, false)} onCheckedChange={(c) => setValue(row.key, String(c))} />
+   505→            </div>
+   506→          ))}
+   507→        </div>
+   508→      </div>
+   509→
+   510→      <SaveBar saving={saving} onSave={handleSave} saveLabel="Save Verification Settings" />
+   511→
+   512→      {/* ============ Pending Verifications ============ */}
+   513→      <div className="neu-card p-6 space-y-4">
+   514→        <div className="flex items-center justify-between flex-wrap gap-2">
+   515→          <SectionHeader icon={ShieldAlert} title="Pending Verifications" description="Manually verify users or revoke verification." />
+   516→          <div className="flex items-center gap-2">
+   517→            <div className="neu-well p-1 flex">
+   518→              <button onClick={() => setFilter('unverified')} className={`px-3 py-1.5 text-xs rounded-lg flex items-center gap-1 ${filter === 'unverified' ? 'neu-card-inset text-primary' : 'text-muted-foreground'}`}>
+   519→                <Filter className="size-3" /> Unverified
+   520→              </button>
+   521→              <button onClick={() => setFilter('all')} className={`px-3 py-1.5 text-xs rounded-lg ${filter === 'all' ? 'neu-card-inset text-primary' : 'text-muted-foreground'}`}>All</button>
+   522→            </div>
+   523→            <button onClick={fetchUsers} className="neu-btn px-3 py-1.5 text-xs flex items-center gap-1.5">
+   524→              <RefreshCw className="size-3.5" /> Refresh
+   525→            </button>
+   526→          </div>
+   527→        </div>
+   528→
+   529→        {filter === 'unverified' && users.length > 0 && (
+   530→          <button
+   531→            onClick={handleBulkVerify}
+   532→            disabled={acting === 'bulk'}
+   533→            className="neu-btn px-4 py-2 text-xs font-medium flex items-center gap-1.5 bg-primary text-primary-foreground"
+   534→          >
+   535→            {acting === 'bulk' ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+   536→            Verify All ({users.length})
+   537→          </button>
+   538→        )}
+   539→
+   540→        {loadingUsers ? (
+   541→          <div className="flex items-center justify-center py-8"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>
+   542→        ) : users.length === 0 ? (
+   543→          <div className="text-center text-sm text-muted-foreground py-8">
+   544→            {filter === 'unverified' ? 'No unverified users. Everyone is verified!' : 'No users found.'}
+   545→          </div>
+   546→        ) : (
+   547→          <div className="space-y-2 max-h-96 overflow-y-auto custom-scroll">
+   548→            {users.map((u) => (
+   549→              <div key={u.id} className="neu-card-inset p-3 flex items-center gap-3">
+   550→                <Avatar className="size-9 neu-circle">
+   551→                  {u.avatarUrl ? <AvatarImage src={u.avatarUrl} alt={u.username} /> : null}
+   552→                  <AvatarFallback className="text-xs font-semibold">{u.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+   553→                </Avatar>
+   554→                <div className="min-w-0 flex-1">
+   555→                  <div className="text-sm font-medium truncate flex items-center gap-1.5">
+   556→                    {u.displayName || u.username}
+   557→                    {u.isVerified && <VerifiedIcon size="sm" />}
+   558→                    {u.role >= 2 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">STAFF</span>}
+   559→                  </div>
+   560→                  <div className="text-xs text-muted-foreground truncate flex items-center gap-1"><Mail className="size-3" />{u.email}</div>
+   561→                </div>
+   562→                <div className="flex gap-1.5 shrink-0">
+   563→                  {u.isVerified ? (
+   564→                    <button onClick={() => handleVerify(u.id, true)} disabled={acting === u.id} className="neu-btn px-2.5 py-1.5 text-xs flex items-center gap-1">
+   565→                      {acting === u.id ? <Loader2 className="size-3 animate-spin" /> : <X className="size-3" />} Revoke
+   566→                    </button>
+   567→                  ) : (
+   568→                    <button onClick={() => handleVerify(u.id, false)} disabled={acting === u.id} className="neu-btn px-2.5 py-1.5 text-xs flex items-center gap-1 bg-primary text-primary-foreground">
+   569→                      {acting === u.id ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />} Verify
+   570→                    </button>
+   571→                  )}
+   572→                </div>
+   573→              </div>
+   574→            ))}
+   575→          </div>
+   576→        )}
+   577→      </div>
+   578→    </div>
+   579→  );
+   580→}
+   581→

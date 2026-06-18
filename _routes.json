@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/next-on-pages",
+  "version": 1,
+  "include": [
+    "/*"
+  ],
+  "exclude": [
+    "/.git/*",
+    "/node_modules/*",
+    "/.next/*",
+    "/db/*",
+    "/dev.log",
+    "/server.log",
+    "/prisma/*"
+  ]
+}

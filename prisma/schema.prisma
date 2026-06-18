@@ -1,0 +1,457 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model User {
+  id            String   @id @default(cuid())
+  firebaseUid   String   @unique
+  username      String   @unique
+  email         String   @unique
+  displayName   String?
+  avatarUrl     String?
+  bio           String?
+  signature     String?
+  location      String?
+  website       String?
+  role          Int      @default(0) // 0=User, 1=Moderator, 2=Admin, 3=SuperAdmin
+  banned        Boolean  @default(false)
+  banReason     String?
+  postCount     Int      @default(0)
+  threadCount   Int      @default(0)
+  reputation    Int      @default(0)
+  // Verification & account status
+  isVerified    Boolean  @default(false)   // email-verified
+  verifiedAt    DateTime?
+  verifyToken   String?                    // current pending email-verification token
+  verifyExpires DateTime?
+  twoFactorEnabled Boolean @default(false)
+  // TOTP (Time-based One-Time Password) — authenticator apps
+  // (Google Authenticator, Authy, 1Password, etc.)
+  totpSecret    String?                    // base32-encoded secret (encrypted at rest in prod)
+  totpEnabled   Boolean  @default(false)
+  totpBackupCodes String?                  // JSON array of hashed backup codes
+  // Phone number for WhatsApp/Telegram/SMS OTP verification
+  phoneNumber   String?
+  phoneVerified Boolean  @default(false)
+  rankId        String?                    // optional custom rank/title
+  lastSeenAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  rank          Rank?    @relation(fields: [rankId], references: [id])
+  threads       Thread[]
+  posts         Post[]
+  votes         PostVote[]
+  securityLogs  SecurityLog[]
+  otpChallenges OtpChallenge[]
+  notifications Notification[]
+  bookmarks     Bookmark[]
+  subscriptions Subscription[]
+  reports       Report[]    @relation("ReporterReports")    // reports filed by this user
+  reportedBy    Report[]    @relation("TargetUserReports")  // reports against this user
+  pollVotes     PollVote[]
+  userSettings  UserSetting[]
+  pageRevisions PageRevision[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  sortOrder   Int      @default(0)
+  accessLevel Int      @default(0) // 0=Public, 1=Registered, 2=Admin
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  forums      Forum[]
+}
+
+model Forum {
+  id          String   @id @default(cuid())
+  categoryId  String
+  name        String
+  description String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  lastPostAt  DateTime?
+  threadCount Int      @default(0)
+  postCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  threads     Thread[]
+  subscriptions Subscription[]
+}
+
+model Thread {
+  id         String   @id @default(cuid())
+  forumId    String
+  authorId   String
+  title      String
+  content    String
+  views      Int      @default(0)
+  pinned     Boolean  @default(false)
+  locked     Boolean  @default(false)
+  featured   Boolean  @default(false)
+  solved     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  forum      Forum    @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id])
+  posts      Post[]
+  tags       ThreadTag[]
+  bookmarks  Bookmark[]
+  subscriptions Subscription[]
+  poll       Poll?
+
+  @@index([forumId])
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model Post {
+  id         String   @id @default(cuid())
+  threadId   String
+  authorId   String
+  content    String
+  editedAt   DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id])
+  votes      PostVote[]
+  attachments Attachment[]
+
+  @@index([threadId])
+  @@index([authorId])
+}
+
+model PostVote {
+  id        String  @id @default(cuid())
+  postId    String
+  userId    String
+  voteType  Int     // 1=upvote, -1=downvote
+
+  post      Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  postId    String
+  url       String
+  filename  String
+  size      Int
+  mimeType  String
+  createdAt DateTime @default(now())
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model SecurityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  eventType String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+/* One-Time Password challenge record — used for WhatsApp, Telegram,
+   Email, and SMS OTP verification. Each challenge stores a hashed OTP
+   code, the delivery channel, expiry, and consumption state. */
+model OtpChallenge {
+  id         String   @id @default(cuid())
+  userId     String
+  channel    String                     // 'whatsapp' | 'telegram' | 'email' | 'sms'
+  target     String                     // phone number, email, or chat id
+  codeHash   String                     // SHA-256 hash of the OTP code
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int      @default(0)       // wrong-code attempts
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([codeHash])
+  @@index([expiresAt])
+}
+
+model InstallConfig {
+  id                String  @id @default(cuid())
+  installed         Boolean @default(false)
+  cloudflareAccountId String?
+  cloudflareD1Id    String?
+  cloudflareApiToken String?
+  cloudflareR2Bucket String?
+  cloudflareR2AccessKey String?
+  cloudflareR2SecretKey String?
+  firebaseApiKey    String?
+  firebaseAuthDomain String?
+  firebaseProjectId String?
+  firebaseStorageBucket String?
+  firebaseMessagingSenderId String?
+  firebaseAppId     String?
+  adminFirebaseUid  String?
+  forumName         String  @default("PiForum")
+  forumDescription  String  @default("A modern neumorphic forum")
+  // Database selection (persisted for documentation/deployment purposes)
+  // NOTE: The actual Prisma datasource provider is determined at build time by
+  // the `datasource db` block at the top of this file. Switching to MySQL at
+  // runtime is not possible — to deploy on MySQL the operator must set the
+  // `DATABASE_URL` env var to a MySQL connection string and change the
+  // `provider` to "mysql" here, then regenerate the Prisma client. We persist
+  // the admin's database choice + MySQL credentials here so the deployment
+  // script can read them later.
+  dbType            String  @default("sqlite") // "sqlite" | "mysql"
+  mysqlHost         String?
+  mysqlPort         String?
+  mysqlDatabase     String?
+  mysqlUsername     String?
+  mysqlPassword     String?
+  // Site branding
+  logoUrl           String?
+}
+
+/* ============================================================
+   NEW MODELS — Extended forum features
+   ============================================================ */
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  color     String?
+  usageCount Int     @default(0)
+  createdAt DateTime @default(now())
+
+  threads   ThreadTag[]
+}
+
+model ThreadTag {
+  id        String   @id @default(cuid())
+  threadId  String
+  tagId     String
+
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, tagId])
+  @@index([tagId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   // recipient
+  actorId   String?  // who triggered the notification
+  type      String   // 'reply' | 'mention' | 'vote' | 'bookmark' | 'system' | 'report'
+  title     String
+  body      String?
+  link      String?  // URL/path to navigate to
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  threadId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadId])
+  @@index([userId])
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  userId    String
+  forumId   String?
+  threadId  String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  forum     Forum?   @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  thread    Thread?  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String
+  reason      String   // 'spam' | 'harassment' | 'off-topic' | 'inappropriate' | 'other'
+  details     String?
+  targetType  String   // 'thread' | 'post' | 'user'
+  targetId    String
+  targetUserId String?  // when reporting a user
+  status      String   @default("pending") // 'pending' | 'reviewing' | 'resolved' | 'dismissed'
+  resolution  String?
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime @default(now())
+
+  reporter    User     @relation("ReporterReports", fields: [reporterId], references: [id])
+  targetUser  User?    @relation("TargetUserReports", fields: [targetUserId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Poll {
+  id          String   @id @default(cuid())
+  threadId    String   @unique
+  question    String
+  allowMultiple Boolean @default(false)
+  closesAt    DateTime?
+  createdAt   DateTime @default(now())
+
+  thread      Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  options     PollOption[]
+}
+
+model PollOption {
+  id        String   @id @default(cuid())
+  pollId    String
+  text      String
+  createdAt DateTime @default(now())
+
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes     PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  optionId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@unique([optionId, userId])
+}
+
+model UserSetting {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+/* ============================================================
+   CMS EXTENSION MODELS — Ranks, Pages, Rules
+   ============================================================ */
+
+model Rank {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  title       String                    // display label shown under username
+  color       String?                   // CSS color for the badge
+  icon        String?                   // optional emoji/lucide name
+  minPosts    Int      @default(0)      // auto-assigned when user reaches this post count
+  minReputation Int    @default(0)
+  isStaff     Boolean  @default(false)  // moderator/admin style rank
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  slug        String   @unique          // URL slug, e.g. "about", "privacy"
+  title       String
+  content     String                    // markdown / html body
+  excerpt     String?
+  status      String   @default("published") // "draft" | "published"
+  showInFooter Boolean @default(false)  // render link in footer
+  showInHeader Boolean @default(false)  // render link in header
+  sortOrder   Int      @default(0)
+  authorId    String?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  revisions   PageRevision[]
+}
+
+model PageRevision {
+  id        String   @id @default(cuid())
+  pageId    String
+  title     String
+  content   String
+  editedBy  String
+  createdAt DateTime @default(now())
+
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  editor    User?    @relation(fields: [editedBy], references: [id])
+
+  @@index([pageId])
+}
+
+model Rule {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  icon        String?                   // optional emoji
+  category    String?                   // grouping label e.g. "Conduct", "Content"
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}

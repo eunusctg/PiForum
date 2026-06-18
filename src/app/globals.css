@@ -1,0 +1,1291 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-neu-bg: var(--neu-bg);
+  --shadow-neu: var(--neu-shadow);
+  --shadow-neu-inset: var(--neu-shadow-inset);
+  --shadow-neu-sm: var(--neu-shadow-sm);
+  --shadow-neu-inset-sm: var(--neu-shadow-inset-sm);
+}
+
+/* ============================================================
+   DAY THEME (Light) — Soft Grey Neumorphism, base: #e0e0e0
+   Repolished: deeper dual-shadows with soft off-white highlights
+   (no harsh pure-white), warmer indigo accent, crisper text contrast,
+   refined hover lifts.
+   ============================================================ */
+:root {
+  --radius: 1rem;
+
+  /* Core Neumorphism tokens — soft off-white highlights (no pure white) */
+  --neu-bg: #e6e6e8;
+  --neu-hi: #f5f5f7;
+  --neu-lo: #c2c2c5;
+  --neu-shadow: 9px 9px 18px var(--neu-lo), -9px -9px 18px var(--neu-hi);
+  --neu-shadow-inset: inset 9px 9px 18px var(--neu-lo), inset -9px -9px 18px var(--neu-hi);
+  --neu-shadow-sm: 5px 5px 10px var(--neu-lo), -5px -5px 10px var(--neu-hi);
+  --neu-shadow-inset-sm: inset 5px 5px 10px var(--neu-lo), inset -5px -5px 10px var(--neu-hi);
+  --neu-shadow-lg: 14px 14px 28px #b8b8bc, -14px -14px 28px var(--neu-hi);
+
+  /* shadcn/ui overrides adapted for #e6e6e8 base */
+  --background: #e6e6e8;
+  --foreground: #1f2937;
+  --card: #e9e9eb;
+  --card-foreground: #1f2937;
+  --popover: #ececee;
+  --popover-foreground: #1f2937;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #d8d8db;
+  --secondary-foreground: #1f2937;
+  --muted: #d2d2d5;
+  --muted-foreground: #5b6470;
+  --accent: #dcdce0;
+  --accent-foreground: #1f2937;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #c4c4c8;
+  --input: #c4c4c8;
+  --ring: #6366f1;
+  --chart-1: #6366f1;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #ec4899;
+  --chart-5: #06b6d4;
+  --sidebar: #dcdce0;
+  --sidebar-foreground: #1f2937;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #d2d2d6;
+  --sidebar-accent-foreground: #1f2937;
+  --sidebar-border: #c4c4c8;
+  --sidebar-ring: #6366f1;
+}
+
+/* ============================================================
+   NIGHT THEME (Dark) — Deep Bronze Espresso, base: #2A1F0A
+   Repolished: luminous bronze highlights, near-black shadows,
+   gold accents for a luxurious dark companion to Golden mode.
+   ============================================================ */
+.dark {
+  /* Core Neumorphism tokens */
+  --neu-bg: #2A1F0A;
+  --neu-shadow: 10px 10px 20px #0D0900, -10px -10px 20px #5C4516;
+  --neu-shadow-inset: inset 10px 10px 20px #0D0900, inset -10px -10px 20px #5C4516;
+  --neu-shadow-sm: 5px 5px 12px #0D0900, -5px -5px 12px #5C4516;
+  --neu-shadow-inset-sm: inset 5px 5px 12px #0D0900, inset -5px -5px 12px #5C4516;
+  --neu-shadow-lg: 16px 16px 32px #050300, -16px -16px 32px #6E5520;
+
+  /* shadcn/ui overrides adapted for dark bronze base */
+  --background: #2A1F0A;
+  --foreground: #FFEAA7;
+  --card: #2E230B;
+  --card-foreground: #FFEAA7;
+  --popover: #32260E;
+  --popover-foreground: #FFEAA7;
+  --primary: #D4AF37;
+  --primary-foreground: #2A1F0A;
+  --secondary: #3D2E10;
+  --secondary-foreground: #FFEAA7;
+  --muted: #3D2E10;
+  --muted-foreground: #C9A845;
+  --accent: #3D2E10;
+  --accent-foreground: #FFEAA7;
+  --destructive: #DC2626;
+  --destructive-foreground: #FFFDF3;
+  --border: #5C4516;
+  --input: #3D2E10;
+  --ring: #D4AF37;
+  --chart-1: #D4AF37;
+  --chart-2: #FFEAA7;
+  --chart-3: #E5C158;
+  --chart-4: #AA820A;
+  --chart-5: #FFFDF3;
+  --sidebar: #1F1707;
+  --sidebar-foreground: #FFEAA7;
+  --sidebar-primary: #D4AF37;
+  --sidebar-primary-foreground: #2A1F0A;
+  --sidebar-accent: #3D2E10;
+  --sidebar-accent-foreground: #FFEAA7;
+  --sidebar-border: #5C4516;
+  --sidebar-ring: #D4AF37;
+}
+
+/* ============================================================
+   GOLDEN THEME — Luxe Metallic Gold Neumorphism (selectable)
+   Base: #D4AF37 | Highlight: #FFEFB8 | Shadow: #9C760A
+   Accent: #FFFDF3 (champagne) | Text: #3D2D00 (deep espresso)
+   Polished: richer two-tone metallic sheen, deep bronze drop shadow,
+   champagne top-gloss, elegant pressed states, gradient lift on hover.
+   Applied via .gold class on <html>. Overrides :root and .dark.
+   ============================================================ */
+.gold {
+  /* Core Golden Neumorphism tokens — refined luxe shadows */
+  --neu-bg: #D4AF37;
+  --neu-hi: #FFEFB8;
+  --neu-lo: #9C760A;
+  --neu-shadow: 10px 10px 22px #8B6A08, -10px -10px 22px #FFF1BD;
+  --neu-shadow-inset: inset 10px 10px 22px #8B6A08, inset -10px -10px 22px #FFF1BD;
+  --neu-shadow-sm: 5px 5px 12px #8B6A08, -5px -5px 12px #FFF1BD;
+  --neu-shadow-inset-sm: inset 5px 5px 12px #8B6A08, inset -5px -5px 12px #FFF1BD;
+  --neu-shadow-lg: 18px 18px 36px #6E5206, -18px -18px 36px #FFF7D8;
+
+  /* Golden palette constants for reuse */
+  --gold-base: #D4AF37;
+  --gold-soft: #E5C158;
+  --gold-highlight: #FFEAA7;
+  --gold-shadow: #AA820A;
+  --gold-champagne: #FFFDF3;
+  --gold-text: #3D2D00;
+  --gold-text-muted: #6E5206;
+  --gold-deep: #8B6A08;
+  --gold-bright: #FFF1BD;
+
+  /* shadcn/ui tokens adapted for golden base — refined contrast */
+  --background: #D4AF37;
+  --foreground: #2E2200;
+  --card: #D8B43C;
+  --card-foreground: #2E2200;
+  --popover: #DBB741;
+  --popover-foreground: #2E2200;
+  --primary: #4A3500;
+  --primary-foreground: #FFEAA7;
+  --secondary: #C9A02E;
+  --secondary-foreground: #2E2200;
+  --muted: #C9A02E;
+  --muted-foreground: #5C4506;
+  --accent: #FFEAA7;
+  --accent-foreground: #2E2200;
+  --destructive: #8B1A1A;
+  --destructive-foreground: #FFFDF3;
+  --border: #9C760A;
+  --input: #C9A02E;
+  --ring: #9C760A;
+  --chart-1: #2E2200;
+  --chart-2: #9C760A;
+  --chart-3: #FFEAA7;
+  --chart-4: #E5C158;
+  --chart-5: #5C4506;
+  --sidebar: #C9A02E;
+  --sidebar-foreground: #2E2200;
+  --sidebar-primary: #4A3500;
+  --sidebar-primary-foreground: #FFEAA7;
+  --sidebar-accent: #E5C158;
+  --sidebar-accent-foreground: #2E2200;
+  --sidebar-border: #9C760A;
+  --sidebar-ring: #9C760A;
+}
+
+/* ============================================================
+   BASE LAYER
+   ============================================================ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-color: var(--neu-bg);
+    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 1.0625rem);
+    line-height: 1.6;
+  }
+
+  /* Responsive typography scale */
+  h1 {
+    font-size: clamp(1.75rem, 1.25rem + 2.5vw, 2.75rem);
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: clamp(1.375rem, 1rem + 1.875vw, 2.125rem);
+    line-height: 1.25;
+    font-weight: 650;
+  }
+
+  h3 {
+    font-size: clamp(1.125rem, 0.875rem + 1.25vw, 1.625rem);
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  h4 {
+    font-size: clamp(1rem, 0.875rem + 0.625vw, 1.25rem);
+    line-height: 1.35;
+    font-weight: 600;
+  }
+
+  h5 {
+    font-size: clamp(0.9375rem, 0.85rem + 0.4375vw, 1.0625rem);
+    line-height: 1.4;
+    font-weight: 550;
+  }
+
+  h6 {
+    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 0.9375rem);
+    line-height: 1.45;
+    font-weight: 550;
+  }
+
+  p {
+    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 1.0625rem);
+    line-height: 1.65;
+  }
+
+  small {
+    font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);
+  }
+}
+
+/* ============================================================
+   NEUMORPHISM UTILITY CLASSES — Repolished
+   ============================================================ */
+
+/* Raised card — soft extruded surface with subtle top-gloss */
+.neu-card {
+  background-color: var(--neu-bg);
+  border-radius: 18px;
+  box-shadow: var(--neu-shadow);
+  transition: box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.neu-card:hover {
+  box-shadow: var(--neu-shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* Static neumorphic card — same raised look, but no hover lift.
+   Use for modals/dialogs/popovers where a transform on hover would
+   fight the centering transform and cause the dialog to jump.
+   NOTE: position is intentionally NOT set here so the element's own
+   positioning (fixed for dialogs, absolute for popovers) is preserved.
+   The ::before pseudo-element still positions correctly because it
+   resolves against the nearest positioned ancestor (the element itself). */
+.neu-card-static {
+  background-color: var(--neu-bg);
+  border-radius: 18px;
+  box-shadow: var(--neu-shadow);
+}
+
+/* Golden theme — luxe metallic sheen overlay on cards.
+   A subtle radial gradient gives a polished gold surface. */
+.gold .neu-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(255, 241, 189, 0.28), transparent 55%),
+    radial-gradient(120% 80% at 100% 100%, rgba(139, 106, 8, 0.18), transparent 55%);
+  pointer-events: none;
+  opacity: 0.9;
+  transition: opacity 0.35s ease;
+}
+
+.gold .neu-card:hover::before {
+  opacity: 1;
+}
+
+/* Golden sheen for static (non-hoverable) cards — mirrors .neu-card::before */
+.gold .neu-card-static::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(255, 241, 189, 0.28), transparent 55%),
+    radial-gradient(120% 80% at 100% 100%, rgba(139, 106, 8, 0.18), transparent 55%);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* Golden FAB — chic gold dome */
+.gold .neu-fab {
+  background-image:
+    radial-gradient(120% 80% at 30% 25%, rgba(255, 241, 189, 0.45), transparent 60%);
+}
+
+/* Golden buttons — subtle inner sheen */
+.gold .neu-btn {
+  background-image:
+    linear-gradient(180deg, rgba(255, 241, 189, 0.18), transparent 60%);
+}
+
+/* Pressed / inset card — sunken surface */
+.neu-card-inset {
+  background-color: var(--neu-bg);
+  border-radius: 18px;
+  box-shadow: var(--neu-shadow-inset);
+  transition: box-shadow 0.35s ease;
+}
+
+/* Raised button — interactive extruded element */
+.neu-btn {
+  background-color: var(--neu-bg);
+  border-radius: 12px;
+  box-shadow: var(--neu-shadow-sm);
+  transition: box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.neu-btn:hover {
+  box-shadow: var(--neu-shadow);
+  transform: translateY(-1px);
+}
+
+.neu-btn:active,
+.neu-btn-inset {
+  background-color: var(--neu-bg);
+  border-radius: 12px;
+  box-shadow: var(--neu-shadow-inset-sm);
+  transform: translateY(0);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Inset input field — sunken entry surface with focus ring */
+.neu-input {
+  background-color: var(--neu-bg);
+  border-radius: 12px;
+  box-shadow: var(--neu-shadow-inset-sm);
+  border: none;
+  outline: none;
+  transition: box-shadow 0.25s ease;
+}
+
+.neu-input:focus {
+  box-shadow: var(--neu-shadow-inset), 0 0 0 2px var(--ring);
+}
+
+.neu-input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
+/* Flat surface — no shadow, base colour only */
+.neu-flat {
+  background-color: var(--neu-bg);
+  border-radius: 18px;
+  box-shadow: none;
+  transition: box-shadow 0.3s ease;
+}
+
+/* ============================================================
+   CUSTOM SCROLLBAR
+   ============================================================ */
+
+/* WebKit / Blink */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--neu-bg);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+  border: 2px solid var(--neu-bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--neu-bg);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--neu-bg);
+}
+
+/* ============================================================
+   FIREWORK CELEBRATION ANIMATION
+   ============================================================ */
+
+/* Full-screen overlay for the installation wizard completion step */
+.fireworks-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+/* Individual firework burst origin */
+.firework {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: firework-burst 1.2s ease-out forwards;
+}
+
+.firework::before,
+.firework::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* Staggered positions and colour variants */
+.firework:nth-child(1) {
+  left: 15%;
+  top: 25%;
+  animation-delay: 0s;
+  --fw-color: #ff6b6b;
+  background: var(--fw-color);
+  box-shadow:
+    -30px -50px 0 var(--fw-color),
+    30px -50px 0 var(--fw-color),
+    -50px -25px 0 var(--fw-color),
+    50px -25px 0 var(--fw-color),
+    -55px 5px 0 var(--fw-color),
+    55px 5px 0 var(--fw-color),
+    -40px 35px 0 var(--fw-color),
+    40px 35px 0 var(--fw-color),
+    -15px 55px 0 var(--fw-color),
+    15px 55px 0 var(--fw-color),
+    0 -60px 0 var(--fw-color),
+    0 60px 0 var(--fw-color);
+}
+
+.firework:nth-child(2) {
+  left: 50%;
+  top: 15%;
+  animation-delay: 0.35s;
+  --fw-color: #ffd93d;
+  background: var(--fw-color);
+  box-shadow:
+    -25px -45px 0 var(--fw-color),
+    25px -45px 0 var(--fw-color),
+    -45px -20px 0 var(--fw-color),
+    45px -20px 0 var(--fw-color),
+    -50px 10px 0 var(--fw-color),
+    50px 10px 0 var(--fw-color),
+    -35px 40px 0 var(--fw-color),
+    35px 40px 0 var(--fw-color),
+    -10px 50px 0 var(--fw-color),
+    10px 50px 0 var(--fw-color),
+    0 -55px 0 var(--fw-color),
+    0 55px 0 var(--fw-color);
+}
+
+.firework:nth-child(3) {
+  left: 80%;
+  top: 30%;
+  animation-delay: 0.7s;
+  --fw-color: #6bcb77;
+  background: var(--fw-color);
+  box-shadow:
+    -28px -48px 0 var(--fw-color),
+    28px -48px 0 var(--fw-color),
+    -48px -22px 0 var(--fw-color),
+    48px -22px 0 var(--fw-color),
+    -52px 8px 0 var(--fw-color),
+    52px 8px 0 var(--fw-color),
+    -38px 38px 0 var(--fw-color),
+    38px 38px 0 var(--fw-color),
+    -12px 52px 0 var(--fw-color),
+    12px 52px 0 var(--fw-color),
+    0 -58px 0 var(--fw-color),
+    0 58px 0 var(--fw-color);
+}
+
+.firework:nth-child(4) {
+  left: 35%;
+  top: 50%;
+  animation-delay: 1.05s;
+  --fw-color: #4d96ff;
+  background: var(--fw-color);
+  box-shadow:
+    -22px -42px 0 var(--fw-color),
+    22px -42px 0 var(--fw-color),
+    -42px -18px 0 var(--fw-color),
+    42px -18px 0 var(--fw-color),
+    -48px 12px 0 var(--fw-color),
+    48px 12px 0 var(--fw-color),
+    -32px 36px 0 var(--fw-color),
+    32px 36px 0 var(--fw-color),
+    -8px 48px 0 var(--fw-color),
+    8px 48px 0 var(--fw-color),
+    0 -52px 0 var(--fw-color),
+    0 52px 0 var(--fw-color);
+}
+
+.firework:nth-child(5) {
+  left: 65%;
+  top: 60%;
+  animation-delay: 1.4s;
+  --fw-color: #c084fc;
+  background: var(--fw-color);
+  box-shadow:
+    -26px -46px 0 var(--fw-color),
+    26px -46px 0 var(--fw-color),
+    -46px -24px 0 var(--fw-color),
+    46px -24px 0 var(--fw-color),
+    -54px 6px 0 var(--fw-color),
+    54px 6px 0 var(--fw-color),
+    -36px 40px 0 var(--fw-color),
+    36px 40px 0 var(--fw-color),
+    -14px 54px 0 var(--fw-color),
+    14px 54px 0 var(--fw-color),
+    0 -56px 0 var(--fw-color),
+    0 56px 0 var(--fw-color);
+}
+
+.firework:nth-child(6) {
+  left: 25%;
+  top: 70%;
+  animation-delay: 1.75s;
+  --fw-color: #f472b6;
+  background: var(--fw-color);
+  box-shadow:
+    -24px -44px 0 var(--fw-color),
+    24px -44px 0 var(--fw-color),
+    -44px -20px 0 var(--fw-color),
+    44px -20px 0 var(--fw-color),
+    -50px 10px 0 var(--fw-color),
+    50px 10px 0 var(--fw-color),
+    -34px 38px 0 var(--fw-color),
+    34px 38px 0 var(--fw-color),
+    -10px 50px 0 var(--fw-color),
+    10px 50px 0 var(--fw-color),
+    0 -54px 0 var(--fw-color),
+    0 54px 0 var(--fw-color);
+}
+
+/* Flicker/sparkle particles rendered as small pseudo-elements */
+.firework-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: firework-sparkle 1s ease-out forwards;
+}
+
+.firework-particle:nth-child(1) { --fp-x: -60px; --fp-y: -10px; --fp-color: #ff6b6b; animation-delay: 0.2s; }
+.firework-particle:nth-child(2) { --fp-x: 55px;  --fp-y: -30px; --fp-color: #ffd93d; animation-delay: 0.4s; }
+.firework-particle:nth-child(3) { --fp-x: -40px; --fp-y: 50px;  --fp-color: #6bcb77; animation-delay: 0.6s; }
+.firework-particle:nth-child(4) { --fp-x: 45px;  --fp-y: 40px;  --fp-color: #4d96ff; animation-delay: 0.8s; }
+.firework-particle:nth-child(5) { --fp-x: 0;     --fp-y: -65px; --fp-color: #c084fc; animation-delay: 1.0s; }
+.firework-particle:nth-child(6) { --fp-x: -50px; --fp-y: 45px;  --fp-color: #f472b6; animation-delay: 1.2s; }
+.firework-particle:nth-child(7) { --fp-x: 60px;  --fp-y: 15px;  --fp-color: #22d3ee; animation-delay: 1.4s; }
+.firework-particle:nth-child(8) { --fp-x: -20px; --fp-y: -55px; --fp-color: #fb923c; animation-delay: 1.6s; }
+
+.firework-particle::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--fp-color);
+  box-shadow: 0 0 6px 2px var(--fp-color);
+}
+
+@keyframes firework-burst {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes firework-sparkle {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 1;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--fp-x), var(--fp-y)) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Full celebration sequence — loop a few times then stop */
+@keyframes fireworks-cycle {
+  0% { opacity: 0; }
+  5% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.fireworks-container {
+  animation: fireworks-cycle 5s ease-in-out forwards;
+}
+
+/* Confetti-like trailing spark */
+.firework-trail {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: firework-trail-fall 2s ease-in forwards;
+}
+
+.firework-trail:nth-child(odd) {
+  background: #ffd93d;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.firework-trail:nth-child(even) {
+  background: #ff6b6b;
+  animation-timing-function: cubic-bezier(0.55, 0.085, 0.68, 0.53);
+}
+
+@keyframes firework-trail-fall {
+  0% {
+    transform: translateY(-20vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Celebration glow pulse behind content */
+.celebration-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: radial-gradient(circle at 50% 50%, var(--primary) 0%, transparent 70%);
+  opacity: 0;
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.08; }
+}
+
+/* ============================================================
+   VERIFIED BADGE — stunning seal-style icon with shimmer
+   ============================================================ */
+
+.verified-icon-wrap {
+  flex: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+  transition: transform 0.2s ease;
+}
+
+.verified-icon-wrap:hover {
+  transform: scale(1.15) rotate(-3deg);
+}
+
+/* Slow, premium shimmer sweep across the seal — only on lg/xl sizes */
+.verified-icon-anim .verified-icon-shimmer {
+  transform-origin: 50% 50%;
+  animation: verified-shimmer 3.5s ease-in-out infinite;
+}
+
+@keyframes verified-shimmer {
+  0%, 100% {
+    opacity: 0;
+    transform: translateX(-6px) translateY(-6px);
+  }
+  40% {
+    opacity: 0.6;
+  }
+  60% {
+    opacity: 0;
+    transform: translateX(6px) translateY(6px);
+  }
+}
+
+/* Inline label variant used next to usernames */
+.verified-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.05rem 0.4rem 0.05rem 0.3rem;
+  border-radius: 9999px;
+  line-height: 1.2;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.verified-badge-blue {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(79, 70, 229, 0.15));
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.verified-badge-gold {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.18), rgba(184, 134, 11, 0.18));
+  color: #b8860b;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
+.verified-badge-emerald {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(4, 120, 87, 0.15));
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.verified-badge-purple {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(126, 34, 206, 0.15));
+  color: #9333ea;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.verified-badge-primary {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.08));
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+/* Golden theme override — make verified badges gold by default */
+.gold .verified-badge-primary {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(184, 134, 11, 0.15));
+  color: #b8860b;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+}
+
+/* ============================================================
+   NEUMORPHISM INTERACTION TRANSITIONS
+   ============================================================ */
+
+/* Smooth shadow transitions for any element toggling raised/inset */
+.neu-transition {
+  transition:
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s ease;
+}
+
+/* Hover lift for interactive cards */
+.neu-hover-lift:hover {
+  box-shadow: var(--neu-shadow);
+  transform: translateY(-2px);
+}
+
+/* Press sink for active / focus-within */
+.neu-press:active,
+.neu-press-active {
+  box-shadow: var(--neu-shadow-inset-sm);
+  transform: translateY(1px);
+}
+
+/* ============================================================
+   ADDITIONAL NEUMORPHISM SURFACE HELPERS
+   ============================================================ */
+
+/* Concave well — deeper inset for containers */
+.neu-well {
+  background-color: var(--neu-bg);
+  border-radius: 18px;
+  box-shadow: var(--neu-shadow-inset);
+  padding: 1.5rem;
+}
+
+/* Convex bump — raised surface for emphasis */
+.neu-bump {
+  background-color: var(--neu-bg);
+  border-radius: 18px;
+  box-shadow: var(--neu-shadow);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.neu-bump:hover {
+  box-shadow: var(--neu-shadow-lg);
+  transform: translateY(-1px);
+}
+
+/* Circular neumorphic element (avatars, icons) */
+.neu-circle {
+  background-color: var(--neu-bg);
+  border-radius: 50%;
+  box-shadow: var(--neu-shadow-sm);
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.neu-circle:hover {
+  box-shadow: var(--neu-shadow);
+  transform: translateY(-2px);
+}
+
+.neu-circle-inset {
+  background-color: var(--neu-bg);
+  border-radius: 50%;
+  box-shadow: var(--neu-shadow-inset-sm);
+}
+
+/* Divider with subtle neumorphic groove — no harsh white highlight */
+.neu-divider {
+  height: 2px;
+  background: var(--neu-bg);
+  border-radius: 1px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.14), inset 0 -1px 2px rgba(245, 245, 247, 0.45);
+}
+
+.dark .neu-divider {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), inset 0 -1px 2px rgba(255, 234, 167, 0.06);
+}
+
+.gold .neu-divider {
+  box-shadow: inset 0 1px 3px rgba(74, 53, 0, 0.32), inset 0 -1px 2px rgba(255, 241, 189, 0.55);
+}
+
+/* Toggle switch neumorphic track */
+.neu-toggle-track {
+  background-color: var(--neu-bg);
+  border-radius: 9999px;
+  box-shadow: var(--neu-shadow-inset-sm);
+  transition: box-shadow 0.3s ease;
+}
+
+.neu-toggle-thumb {
+  border-radius: 50%;
+  box-shadow: var(--neu-shadow-sm);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s ease;
+}
+
+/* ============================================================
+   NEUMORPHISM-ENHANCED FORM CONTROLS
+   ============================================================ */
+
+/* Checkbox / radio neumorphic style */
+.neu-checkbox {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  background-color: var(--neu-bg);
+  border-radius: 6px;
+  box-shadow: var(--neu-shadow-sm);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.neu-checkbox:checked {
+  box-shadow: var(--neu-shadow-inset-sm);
+  background-color: var(--neu-bg);
+}
+
+/* ============================================================
+   TYPOGRAPHY & ELEMENT ENHANCEMENTS — Repolished (theme-aware)
+   ============================================================ */
+
+/* Engraved heading text — incised metal-etched look.
+   Theme-aware etching tuned per surface. */
+.neu-etched-text {
+  color: var(--foreground);
+}
+
+:root .neu-etched-text {
+  text-shadow: 1px 1px 1px rgba(245, 245, 247, 0.55), -1px -1px 1px rgba(0, 0, 0, 0.18);
+}
+
+.dark .neu-etched-text {
+  text-shadow: 1px 1px 1px rgba(255, 234, 167, 0.18), -1px -1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.gold .neu-etched-text {
+  text-shadow: 1px 1px 1px rgba(255, 241, 189, 0.65), -1px -1px 1px rgba(74, 53, 0, 0.38);
+}
+
+/* Inverse etching for primary/light fill backgrounds */
+.neu-etched-text-light {
+  color: var(--primary-foreground);
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.18), -1px -1px 1px rgba(245, 245, 247, 0.5);
+}
+
+/* Concave pill badge — tiny sunken well for tags & category labels.
+   Theme-aware: uses --muted-foreground text on the surface color,
+   with a subtle etched highlight tuned per theme. */
+.neu-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--foreground);
+  background-color: var(--neu-bg);
+  border-radius: 9999px;
+  box-shadow: var(--neu-shadow-inset-sm);
+  border: none;
+  transition: box-shadow 0.25s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.neu-badge:hover {
+  color: var(--primary);
+  box-shadow: var(--neu-shadow-sm);
+  transform: translateY(-1px);
+}
+
+/* Etched text effect per theme — soft off-white highlight on day */
+:root .neu-badge,
+:root .neu-thread-title {
+  text-shadow: 0 1px 0 rgba(245, 245, 247, 0.55), 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.dark .neu-badge,
+.dark .neu-thread-title {
+  text-shadow: 0 1px 0 rgba(255, 234, 167, 0.14), 0 -1px 0 rgba(0, 0, 0, 0.42);
+}
+
+.gold .neu-badge,
+.gold .neu-thread-title {
+  text-shadow: 0 1px 0 rgba(255, 241, 189, 0.7), 0 -1px 0 rgba(74, 53, 0, 0.28);
+}
+
+/* Thread title — crisp engraved heading */
+.neu-thread-title {
+  color: var(--foreground);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.neu-thread-title:hover {
+  color: var(--primary);
+}
+
+.dark .neu-thread-title:hover {
+  color: var(--gold-highlight, #FFEAA7);
+}
+
+.gold .neu-thread-title:hover {
+  color: var(--gold-text);
+}
+
+/* Active/highlighted badge variant — primary accent fill */
+.neu-badge-active {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--neu-shadow-sm);
+  text-shadow: none;
+}
+
+.neu-badge-active:hover {
+  color: var(--primary-foreground);
+}
+
+/* Floating Action Button — raised dome with primary active state */
+.neu-fab {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background-color: var(--neu-bg);
+  color: var(--foreground);
+  box-shadow: var(--neu-shadow);
+  cursor: pointer;
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.2s ease,
+              background-color 0.2s ease;
+}
+
+.neu-fab:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--neu-shadow-lg);
+  color: var(--primary);
+}
+
+.neu-fab:active {
+  transform: translateY(0);
+  box-shadow: var(--neu-shadow-inset-sm);
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* ============================================================
+   RESPONSIVE NEUMORPHISM ADJUSTMENTS
+   ============================================================ */
+
+@media (max-width: 640px) {
+  /* Reduce shadow intensity on small screens for cleaner look */
+  :root {
+    --neu-shadow: 6px 6px 12px #c2c2c5, -6px -6px 12px #f5f5f7;
+    --neu-shadow-inset: inset 6px 6px 12px #c2c2c5, inset -6px -6px 12px #f5f5f7;
+    --neu-shadow-sm: 3px 3px 6px #c2c2c5, -3px -3px 6px #f5f5f7;
+    --neu-shadow-inset-sm: inset 3px 3px 6px #c2c2c5, inset -3px -3px 6px #f5f5f7;
+    --neu-shadow-lg: 9px 9px 18px #b8b8bc, -9px -9px 18px #f5f5f7;
+  }
+
+  .dark {
+    --neu-shadow: 6px 6px 12px #0D0900, -6px -6px 12px #5C4516;
+    --neu-shadow-inset: inset 6px 6px 12px #0D0900, inset -6px -6px 12px #5C4516;
+    --neu-shadow-sm: 3px 3px 6px #0D0900, -3px -3px 6px #5C4516;
+    --neu-shadow-inset-sm: inset 3px 3px 6px #0D0900, inset -3px -3px 6px #5C4516;
+    --neu-shadow-lg: 10px 10px 20px #050300, -10px -10px 20px #6E5520;
+  }
+
+  .gold {
+    --neu-shadow: 6px 6px 12px #8B6A08, -6px -6px 12px #FFF1BD;
+    --neu-shadow-inset: inset 6px 6px 12px #8B6A08, inset -6px -6px 12px #FFF1BD;
+    --neu-shadow-sm: 3px 3px 6px #8B6A08, -3px -3px 6px #FFF1BD;
+    --neu-shadow-inset-sm: inset 3px 3px 6px #8B6A08, inset -3px -3px 6px #FFF1BD;
+    --neu-shadow-lg: 10px 10px 22px #6E5206, -10px -10px 22px #FFF7D8;
+  }
+
+  .neu-card,
+  .neu-card-inset,
+  .neu-bump,
+  .neu-well {
+    border-radius: 14px;
+  }
+
+  .neu-fab {
+    width: 3rem;
+    height: 3rem;
+    bottom: 1rem;
+    right: 1rem;
+  }
+}
+
+/* ============================================================
+   ANIMATION POLISH — smoother transitions, entrance fades,
+   focus rings, and prefers-reduced-motion accessibility support
+   ============================================================ */
+
+/* Smooth focus-visible ring for all interactive elements */
+*:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
+  border-radius: 6px;
+  transition: outline-offset 0.15s ease;
+}
+
+/* Default smooth transitions for interactive elements that don't
+   already declare one — makes hover states feel responsive without
+   being sluggish. */
+button,
+a,
+[role="button"],
+summary,
+.clickable {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 0.18s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Entrance fade for main content & cards — subtle, not flashy.
+   Applied via the .animate-fade-in utility class. */
+@keyframes piforum-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: piforum-fade-in 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Staggered entrance for lists (cards, threads, members) */
+@keyframes piforum-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: piforum-fade-in-up 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Subtle scale-in for modals & dropdowns */
+@keyframes piforum-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: piforum-scale-in 0.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Soft slide-down for dropdown menus */
+@keyframes piforum-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: piforum-slide-down 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Toast slide-in from the bottom edge */
+@keyframes piforum-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-toast-in {
+  animation: piforum-toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Skeleton shimmer for loading placeholders */
+@keyframes piforum-skeleton {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    var(--card) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: piforum-skeleton 1.5s ease-in-out infinite;
+}
+
+/* View transition opt-in for smooth client-side view swaps.
+   Browsers that don't support it simply ignore this. */
+@view-transition {
+  navigation: auto;
+}
+
+/* ============================================================
+   REDUCED MOTION — respect user's accessibility preference.
+   When the user has "reduce motion" enabled at the OS level,
+   disable all non-essential animations and transitions.
+   Essential feedback (opacity for skeleton, focus rings) is kept.
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Keep the skeleton shimmer visible but instant so users still
+     see "loading" feedback without motion. */
+  .skeleton-shimmer {
+    animation: none !important;
+    background: var(--muted) !important;
+  }
+
+  /* Disable the verified badge shimmer sweep (it's purely decorative). */
+  .verified-icon-anim .verified-icon-shimmer,
+  .firework *,
+  [class*="animate-"] {
+    animation: none !important;
+  }
+
+  /* Disable hover transforms (scale/rotate) — keep color changes. */
+  .verified-icon-wrap:hover,
+  .neu-card:hover,
+  .neu-btn:hover,
+  .neu-fab:hover {
+    transform: none !important;
+  }
+}
