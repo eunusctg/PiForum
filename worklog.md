@@ -507,3 +507,138 @@ Stage Summary:
 - Files created: src/app/api/upload/route.ts, src/components/forum/ForumShell.tsx, 15 route pages under src/app/
 - Files modified: src/components/forum/ForumHome.tsx (forum picker), src/components/forum/Header.tsx (router.push), src/components/forum/InstallWizard.tsx (MySQL + branding), src/app/api/install/route.ts (new fields), prisma/schema.prisma (new InstallConfig fields)
 - All routes browser-verified, post creation end-to-end verified
+
+---
+Task ID: ADMIN-A
+Agent: Admin Pages Builder (Auth)
+Task: Build AdminAuth, AdminUsernames, AdminLogin settings pages
+
+Work Log:
+- Read worklog.md and shared.tsx to understand the useAdminSettings hook API and shared shell components (AdminGate, SettingsLoadingSkeleton, SettingsError, SaveBar, SectionHeader, FlawsCallout)
+- Studied existing AdminBranding.tsx as a pattern reference for card/toggle/SaveBar layout
+- Created /home/z/my-project/src/components/forum/admin/AdminAuth.tsx:
+  - KEYS array with 10 auth settings (registration, password policy, sessions, OAuth)
+  - Title header with KeyRound icon + FlawsCallout (3 flaws)
+  - Cards: Registration (2 toggles), Password Policy (3 toggles + note), Sessions (session_timeout input), OAuth Providers (google + github toggles + conditional client_id inputs)
+  - SaveBar with saveLabel="Save Auth Settings"
+- Created /home/z/my-project/src/components/forum/admin/AdminUsernames.tsx:
+  - KEYS array with 4 username-rule settings (reserved_usernames, username_pattern, username_change_cooldown, username_require_rotation)
+  - OMITTED allow_username_change (per task instructions — it lives in AdminAuth to avoid duplicates)
+  - Title header with AtSign icon + FlawsCallout (2 flaws)
+  - Cards: Reserved Usernames (Textarea), Allowed Pattern (Input mono), Change Limits (cooldown input + rotation toggle)
+  - SaveBar with saveLabel="Save Username Rules"
+- Created /home/z/my-project/src/components/forum/admin/AdminLogin.tsx:
+  - KEYS array with 7 login settings (remember-me, brute-force, 2FA, notifications)
+  - Title header with LogIn icon + FlawsCallout (3 flaws)
+  - Cards: Remember Me (toggle + conditional duration input), Brute-Force Protection (2 inputs + note), Two-Factor Auth (2 toggles), Notifications (1 toggle)
+  - SaveBar with saveLabel="Save Login Settings"
+- All three files are 'use client' default exports using the exact skeleton pattern (neu-circle title header, parseBool/v helpers, ToggleRow helper)
+- Ran `bun run lint` — zero errors, zero warnings
+
+Stage Summary:
+- 3 new files created under src/components/forum/admin/:
+  - AdminAuth.tsx (10 settings keys, 4 cards, 3 documented flaws)
+  - AdminUsernames.tsx (4 settings keys, 3 cards, 2 documented flaws)
+  - AdminLogin.tsx (7 settings keys, 4 cards, 3 documented flaws)
+- All three reuse the shared useAdminSettings hook (no duplicate settings logic, no new API routes)
+- Lint passes clean: `eslint .` reports no issues
+- No backend changes; these are settings-only pages that PUT to the existing /api/settings endpoint via the shared hook
+
+---
+Task ID: ADMIN-B
+Agent: Admin Pages Builder (Comms/Security)
+Task: Build AdminEmail, AdminAnalytics, AdminSpam settings pages
+
+Work Log:
+- Read worklog.md and shared.tsx to understand the shared useAdminSettings hook and shared shells (AdminGate, SettingsLoadingSkeleton, SettingsError, SaveBar, SectionHeader, FlawsCallout).
+- Reviewed existing AdminAuth.tsx and AdminBranding.tsx for the established pattern: 'use client' default export, KEYS array, title header (neu-circle icon + h1 + p), FlawsCallout near top, neu-card sections, SaveBar at bottom, and a local ToggleRow helper.
+- Created /home/z/my-project/src/components/forum/admin/AdminEmail.tsx — Mail icon title, 3 FlawsCallout items, smtp_enabled ToggleRow, conditional grid (host/port/secure/username/password) and From address card (from_email/from_name) shown only when enabled. KEYS: smtp_enabled, smtp_host, smtp_port, smtp_username, smtp_password, smtp_secure, smtp_from_email, smtp_from_name. SaveBar label "Save Email Settings".
+- Created /home/z/my-project/src/components/forum/admin/AdminAnalytics.tsx — BarChart3 icon title, 3 FlawsCallout items, analytics_enabled ToggleRow, conditional provider selector (4 neu-btn tabs: google/plausible/matomo/custom), analytics_id input (label switches to "Plausible Domain" when plausible), analytics_script_url input shown only for matomo/custom, and a Privacy card with 3 ToggleRows (anonymize_ip default true, track_admins default false, cookieless default false). KEYS: analytics_enabled, analytics_provider, analytics_id, analytics_script_url, analytics_anonymize_ip, analytics_track_admins, analytics_cookieless. SaveBar label "Save Analytics Settings".
+- Created /home/z/my-project/src/components/forum/admin/AdminSpam.tsx — ShieldAlert icon title, 3 FlawsCallout items, spam_filter_enabled ToggleRow (default true), conditional Content Filters card (banned_words Textarea, link_limit_per_post Input default "3"), New User Restrictions card (new_user_link_restriction default true, new_user_post_moderation default false), Akismet card (toggle + key), reCAPTCHA card (toggle + site_key + secret_key). KEYS: spam_filter_enabled, banned_words, link_limit_per_post, new_user_link_restriction, new_user_post_moderation, akismet_enabled, akismet_key, recaptcha_enabled, recaptcha_site_key, recaptcha_secret_key. SaveBar label "Save Spam Settings".
+- All three files use only useAdminSettings for read/write (single source of truth), import shared shells from @/components/forum/admin/shared, and use UI primitives (Input/Label/Textarea/Switch) with neumorphism classes (neu-card p-6, neu-input px-3 py-2.5, neu-circle, neu-divider, neu-btn).
+- Ran `bun run lint` — exit code 0, zero errors.
+
+Stage Summary:
+- Created 3 files:
+  - /home/z/my-project/src/components/forum/admin/AdminEmail.tsx (Email/SMTP settings)
+  - /home/z/my-project/src/components/forum/admin/AdminAnalytics.tsx (Analytics settings)
+  - /home/z/my-project/src/components/forum/admin/AdminSpam.tsx (Spam Protection settings)
+- All follow the shared-hook pattern; no duplicated settings logic; no API routes added.
+- ESLint passes cleanly (exit 0, zero errors/warnings).
+
+---
+Task ID: ADMIN-C
+Agent: Admin Pages Builder (Privacy/Revenue)
+Task: Build AdminCookies, AdminGdpr, AdminMonetization settings pages
+
+Work Log:
+- Read worklog.md and shared.tsx to understand the shared useAdminSettings hook and shared shells (AdminGate, SettingsLoadingSkeleton, SettingsError, SaveBar, SectionHeader, FlawsCallout).
+- Studied existing admin panels (AdminAnalytics, AdminBranding, AdminAuth) to mirror exact patterns: title header (neu-circle icon + h1 + p), FlawsCallout near top, neu-card p-6 space-y-5 cards, neu-divider between sections, neu-input px-3 py-2.5 inputs, 2-button neu-tab selector with ring-2 ring-primary on the active option, and the local ToggleRow helper using Label + Switch.
+- Created /home/z/my-project/src/components/forum/admin/AdminCookies.tsx — Cookie consent banner settings. KEYS: cookie_consent_enabled, cookie_consent_message, cookie_consent_position, cookie_consent_learn_more_url, essential_only_default, cookie_expiry_days. Title icon Cookie, description "GDPR-style cookie consent banner." Master toggle reveals message Textarea, 2-button Top/Bottom position selector (PanelTop/PanelBottom icons), learn_more_url Input, cookie_expiry_days number Input, and essential_only_default ToggleRow. SaveBar labeled "Save Cookie Settings".
+- Created /home/z/my-project/src/components/forum/admin/AdminGdpr.tsx — GDPR & Privacy. KEYS: gdpr_enabled, gdpr_policy_url, gdpr_data_retention_days, gdpr_allow_export, gdpr_allow_deletion, gdpr_dpo_email, gdpr_log_access. Title icon ShieldCheck, description "Data protection compliance tools." Master toggle reveals policy_url Input, retention_days Input, dpo_email Input in the main card; a separate "User Rights" card holds the three toggles (allow_export, allow_deletion, log_access) with explanatory icons. SaveBar labeled "Save GDPR Settings".
+- Created /home/z/my-project/src/components/forum/admin/AdminMonetization.tsx — Monetization. KEYS: ads_enabled, ads_provider, ads_client_id, ads_header_slot, ads_footer_slot, ads_between_posts, ads_sidebar_slot, subscriptions_enabled, subscription_currency, subscription_price, subscription_stripe_key. Title icon DollarSign, description "Advertising and subscription revenue." Two cards: Advertising (master toggle reveals adsense/custom 2-button selector, client_id, and a 2-col grid of header/footer/sidebar slot inputs + between_posts number) and Subscriptions (master toggle reveals currency/price inputs and stripe_key input). SaveBar labeled "Save Monetization Settings".
+- Each page uses useAdminSettings exclusively (single source of truth), early-returns AdminGate / SettingsLoadingSkeleton / SettingsError, and includes the prescribed FlawsCallout entries verbatim.
+- Ran `bun run lint` — exit code 0, zero errors across the project.
+
+Stage Summary:
+- 3 new files created, no other files modified:
+  - src/components/forum/admin/AdminCookies.tsx
+  - src/components/forum/admin/AdminGdpr.tsx
+  - src/components/forum/admin/AdminMonetization.tsx
+- All three are 'use client' default exports conforming to the existing admin panel conventions (neumorphism classes, shared hook, shared shells).
+- `bun run lint` passes clean (exit 0, no warnings/errors).
+
+---
+Task ID: CMS-EXPAND
+Agent: Main Orchestrator
+Task: Add user verification system, strong SEO system, powerful PWA, restructure admin panel with all sections (Users/Topics/Reports/Content/Auth/Verification/SEO&PWA/Security/Revenue/System), clean footer, admin-configurable header/footer
+
+Work Log:
+- Extended Prisma schema: added isVerified/verifiedAt/verifyToken/verifyExpires/twoFactorEnabled/rankId fields to User; added Rank, Page, PageRevision, Rule, EmailVerification models. Ran db:push successfully.
+- Updated types.ts: added isVerified/verifiedAt/twoFactorEnabled/rankId/rank to ForumUser; added Rank/Page/Rule interfaces; expanded AppView union with 18 new admin views + 'page' view.
+- Updated api-helpers.ts serializeUser to include verification fields + rank relation.
+- Updated auth login/register/verify routes to use serializeUser + include rank; register now honors require_email_verification (generates token, creates EmailVerification record, returns verificationRequired + verifyToken when SMTP off).
+- Updated profile + members API routes to include rank relation.
+- Updated users API to return isVerified/verifiedAt/postCount/etc + support ?limit param.
+- Fixed store.setSettings to accept both array AND object-map forms (was silently failing for object-map from /api/settings — settings now load globally).
+- Simplified root src/app/page.tsx to render <ForumShell initialView="home" /> (removed duplicated init/render logic).
+- Built AdminLayout.tsx: unified sidebar shell with 8 grouped sections (Overview/Content/Auth&Communication/User Management/SEO&PWA/Security&Privacy/Revenue/System) covering 24 admin sections. Slim top bar (mobile toggle + View Site) to avoid duplicate headers.
+- Built admin/shared.tsx: useAdminSettings hook (single load/save path via /api/settings — no duplicate settings logic), AdminGate, SettingsLoadingSkeleton, SettingsError, SaveBar, SectionHeader, FlawsCallout (documents known limitations per the user's request).
+- Dispatched 3 parallel subagents (ADMIN-A/B/C) to build 9 settings-only admin pages (Auth, Usernames, Login, Email, Analytics, Spam, Cookies, GDPR, Monetization) — all lint-clean, each with FlawsCallout.
+- Built AdminBranding.tsx (replaces old mega AdminSettings): site identity, header/footer config (announcement banner + copyright), appearance, features, posting rules, registration/maintenance, upload limits — single home for all "general" settings (no duplicates).
+- Built AdminVerification.tsx: verification settings + pending-verifications list with manual verify/revoke (calls /api/admin/verify-user). FlawsCallout documents SMTP-fallback, no rate limit, etc.
+- Built AdminPages.tsx (CRUD UI with dialog editor + header/footer toggles), AdminRanks.tsx, AdminRules.tsx, AdminTags.tsx, AdminTopics.tsx (moderation: pin/lock/delete threads + delete posts), AdminSeo.tsx, AdminSitemap.tsx, AdminPwa.tsx, AdminBackup.tsx (JSON export download).
+- Updated ForumShell.tsx: wired AdminLayout wrapper around all admin views; added StaticPageView for 'page' view; replaced inline footer with <SiteFooter />; added imports for all 20 new admin components.
+- Updated Header.tsx: added dynamic logo (from logo_url setting, falls back to π glyph), admin-configurable announcement banner (header_announcement setting), expanded viewToUrl with all 24 admin routes + /page/[slug].
+- Built SiteFooter.tsx: clean footer (site identity + footer pages nav links + copyright). Removed old "Powered by Cloudflare D1 & R2 · Firebase Auth" clutter. Footer links come from Pages with showInFooter=true.
+- Built StaticPageView.tsx: renders CMS pages with a minimal markdown→HTML renderer.
+- Built backend APIs: /api/pages (GET/POST), /api/pages/[slug] (GET/PUT/DELETE with revision snapshots), /api/ranks (GET/POST), /api/ranks/[id] (PUT/DELETE), /api/rules (GET/POST), /api/rules/[id] (PUT/DELETE), /api/tags/[id] (PUT/DELETE), /api/verify-email (token consume + resend), /api/admin/verify-user (manual verify/revoke), /api/admin/topics (list threads/posts for moderation), /api/backup (JSON snapshot export, excludes password hashes).
+- Built SEO backend: src/lib/server-settings.ts (getSettingsMap server-side), /sitemap.xml route (dynamic XML from DB, includes pages/threads/tags/users per settings), /robots.txt route (indexable toggle + sitemap reference), updated layout.tsx with generateMetadata (dynamic title/description/keywords/OG/Twitter/canonical/robots from DB) + viewport themeColor + manifest link.
+- Built SiteHeadInjector.tsx: client component injecting JSON-LD structured data (Organization/WebSite) + analytics scripts (Google/Plausible/Matomo) from settings.
+- Built PWA backend + frontend: /manifest.webmanifest route (dynamic from pwa_* settings), /sw.js route (service worker: cache-first static, network-first navigations, app-shell precache), PwaRegistration.tsx (registers SW + beforeinstallprompt install prompt UI).
+- Created 20 new admin route pages (/admin/topics, /ranks, /tags, /rules, /pages, /branding, /auth, /email, /verification, /usernames, /login, /seo, /sitemap, /pwa, /analytics, /spam, /cookies, /gdpr, /monetization, /backup) + /page/[slug] route — all thin ForumShell wrappers.
+- Updated AuthModal.tsx: registration now handles verificationRequired response — shows a "Verify your email" step with a "Verify Email Now" button (calls /api/verify-email with the token). Falls back gracefully when no token.
+- Removed conflicting static public/robots.txt so the dynamic route handler takes precedence.
+- Browser-verified end-to-end:
+  * Home renders with forum content (categories, forums, stats) ✓
+  * Admin login (admin@piforum.com) works, navigates to /admin ✓
+  * Admin sidebar shows ALL 8 groups / 24 sections exactly as requested ✓
+  * /admin/verification, /admin/seo, /admin/pwa, /admin/pages, /admin/backup, /admin/ranks, /admin/rules, /admin/topics all render with H1 titles ✓
+  * Footer is clean (site name + tagline + page links + copyright — no Cloudflare/Firebase clutter) ✓
+  * Created "About Us" page via API with showInFooter=true → footer link appears + /page/about renders ✓
+  * /sitemap.xml returns 200 with 33 URLs (threads included) ✓
+  * /robots.txt returns 200 with correct directives + sitemap reference ✓
+  * /manifest.webmanifest returns 200 with dynamic PWA config ✓
+  * /sw.js returns 200 with service worker ✓
+  * Verification flow: register with require_email_verification=true → returns verificationRequired + verifyToken → POST /api/verify-email → verified:true, isVerified:true ✓
+  * Dynamic metadata (title "PiForum — PiForum") loads from DB ✓
+- Lint: 0 errors, 0 warnings. Dev log: 0 runtime errors.
+
+Stage Summary:
+- Complete CMS expansion: user verification system (backend + frontend + admin panel with flaws documented), strong SEO system (dynamic metadata + sitemap.xml + robots.txt + JSON-LD + admin panels with flaws), powerful PWA (manifest + service worker + install prompt + admin panel).
+- Admin panel restructured into 8 grouped sections with 24 subsections, all with correct routes — no duplicate settings (each setting key lives in exactly one panel via the shared useAdminSettings hook).
+- Clean, admin-configurable footer (site identity + CMS-managed page links + copyright) and header (dynamic logo + announcement banner).
+- 4 new Prisma models (Rank, Page, PageRevision, Rule, EmailVerification) + User verification fields.
+- 13 new API routes, 20 new admin components, 21 new App Router pages, 4 new backend route handlers (sitemap/robots/manifest/sw), dynamic generateMetadata, PWA registration, JSON-LD + analytics injection.
+- All flaws honestly documented via FlawsCallout in each system's admin panel (SMTP-fallback verification, no rate limits, not-yet-wired OAuth/2FA/Akismet/reCAPTCHA, sitemap scaling limits, PWA offline-content limits, etc.).
+- Files created: ~45 new files. Files modified: store.ts, types.ts, api-helpers.ts, layout.tsx, page.tsx, ForumShell.tsx, Header.tsx, AuthModal.tsx, auth login/register/verify routes, profile/members/users routes, prisma/schema.prisma.

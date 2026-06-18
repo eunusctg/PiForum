@@ -30,10 +30,18 @@ model User {
   postCount     Int      @default(0)
   threadCount   Int      @default(0)
   reputation    Int      @default(0)
+  // Verification & account status
+  isVerified    Boolean  @default(false)   // email-verified
+  verifiedAt    DateTime?
+  verifyToken   String?                    // current pending email-verification token
+  verifyExpires DateTime?
+  twoFactorEnabled Boolean @default(false)
+  rankId        String?                    // optional custom rank/title
   lastSeenAt    DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  rank          Rank?    @relation(fields: [rankId], references: [id])
   threads       Thread[]
   posts         Post[]
   votes         PostVote[]
@@ -45,6 +53,7 @@ model User {
   reportedBy    Report[]    @relation("TargetUserReports")  // reports against this user
   pollVotes     PollVote[]
   userSettings  UserSetting[]
+  pageRevisions PageRevision[]
 }
 
 model Category {
@@ -339,4 +348,80 @@ model UserSetting {
 
   @@unique([userId, key])
   @@index([userId])
+}
+
+/* ============================================================
+   CMS EXTENSION MODELS — Ranks, Pages, Rules
+   ============================================================ */
+
+model Rank {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  title       String                    // display label shown under username
+  color       String?                   // CSS color for the badge
+  icon        String?                   // optional emoji/lucide name
+  minPosts    Int      @default(0)      // auto-assigned when user reaches this post count
+  minReputation Int    @default(0)
+  isStaff     Boolean  @default(false)  // moderator/admin style rank
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  slug        String   @unique          // URL slug, e.g. "about", "privacy"
+  title       String
+  content     String                    // markdown / html body
+  excerpt     String?
+  status      String   @default("published") // "draft" | "published"
+  showInFooter Boolean @default(false)  // render link in footer
+  showInHeader Boolean @default(false)  // render link in header
+  sortOrder   Int      @default(0)
+  authorId    String?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  revisions   PageRevision[]
+}
+
+model PageRevision {
+  id        String   @id @default(cuid())
+  pageId    String
+  title     String
+  content   String
+  editedBy  String
+  createdAt DateTime @default(now())
+
+  page      Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  editor    User?    @relation(fields: [editedBy], references: [id])
+
+  @@index([pageId])
+}
+
+model Rule {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  icon        String?                   // optional emoji
+  category    String?                   // grouping label e.g. "Conduct", "Content"
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
 }

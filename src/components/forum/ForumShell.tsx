@@ -15,12 +15,34 @@ import BookmarksView from '@/components/forum/BookmarksView';
 import NotificationsView from '@/components/forum/NotificationsView';
 import ProfileView from '@/components/forum/ProfileView';
 import TagsView from '@/components/forum/TagsView';
+import SiteFooter from '@/components/forum/SiteFooter';
 import AdminDashboard from '@/components/forum/AdminDashboard';
 import AdminUsers from '@/components/forum/AdminUsers';
 import AdminCategories from '@/components/forum/AdminCategories';
-import AdminSettings from '@/components/forum/AdminSettings';
 import AdminSecurity from '@/components/forum/AdminSecurity';
 import AdminReports from '@/components/forum/AdminReports';
+import AdminLayout from '@/components/forum/AdminLayout';
+import AdminSettings from '@/components/forum/admin/AdminBranding';
+import AdminTopics from '@/components/forum/admin/AdminTopics';
+import AdminRanks from '@/components/forum/admin/AdminRanks';
+import AdminTags from '@/components/forum/admin/AdminTags';
+import AdminRules from '@/components/forum/admin/AdminRules';
+import AdminPages from '@/components/forum/admin/AdminPages';
+import AdminAuth from '@/components/forum/admin/AdminAuth';
+import AdminEmail from '@/components/forum/admin/AdminEmail';
+import AdminVerification from '@/components/forum/admin/AdminVerification';
+import AdminUsernames from '@/components/forum/admin/AdminUsernames';
+import AdminLogin from '@/components/forum/admin/AdminLogin';
+import AdminSeo from '@/components/forum/admin/AdminSeo';
+import AdminSitemap from '@/components/forum/admin/AdminSitemap';
+import AdminPwa from '@/components/forum/admin/AdminPwa';
+import AdminAnalytics from '@/components/forum/admin/AdminAnalytics';
+import AdminSpam from '@/components/forum/admin/AdminSpam';
+import AdminCookies from '@/components/forum/admin/AdminCookies';
+import AdminGdpr from '@/components/forum/admin/AdminGdpr';
+import AdminMonetization from '@/components/forum/admin/AdminMonetization';
+import AdminBackup from '@/components/forum/admin/AdminBackup';
+import StaticPageView from '@/components/forum/StaticPageView';
 import { Loader2 } from 'lucide-react';
 import type { AppView } from '@/lib/types';
 
@@ -223,18 +245,61 @@ export default function ForumShell({
         return <ProfileView />;
       case 'tags':
         return <TagsView />;
+      case 'page':
+        return <StaticPageView slug={viewParams.pageSlug || ''} />;
       case 'admin-dashboard':
-        return <AdminDashboard />;
+        return <AdminLayout activeView="admin-dashboard"><AdminDashboard /></AdminLayout>;
       case 'admin-users':
-        return <AdminUsers />;
+        return <AdminLayout activeView="admin-users"><AdminUsers /></AdminLayout>;
+      case 'admin-topics':
+        return <AdminLayout activeView="admin-topics"><AdminTopics /></AdminLayout>;
       case 'admin-categories':
-        return <AdminCategories />;
-      case 'admin-settings':
-        return <AdminSettings />;
+        return <AdminLayout activeView="admin-categories"><AdminCategories /></AdminLayout>;
+      case 'admin-ranks':
+        return <AdminLayout activeView="admin-ranks"><AdminRanks /></AdminLayout>;
+      case 'admin-tags':
+        return <AdminLayout activeView="admin-tags"><AdminTags /></AdminLayout>;
+      case 'admin-rules':
+        return <AdminLayout activeView="admin-rules"><AdminRules /></AdminLayout>;
+      case 'admin-pages':
+        return <AdminLayout activeView="admin-pages"><AdminPages /></AdminLayout>;
+      case 'admin-branding':
+        return <AdminLayout activeView="admin-branding"><AdminSettings /></AdminLayout>;
+      case 'admin-auth':
+        return <AdminLayout activeView="admin-auth"><AdminAuth /></AdminLayout>;
+      case 'admin-email':
+        return <AdminLayout activeView="admin-email"><AdminEmail /></AdminLayout>;
+      case 'admin-verification':
+        return <AdminLayout activeView="admin-verification"><AdminVerification /></AdminLayout>;
+      case 'admin-usernames':
+        return <AdminLayout activeView="admin-usernames"><AdminUsernames /></AdminLayout>;
+      case 'admin-login':
+        return <AdminLayout activeView="admin-login"><AdminLogin /></AdminLayout>;
+      case 'admin-seo':
+        return <AdminLayout activeView="admin-seo"><AdminSeo /></AdminLayout>;
+      case 'admin-sitemap':
+        return <AdminLayout activeView="admin-sitemap"><AdminSitemap /></AdminLayout>;
+      case 'admin-pwa':
+        return <AdminLayout activeView="admin-pwa"><AdminPwa /></AdminLayout>;
+      case 'admin-analytics':
+        return <AdminLayout activeView="admin-analytics"><AdminAnalytics /></AdminLayout>;
+      case 'admin-spam':
+        return <AdminLayout activeView="admin-spam"><AdminSpam /></AdminLayout>;
+      case 'admin-cookies':
+        return <AdminLayout activeView="admin-cookies"><AdminCookies /></AdminLayout>;
+      case 'admin-gdpr':
+        return <AdminLayout activeView="admin-gdpr"><AdminGdpr /></AdminLayout>;
       case 'admin-security':
-        return <AdminSecurity />;
+        return <AdminLayout activeView="admin-security"><AdminSecurity /></AdminLayout>;
       case 'admin-reports':
-        return <AdminReports />;
+        return <AdminLayout activeView="admin-reports"><AdminReports /></AdminLayout>;
+      case 'admin-monetization':
+        return <AdminLayout activeView="admin-monetization"><AdminMonetization /></AdminLayout>;
+      case 'admin-backup':
+        return <AdminLayout activeView="admin-backup"><AdminBackup /></AdminLayout>;
+      case 'admin-settings':
+        // Legacy alias → branding
+        return <AdminLayout activeView="admin-branding"><AdminSettings /></AdminLayout>;
       default:
         return <ForumHome />;
     }
@@ -248,24 +313,7 @@ export default function ForumShell({
       <Header />
       <AuthModal />
       <main className="flex-1 w-full">{renderView()}</main>
-      <footer className="mt-auto py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="neu-divider mb-4" />
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-primary">π</span>
-              <span>PiForum</span>
-              <span>·</span>
-              <span>Neumorphic Forum CMS</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span>Powered by Cloudflare D1 & R2</span>
-              <span>·</span>
-              <span>Firebase Auth</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

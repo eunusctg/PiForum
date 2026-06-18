@@ -15,6 +15,11 @@ export interface ForumUser {
   postCount: number;
   threadCount: number;
   reputation: number;
+  isVerified: boolean;
+  verifiedAt: string | null;
+  twoFactorEnabled: boolean;
+  rankId: string | null;
+  rank?: Rank | null;
   lastSeenAt: string;
   createdAt: string;
   updatedAt: string;
@@ -255,12 +260,33 @@ export type AppView =
   | "profile"
   | "tags"
   | "activity"
+  | "page"
   | "admin-dashboard"
   | "admin-users"
+  | "admin-topics"
+  | "admin-reports"
   | "admin-categories"
+  | "admin-ranks"
+  | "admin-tags"
+  | "admin-rules"
+  | "admin-pages"
+  | "admin-branding"
+  | "admin-auth"
+  | "admin-email"
+  | "admin-verification"
+  | "admin-usernames"
+  | "admin-login"
+  | "admin-seo"
+  | "admin-sitemap"
+  | "admin-pwa"
+  | "admin-analytics"
+  | "admin-spam"
+  | "admin-cookies"
+  | "admin-gdpr"
+  | "admin-monetization"
+  | "admin-backup"
   | "admin-settings"
   | "admin-security"
-  | "admin-reports"
   | "login"
   | "register";
 
@@ -277,4 +303,48 @@ export interface SearchResult {
   users: ForumUser[];
   tags: Tag[];
   total: number;
+}
+
+/* CMS extension types */
+
+export interface Rank {
+  id: string;
+  name: string;
+  title: string;
+  color: string | null;
+  icon: string | null;
+  minPosts: number;
+  minReputation: number;
+  isStaff: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Page {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  status: "draft" | "published";
+  showInFooter: boolean;
+  showInHeader: boolean;
+  sortOrder: number;
+  authorId: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Rule {
+  id: string;
+  title: string;
+  description: string;
+  icon: string | null;
+  category: string | null;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

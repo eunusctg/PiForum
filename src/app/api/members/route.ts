@@ -42,6 +42,7 @@ export async function GET(request: Request) {
         orderBy,
         skip,
         take: limit,
+        include: { rank: true },
       }),
       db.user.count({ where }),
     ]);

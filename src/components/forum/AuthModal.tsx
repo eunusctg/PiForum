@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Loader2, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { Loader2, Mail, Lock, User, Eye, EyeOff, BadgeCheck, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +55,11 @@ export default function AuthModal() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // Email verification state — shown after a successful registration when
+  // verification is required by the admin.
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [verifyToken, setVerifyToken] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   // Reset forms, errors, and password visibility whenever the modal closes.
   // Using an effect on authModalOpen (instead of onOpenChange) ensures the reset
@@ -75,6 +80,9 @@ export default function AuthModal() {
       setShowConfirmPassword(false);
       setLoginLoading(false);
       setRegisterLoading(false);
+      setVerificationRequired(false);
+      setVerifyToken(null);
+      setVerifying(false);
     }
   }, [authModalOpen]);
 
@@ -179,7 +187,15 @@ export default function AuthModal() {
 
         setCurrentUser(data.data.user as ForumUser);
         setAuthToken(data.data.token as string);
-        setAuthModalOpen(false);
+
+        // If email verification is required, keep the modal open and show the
+        // verification step instead of closing.
+        if (data.data.verificationRequired) {
+          setVerificationRequired(true);
+          setVerifyToken(data.data.verifyToken || null);
+        } else {
+          setAuthModalOpen(false);
+        }
       } catch {
         setRegisterError("Network error. Please check your connection and try again.");
       } finally {
@@ -188,6 +204,36 @@ export default function AuthModal() {
     },
     [registerForm, setCurrentUser, setAuthToken, setAuthModalOpen]
   );
+
+  /* Verify the email using the token returned at registration (sandbox
+     fallback when SMTP is not configured). */
+  const handleVerifyEmail = useCallback(async () => {
+    if (!verifyToken) return;
+    setVerifying(true);
+    try {
+      const res = await fetch("/api/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: verifyToken }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Update the current user to reflect verified status
+        const user = useAppStore.getState().currentUser;
+        if (user) {
+          setCurrentUser({ ...user, isVerified: true, verifiedAt: new Date().toISOString() });
+        }
+        setVerificationRequired(false);
+        setAuthModalOpen(false);
+      } else {
+        setRegisterError(data.error || "Verification failed.");
+      }
+    } catch {
+      setRegisterError("Network error during verification.");
+    } finally {
+      setVerifying(false);
+    }
+  }, [verifyToken, setCurrentUser, setAuthModalOpen]);
 
   return (
     <Dialog open={authModalOpen} onOpenChange={handleOpenChange}>
@@ -226,6 +272,46 @@ export default function AuthModal() {
         </DialogHeader>
 
         <div className="px-6 pb-6 pt-4">
+          {/* Email Verification Step (shown when registration requires verification) */}
+          {verificationRequired ? (
+            <div className="flex flex-col gap-4 py-4">
+              <div className="flex flex-col items-center text-center gap-3">
+                <div className="neu-circle p-4">
+                  <BadgeCheck className="size-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-bold">Verify your email</h3>
+                <p className="text-sm text-muted-foreground">
+                  We sent a verification link to your email. Click the button below to verify
+                  your account now.
+                </p>
+                <p className="text-xs text-muted-foreground/70 bg-muted/30 rounded-lg px-3 py-1.5">
+                  In this sandbox, SMTP is not configured — the verify link is shown directly here.
+                </p>
+              </div>
+              {registerError && (
+                <div className="neu-card-inset p-3 rounded-xl text-sm text-destructive font-medium">
+                  {registerError}
+                </div>
+              )}
+              <button
+                onClick={handleVerifyEmail}
+                disabled={verifying || !verifyToken}
+                className="neu-btn w-full h-11 flex items-center justify-center gap-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
+              >
+                {verifying ? (
+                  <><Loader2 className="size-4 animate-spin" /> Verifying...</>
+                ) : (
+                  <><CheckCircle2 className="size-4" /> Verify Email Now</>
+                )}
+              </button>
+              {!verifyToken && (
+                <p className="text-xs text-center text-muted-foreground">
+                  No verification token was provided. Ask an admin to verify your account manually.
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
           {/* Login Form */}
           {activeTab === "login" && (
             <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
@@ -520,6 +606,8 @@ export default function AuthModal() {
                 </button>
               </p>
             </form>
+          )}
+            </>
           )}
         </div>
       </DialogContent>

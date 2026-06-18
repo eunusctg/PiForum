@@ -41,7 +41,7 @@ interface AppState {
 
   // Settings
   settings: Record<string, string>;
-  setSettings: (settings: ForumSetting[]) => void;
+  setSettings: (settings: ForumSetting[] | Record<string, string>) => void;
   getSetting: (key: string, defaultValue?: string) => string;
 
   // UI state
@@ -110,9 +110,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   settings: {},
   setSettings: (settings) => {
     const map: Record<string, string> = {};
-    settings.forEach((s) => {
-      map[s.key] = s.value;
-    });
+    if (Array.isArray(settings)) {
+      settings.forEach((s) => {
+        map[s.key] = s.value;
+      });
+    } else {
+      // Object map form (as returned by /api/settings)
+      Object.assign(map, settings);
+    }
     set({ settings: map });
   },
   getSetting: (key, defaultValue = "") => {

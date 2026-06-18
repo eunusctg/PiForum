@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { successResponse, errorResponse, serverErrorResponse, parseBody } from '@/lib/api-helpers';
+import { successResponse, errorResponse, serverErrorResponse, parseBody, serializeUser } from '@/lib/api-helpers';
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     }
 
     // Token is the firebaseUid
-    const user = await db.user.findUnique({ where: { firebaseUid: token } });
+    const user = await db.user.findUnique({ where: { firebaseUid: token }, include: { rank: true } });
 
     if (!user) {
       return errorResponse('Invalid token', 401);
@@ -24,18 +24,7 @@ export async function POST(request: Request) {
     }
 
     return successResponse({
-      user: {
-        id: user.id,
-        firebaseUid: user.firebaseUid,
-        username: user.username,
-        email: user.email,
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        role: user.role,
-        banned: user.banned,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      user: serializeUser(user),
     });
   } catch (e: any) {
     return serverErrorResponse(e.message || 'Token verification failed');

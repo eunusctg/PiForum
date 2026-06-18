@@ -24,7 +24,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const user = await db.user.findUnique({ where: { id } });
+    const user = await db.user.findUnique({ where: { id }, include: { rank: true } });
     if (!user) return errorResponse('User not found', 404);
 
     const [recentThreads, postCount] = await Promise.all([
@@ -88,6 +88,7 @@ export async function PUT(
         ...(website !== undefined && { website }),
         ...(avatarUrl !== undefined && { avatarUrl }),
       },
+      include: { rank: true },
     });
 
     return successResponse({ user: serializeUser(updated) });

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { successResponse, errorResponse, serverErrorResponse, verifyPassword, parseBody } from '@/lib/api-helpers';
+import { successResponse, errorResponse, serverErrorResponse, verifyPassword, parseBody, serializeUser } from '@/lib/api-helpers';
 
 export async function POST(request: Request) {
   try {
@@ -12,8 +12,8 @@ export async function POST(request: Request) {
       return errorResponse('Email and password are required');
     }
 
-    // Find user by email
-    const user = await db.user.findUnique({ where: { email } });
+    // Find user by email (include rank for serialization)
+    const user = await db.user.findUnique({ where: { email }, include: { rank: true } });
     if (!user) {
       return errorResponse('Invalid email or password', 401);
     }
@@ -39,18 +39,7 @@ export async function POST(request: Request) {
 
     // Return user data and token (firebaseUid as token)
     return successResponse({
-      user: {
-        id: user.id,
-        firebaseUid: user.firebaseUid,
-        username: user.username,
-        email: user.email,
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        role: user.role,
-        banned: user.banned,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      },
+      user: serializeUser(user),
       token: user.firebaseUid,
     });
   } catch (e: any) {

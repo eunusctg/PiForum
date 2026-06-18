@@ -73,6 +73,8 @@ function viewToUrl(
       return "/notifications";
     case "tags":
       return "/tags";
+    case "page":
+      return params?.pageSlug ? `/page/${encodeURIComponent(params.pageSlug)}` : "/";
     case "profile": {
       const uid = params?.userId || currentUser?.id;
       return uid ? `/profile/${encodeURIComponent(uid)}` : "/";
@@ -81,14 +83,53 @@ function viewToUrl(
       return "/admin";
     case "admin-users":
       return "/admin/users";
+    case "admin-topics":
+      return "/admin/topics";
     case "admin-categories":
       return "/admin/categories";
+    case "admin-ranks":
+      return "/admin/ranks";
+    case "admin-tags":
+      return "/admin/tags";
+    case "admin-rules":
+      return "/admin/rules";
+    case "admin-pages":
+      return "/admin/pages";
+    case "admin-branding":
     case "admin-settings":
-      return "/admin/settings";
+      return "/admin/branding";
+    case "admin-auth":
+      return "/admin/auth";
+    case "admin-email":
+      return "/admin/email";
+    case "admin-verification":
+      return "/admin/verification";
+    case "admin-usernames":
+      return "/admin/usernames";
+    case "admin-login":
+      return "/admin/login";
+    case "admin-seo":
+      return "/admin/seo";
+    case "admin-sitemap":
+      return "/admin/sitemap";
+    case "admin-pwa":
+      return "/admin/pwa";
+    case "admin-analytics":
+      return "/admin/analytics";
+    case "admin-spam":
+      return "/admin/spam";
+    case "admin-cookies":
+      return "/admin/cookies";
+    case "admin-gdpr":
+      return "/admin/gdpr";
     case "admin-security":
       return "/admin/security";
     case "admin-reports":
       return "/admin/reports";
+    case "admin-monetization":
+      return "/admin/monetization";
+    case "admin-backup":
+      return "/admin/backup";
     default:
       // install / login / register / activity — no dedicated URL
       return null;
@@ -123,6 +164,8 @@ export default function Header() {
 
   const router = useRouter();
   const forumName = getSetting("forum_name", "PiForum");
+  const logoUrl = getSetting("logo_url", "");
+  const announcement = getSetting("header_announcement", "");
 
   // ---------- Fetch unread notification count ----------
   useEffect(() => {
@@ -233,9 +276,21 @@ export default function Header() {
             className="flex items-center gap-2 group cursor-pointer shrink-0"
             aria-label="Go to home"
           >
-            <span className="neu-circle flex items-center justify-center w-9 h-9 text-lg font-bold text-primary transition-all group-hover:text-primary/80">
-              π
-            </span>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={`${forumName} logo`}
+                className="h-9 w-auto rounded-lg object-contain transition-all group-hover:opacity-80"
+                onError={(e) => {
+                  // Fallback to the π glyph if the logo fails to load
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              <span className="neu-circle flex items-center justify-center w-9 h-9 text-lg font-bold text-primary transition-all group-hover:text-primary/80">
+                π
+              </span>
+            )}
             <span className="text-lg font-bold tracking-tight hidden sm:inline">
               {forumName}
             </span>
@@ -636,6 +691,18 @@ export default function Header() {
           </div>
         )}
       </div>
+
+      {/* Admin-configurable announcement banner (Branding → Header & Footer) */}
+      {announcement && (
+        <div className="px-4 sm:px-6">
+          <div className="max-w-7xl mx-auto mt-2">
+            <div className="neu-card-inset px-4 py-2 text-center text-xs sm:text-sm text-foreground/80 flex items-center justify-center gap-2">
+              <Bell className="size-3.5 text-primary shrink-0" />
+              <span className="truncate">{announcement}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
