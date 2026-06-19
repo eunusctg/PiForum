@@ -78,8 +78,25 @@ async function buildClient(): Promise<PrismaClient> {
     }
   }
 
-  // Local Node.js dev path — plain PrismaClient using DATABASE_URL.
+  // Local Node.js dev path — Prisma 7's "client" engine requires a driver
+  // adapter (the native Rust engine was removed). Use the libsql adapter
+  // pointed at the local SQLite file via DATABASE_URL (e.g. file:./db/custom.db)
+  // so local dev talks to a real on-disk SQLite database. PrismaLibSql takes an
+  // options object ({ url, authToken? }) and creates the libsql client itself.
+  //
+  // IMPORTANT: Use a non-literal dynamic import specifier so esbuild/OpenNext
+  // cannot statically resolve it. This prevents @prisma/adapter-libsql (and its
+  // ~300 KB dependency tree) from being bundled into the Cloudflare Worker —
+  // critical for staying under the 3 MiB compressed Worker size limit. On
+  // Cloudflare this code path never executes (isWorkersRuntime() returns true
+  // and we return early above), so the unresolved runtime import is harmless.
+  const localAdapterModule = '@prisma/adapter-libsql'
+  const { PrismaLibSql } = (await import(
+    localAdapterModule
+  )) as typeof import('@prisma/adapter-libsql')
+  const url = process.env.DATABASE_URL || 'file:./db/custom.db'
   return new BasePrismaClient({
+    adapter: new PrismaLibSql({ url }),
     log:
       process.env.NODE_ENV !== 'production' ? ['error', 'warn'] : ['error'],
   })

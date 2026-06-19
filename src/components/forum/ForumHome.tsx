@@ -142,7 +142,7 @@ export default function ForumHome({ onNavigateForum }: ForumHomeProps) {
   return (
     <div className="relative w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8">
       {/* ---- Hero Section ---- */}
-      <section className="neu-card p-6 sm:p-8 text-center space-y-2">
+      <section className="neu-card p-6 sm:p-8 text-center space-y-4">
         <div className="flex items-center justify-center gap-3">
           <div className="neu-circle p-3">
             <MessageSquare className="size-7 text-primary" />
@@ -154,6 +154,16 @@ export default function ForumHome({ onNavigateForum }: ForumHomeProps) {
         <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
           {forumDescription}
         </p>
+        {currentUser && (
+          <button
+            onClick={handleNewThread}
+            className="neu-btn inline-flex items-center gap-2 px-5 py-2.5 text-primary hover:text-primary/80 font-semibold text-sm transition-all"
+            aria-label="Create new thread"
+          >
+            <Plus className="size-4" />
+            New Thread
+          </button>
+        )}
       </section>
 
       {/* ---- Category Sections ---- */}
@@ -213,17 +223,6 @@ export default function ForumHome({ onNavigateForum }: ForumHomeProps) {
           />
         </div>
       </section>
-
-      {/* ---- Floating New Thread Button ---- */}
-      {currentUser && (
-        <button
-          onClick={handleNewThread}
-          className="fixed bottom-6 right-6 neu-btn p-4 text-primary hover:text-primary/80 z-50"
-          aria-label="Create new thread"
-        >
-          <Plus className="size-6" />
-        </button>
-      )}
 
       {/* ---- Forum Picker Dialog (for "New Thread" from home) ---- */}
       <Dialog open={showForumPicker} onOpenChange={setShowForumPicker}>
