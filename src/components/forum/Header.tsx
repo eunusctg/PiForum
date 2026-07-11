@@ -40,7 +40,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
  * Map a store view (+ optional params) to a real App-Router URL so that
  * clicking nav links updates the browser URL and the route is shareable /
  * bookmarkable. Returns `null` for views that have no dedicated URL
- * (install / login / register), in which case the caller falls back to the
+ * (login / register), in which case the caller falls back to the
  * in-store `navigateTo` SPA switch.
  */
 function viewToUrl(
@@ -131,7 +131,7 @@ function viewToUrl(
     case "admin-backup":
       return "/admin/backup";
     default:
-      // install / login / register / activity — no dedicated URL
+      // login / register / activity — no dedicated URL
       return null;
   }
 }
@@ -206,7 +206,7 @@ export default function Header() {
         // sync the store's currentView on mount.
         router.push(url);
       } else {
-        // No dedicated URL (install / login / register) — fall back to the
+        // No dedicated URL (login / register) — fall back to the
         // in-store SPA switch.
         navigateTo(view, params);
       }

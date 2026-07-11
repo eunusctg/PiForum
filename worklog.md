@@ -1470,3 +1470,26 @@ Stage Summary:
 - ✅ Created and verified uncategorized thread via API: `forumId: None`, appears in listing as "UNCATEGORIZED"
 - ✅ Deleted uncategorized thread successfully (no crash from null forumId)
 - ✅ Agent Browser verified: home page shows uncategorized threads with "Uncategorized" label; thread detail shows "Home → Uncategorized → Thread Title" breadcrumb
+
+---
+Task ID: remove-install-wizard
+Agent: Main
+Task: Remove Installation Wizard — all steps completely
+
+Work Log:
+- Deleted `src/components/forum/InstallWizard.tsx` (1,276 lines — 4-step wizard with framer-motion animations)
+- Deleted `src/app/api/install/` directory (2 route files: `route.ts` GET/POST install + `check/route.ts` GET check)
+- Rewrote `ForumShell.tsx`: removed InstallWizard import/render, removed install-check flow, removed `isInstalled`/`installConfig` store references; app now loads settings + auth directly on mount without any install gate; default view changed from "install" to "home"
+- Updated `store.ts`: removed `isInstalled`, `setIsInstalled`, `installConfig`, `setInstallConfig` from state interface and implementation; changed `currentView` default from `"install"` to `"home"`; removed `InstallConfig` from type imports
+- Updated `types.ts`: removed `"install"` from `AppView` union type; removed `InstallConfig` interface entirely (was 19 fields for Cloudflare/Firebase/DB/branding config)
+- Updated `Header.tsx`: cleaned up comments referencing "install" view in `viewToUrl` docstring and fallback comments
+- Removed fireworks/celebration CSS from `globals.css`: deleted 274 lines of `.fireworks-container`, `.firework`, `.firework-particle`, `.firework-trail`, `.celebration-glow` styles and their keyframe animations (firework-burst, firework-sparkle, fireworks-cycle, firework-trail-fall, glow-pulse)
+- Updated `seed/route.ts`: added bootstrap mode — when no admin user exists and `{ bootstrap: true }` is sent, creates a SuperAdmin (username: "admin", password: "admin123") without requiring auth; otherwise requires admin auth as before; moved admin user ID resolution to top of handler; replaced `adminCheck.user!` references with `adminUserId` variable
+
+Stage Summary:
+- ✅ Installation Wizard completely removed (component, API routes, CSS, store state, types)
+- ✅ App loads directly into forum home — no install gate, no preloader waiting for install check
+- ✅ Seed route supports `{ bootstrap: true }` for initial admin creation without existing auth
+- ✅ ForumShell init flow simplified: load settings → restore auth from localStorage → navigate to home
+- ✅ Agent Browser verified: page loads directly to forum home with all threads, no wizard appears
+- ✅ No lint errors in src/ directory

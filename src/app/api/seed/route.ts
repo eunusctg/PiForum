@@ -4,14 +4,51 @@ import { successResponse, errorResponse, serverErrorResponse, hashPassword, gene
 /* ------------------------------------------------------------------ */
 /*  POST /api/seed — populate the forum with dummy data                */
 /*  Admin-only. Idempotent: clears existing threads/posts/users first. */
+/*  Bootstrap mode: if no admin user exists, accepts { bootstrap: true }*/
+/*  to create the initial admin + seed data without requiring auth.    */
 /* ------------------------------------------------------------------ */
 export async function POST(request: Request) {
   try {
-    const adminCheck = await requireAdmin(request);
-    if (adminCheck.error) return adminCheck.error;
-
     const body = await parseBody(request);
     const force = body?.force === true;
+    const bootstrap = body?.bootstrap === true;
+
+    // Check if any admin exists
+    const adminCount = await db.user.count({ where: { role: { gte: 2 } } });
+
+    // Resolve admin user ID — either via auth or bootstrap
+    let adminUserId: string;
+
+    if (adminCount === 0 && bootstrap) {
+      // Bootstrap mode: no admin exists, create one
+      // This is the initial setup path (no auth required)
+      const adminFirebaseUid = generateUUID();
+      const adminUser = await db.user.create({
+        data: {
+          firebaseUid: adminFirebaseUid,
+          username: 'admin',
+          email: 'admin@piforum.dev',
+          displayName: 'admin',
+          role: 3, // SuperAdmin
+          isVerified: true,
+          verifiedAt: new Date(),
+        },
+      });
+      await db.setting.create({
+        data: {
+          key: `password_${adminUser.id}`,
+          value: hashPassword('admin123'),
+        },
+      });
+      adminUserId = adminUser.id;
+    } else if (adminCount === 0 && !bootstrap) {
+      return errorResponse('No admin user exists. Send { "bootstrap": true } to create an admin and seed data.', 403);
+    } else {
+      // Normal mode: require admin auth
+      const adminCheck = await requireAdmin(request);
+      if (adminCheck.error) return adminCheck.error;
+      adminUserId = adminCheck.user!.id;
+    }
 
     // If already seeded (more than 3 non-admin users exist), require force=true
     const existingUsers = await db.user.count({ where: { role: 0 } });
@@ -266,7 +303,6 @@ export async function POST(request: Request) {
     }
 
     /* ---------- Create notifications for admin ---------- */
-    const admin = adminCheck.user!;
     const notifTypes = [
       { type: 'system', title: 'Welcome to PiForum!', body: 'Your forum is ready. Check out the admin dashboard to configure settings.', link: '/?view=admin-dashboard' },
       { type: 'system', title: 'Dummy data seeded', body: "We've added sample users, threads, and posts to get you started.", link: '/' },
@@ -275,7 +311,7 @@ export async function POST(request: Request) {
     for (const n of notifTypes) {
       await db.notification.create({
         data: {
-          userId: admin.id,
+          userId: adminUserId,
           type: n.type,
           title: n.title,
           body: n.body,

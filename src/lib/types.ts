@@ -142,26 +142,6 @@ export interface ForumSetting {
   value: string;
 }
 
-export interface InstallConfig {
-  id: string;
-  installed: boolean;
-  cloudflareAccountId: string | null;
-  cloudflareD1Id: string | null;
-  cloudflareApiToken: string | null;
-  cloudflareR2Bucket: string | null;
-  cloudflareR2AccessKey: string | null;
-  cloudflareR2SecretKey: string | null;
-  firebaseApiKey: string | null;
-  firebaseAuthDomain: string | null;
-  firebaseProjectId: string | null;
-  firebaseStorageBucket: string | null;
-  firebaseMessagingSenderId: string | null;
-  firebaseAppId: string | null;
-  adminFirebaseUid: string | null;
-  forumName: string;
-  forumDescription: string;
-}
-
 export interface ForumStats {
   totalUsers: number;
   totalThreads: number;
@@ -255,7 +235,6 @@ export interface UserSetting {
 }
 
 export type AppView =
-  | "install"
   | "home"
   | "forum"
   | "thread"

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AppView, ForumUser, Category, Forum, Thread, Post, InstallConfig, ForumSetting } from "@/lib/types";
+import type { AppView, ForumUser, Category, Forum, Thread, Post, ForumSetting } from "@/lib/types";
 
 export type ThemeMode = "light" | "dark" | "gold";
 
@@ -20,12 +20,6 @@ interface AppState {
   // Theme — "light" (Day), "dark" (Night), "gold" (Golden)
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
-
-  // Install
-  isInstalled: boolean;
-  setIsInstalled: (installed: boolean) => void;
-  installConfig: InstallConfig | null;
-  setInstallConfig: (config: InstallConfig | null) => void;
 
   // Forum data
   categories: Category[];
@@ -57,7 +51,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Navigation
-  currentView: "install",
+  currentView: "home",
   setCurrentView: (view) => set({ currentView: view }),
   navigateTo: (view, params = {}) => set({ currentView: view, viewParams: params }),
   viewParams: {},
@@ -87,12 +81,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     set({ themeMode: mode });
   },
-
-  // Install
-  isInstalled: false,
-  setIsInstalled: (installed) => set({ isInstalled: installed }),
-  installConfig: null,
-  setInstallConfig: (config) => set({ installConfig: config }),
 
   // Forum data
   categories: [],

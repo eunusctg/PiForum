@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import Header from '@/components/forum/Header';
 import AuthModal from '@/components/forum/AuthModal';
-import InstallWizard from '@/components/forum/InstallWizard';
 import ForumHome from '@/components/forum/ForumHome';
 import ThreadList from '@/components/forum/ThreadList';
 import ThreadView from '@/components/forum/ThreadView';
@@ -55,8 +54,7 @@ import type { AppView } from '@/lib/types';
  * calls to switch views without a full page reload.
  *
  * Behaviour:
- * 1. On mount, run the install-check + settings load + auth restore flow.
- *    If the app is not installed yet, render <InstallWizard /> full-screen.
+ * 1. On mount, load settings and restore auth from localStorage.
  *    If still initializing, render a loading screen.
  * 2. Once initialized, set the store's currentView/viewParams to
  *    `initialView` / `initialParams`. This ensures deep components that read
@@ -82,8 +80,6 @@ export default function ForumShell({
 }: ForumShellProps) {
   const currentView = useAppStore((s) => s.currentView);
   const viewParams = useAppStore((s) => s.viewParams);
-  const isInstalled = useAppStore((s) => s.isInstalled);
-  const setIsInstalled = useAppStore((s) => s.setIsInstalled);
   const setCurrentUser = useAppStore((s) => s.setCurrentUser);
   const setAuthToken = useAppStore((s) => s.setAuthToken);
   const setSettings = useAppStore((s) => s.setSettings);
@@ -93,7 +89,7 @@ export default function ForumShell({
   // navigated here from `/` via client-side routing).
   const [initializing, setInitializing] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
-    return !useAppStore.getState().isInstalled;
+    return !useAppStore.getState().settings || Object.keys(useAppStore.getState().settings).length === 0;
   });
 
   // Capture the initial view/params at mount so the init effect can use them
@@ -101,15 +97,15 @@ export default function ForumShell({
   const initialViewRef = useRef(initialView);
   const initialParamsRef = useRef(initialParams);
 
-  // Check installation status and restore auth on mount.
+  // Load settings and restore auth on mount.
   useEffect(() => {
     let active = true;
 
     async function init() {
       // If already initialized (user navigated from another page), just sync
-      // the view and bail out — no need to re-fetch install/settings/auth.
+      // the view and bail out — no need to re-fetch settings/auth.
       const state = useAppStore.getState();
-      if (state.isInstalled) {
+      if (state.settings && Object.keys(state.settings).length > 0) {
         if (active) {
           navigateTo(initialViewRef.current, initialParamsRef.current);
           setInitializing(false);
@@ -118,56 +114,41 @@ export default function ForumShell({
       }
 
       try {
-        const installRes = await fetch('/api/install/check');
-        const installData = await installRes.json();
-
-        if (installData.success && installData.data.installed) {
-          setIsInstalled(true);
-
-          // Load settings
-          try {
-            const settingsRes = await fetch('/api/settings');
-            const settingsData = await settingsRes.json();
-            if (settingsData.success && settingsData.data) {
-              setSettings(settingsData.data);
-            }
-          } catch {
-            // Settings load failure is non-critical
+        // Load settings
+        try {
+          const settingsRes = await fetch('/api/settings');
+          const settingsData = await settingsRes.json();
+          if (settingsData.success && settingsData.data) {
+            setSettings(settingsData.data);
           }
+        } catch {
+          // Settings load failure is non-critical
+        }
 
-          // Restore auth from localStorage
-          const savedToken = localStorage.getItem('piforum_token');
-          if (savedToken) {
-            try {
-              const verifyRes = await fetch('/api/auth/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: savedToken }),
-              });
-              const verifyData = await verifyRes.json();
-              if (verifyData.success && verifyData.data.user) {
-                setCurrentUser(verifyData.data.user);
-                setAuthToken(savedToken);
-              } else {
-                localStorage.removeItem('piforum_token');
-              }
-            } catch {
+        // Restore auth from localStorage
+        const savedToken = localStorage.getItem('piforum_token');
+        if (savedToken) {
+          try {
+            const verifyRes = await fetch('/api/auth/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: savedToken }),
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyData.success && verifyData.data.user) {
+              setCurrentUser(verifyData.data.user);
+              setAuthToken(savedToken);
+            } else {
               localStorage.removeItem('piforum_token');
             }
+          } catch {
+            localStorage.removeItem('piforum_token');
           }
+        }
 
-          if (active) navigateTo(initialViewRef.current, initialParamsRef.current);
-        } else {
-          if (active) {
-            setIsInstalled(false);
-            navigateTo('install');
-          }
-        }
+        if (active) navigateTo(initialViewRef.current, initialParamsRef.current);
       } catch {
-        if (active) {
-          setIsInstalled(false);
-          navigateTo('install');
-        }
+        if (active) navigateTo(initialViewRef.current, initialParamsRef.current);
       } finally {
         if (active) setInitializing(false);
       }
@@ -184,26 +165,14 @@ export default function ForumShell({
   // completed), sync the store so the right view renders.
   const paramsKey = JSON.stringify(initialParams);
   useEffect(() => {
-    if (!initializing && isInstalled) {
+    if (!initializing) {
       navigateTo(initialView, initialParams);
     }
-  }, [initialView, paramsKey, initializing, isInstalled]);
+  }, [initialView, paramsKey, initializing]);
 
   // Show loading screen during initialization
   if (initializing) {
     return <Preloader />;
-  }
-
-  // Installation wizard - no header/footer
-  if (!isInstalled || currentView === 'install') {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{ backgroundColor: 'var(--neu-bg)' }}
-      >
-        <InstallWizard />
-      </div>
-    );
   }
 
   // Render the current view
