@@ -37,6 +37,12 @@ export async function POST(request: Request) {
     if (!categoryId || !name) {
       return errorResponse('Category ID and forum name are required');
     }
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      return errorResponse('Forum name must not be empty');
+    }
+    if (name.length > 50) {
+      return errorResponse('Forum name must be 50 characters or less');
+    }
 
     // Verify category exists
     const category = await db.category.findUnique({ where: { id: categoryId } });

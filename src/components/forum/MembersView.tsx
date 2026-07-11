@@ -48,7 +48,10 @@ interface MemberPageData {
 const PAGE_SIZE = 12;
 
 export default function MembersView() {
-  const { navigateTo, currentUser } = useAppStore();
+  const navigateTo = useAppStore((s) => s.navigateTo);
+  const currentUser = useAppStore((s) => s.currentUser);
+  const setAuthModalOpen = useAppStore((s) => s.setAuthModalOpen);
+  const setAuthModalTab = useAppStore((s) => s.setAuthModalTab);
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -141,7 +144,35 @@ export default function MembersView() {
   };
 
   // ================================================================
-  //  RENDER
+  //  RENDER — Auth gate
+  // ================================================================
+  if (!currentUser) {
+    return (
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        <div className="neu-card p-8 sm:p-12 text-center space-y-4">
+          <div className="neu-circle p-4 mx-auto w-fit">
+            <Users className="size-10 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold">Please log in to view members</h3>
+          <p className="text-muted-foreground text-sm max-w-md mx-auto">
+            You need to be logged in to browse the community members directory.
+          </p>
+          <button
+            onClick={() => {
+              setAuthModalTab('login');
+              setAuthModalOpen(true);
+            }}
+            className="neu-btn px-5 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-2 mx-auto"
+          >
+            Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ================================================================
+  //  RENDER — Members content
   // ================================================================
   return (
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -282,7 +313,7 @@ function MemberCard({
   return (
     <button
       onClick={onClick}
-      className="neu-card p-5 text-left group flex flex-col gap-3"
+      className="neu-card neu-card-3d p-5 text-left group flex flex-col gap-3"
     >
       <div className="flex items-start gap-3">
         <div className="neu-circle p-0.5 shrink-0">

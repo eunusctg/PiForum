@@ -21,11 +21,13 @@ import {
   Bell,
   MessageSquare,
   Flag,
+  FolderOpen,
+  ChevronRight,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import type { ThemeMode as StoreThemeMode } from "@/lib/store";
 import { ROLE_LABELS, UserRole } from "@/lib/types";
-import type { AppView, ForumUser } from "@/lib/types";
+import type { AppView, ForumUser, Category } from "@/lib/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -154,6 +156,9 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
 
   // Hydration-safe mounted detection without calling setState in an effect
   const mounted = useSyncExternalStore(
@@ -166,6 +171,26 @@ export default function Header() {
   const forumName = getSetting("forum_name", "PiForum");
   const logoUrl = getSetting("logo_url", "");
   const announcement = getSetting("header_announcement", "");
+
+  // ---------- Fetch categories for navbar dropdown ----------
+  useEffect(() => {
+    let active = true;
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/categories");
+        const data = await res.json();
+        if (active && data.success && Array.isArray(data.data)) {
+          setCategories(data.data as Category[]);
+        }
+      } catch {
+        // Non-critical — categories dropdown simply won't show
+      }
+    }
+    loadCategories();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // ---------- Fetch unread notification count ----------
   useEffect(() => {
@@ -212,6 +237,7 @@ export default function Header() {
       }
       setMobileMenuOpen(false);
       setSearchOpen(false);
+      setCategoriesOpen(false);
     },
     [router, navigateTo, currentUser]
   );
@@ -258,6 +284,19 @@ export default function Header() {
 
   const userIsAdmin = isAdmin();
 
+  /** Click handler that checks auth for restricted views (Members). */
+  const handleNavClick = useCallback(
+    (view: AppView) => {
+      // Members requires login — open auth modal if not logged in
+      if (view === "members" && !currentUser) {
+        handleOpenAuthModal("login");
+        return;
+      }
+      handleNavigate(view);
+    },
+    [handleNavigate, handleOpenAuthModal, currentUser]
+  );
+
   const navLinks: { label: string; view: AppView; icon: typeof Home; show: boolean }[] = [
     { label: "Home", view: "home", icon: Home, show: true },
     { label: "Forums", view: "home", icon: MessageSquare, show: true },
@@ -265,6 +304,17 @@ export default function Header() {
     { label: "Tags", view: "tags", icon: Tag, show: true },
     { label: "Admin", view: "admin-dashboard", icon: Shield, show: userIsAdmin },
   ];
+
+  // Handler: clicking a category in the dropdown
+  const handleCategoryClick = useCallback(
+    (categoryId: string) => {
+      navigateTo("home", { categoryId });
+      setCategoriesOpen(false);
+      setMobileMenuOpen(false);
+      router.push(`/?category=${categoryId}`);
+    },
+    [navigateTo, router]
+  );
 
   return (
     <header className="sticky top-0 z-40 w-full">
@@ -282,14 +332,24 @@ export default function Header() {
                 alt={`${forumName} logo`}
                 className="h-9 w-auto rounded-lg object-contain transition-all group-hover:opacity-80"
                 onError={(e) => {
-                  // Fallback to the π glyph if the logo fails to load
-                  (e.target as HTMLImageElement).style.display = "none";
+                  // Fallback to the default logo.png if custom logo fails
+                  const img = e.target as HTMLImageElement;
+                  if (img.src !== window.location.origin + '/logo.png') {
+                    img.src = '/logo.png';
+                  } else {
+                    img.style.display = 'none';
+                  }
                 }}
               />
             ) : (
-              <span className="neu-circle flex items-center justify-center w-9 h-9 text-lg font-bold text-primary transition-all group-hover:text-primary/80">
-                π
-              </span>
+              <img
+                src="/logo.png"
+                alt={`${forumName} logo`}
+                className="h-9 w-auto rounded-lg object-contain transition-all group-hover:opacity-80"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
             )}
             <span className="text-lg font-bold tracking-tight hidden sm:inline">
               {forumName}
@@ -323,13 +383,57 @@ export default function Header() {
                 link.show && (
                   <button
                     key={`${link.view}-${idx}`}
-                    onClick={() => handleNavigate(link.view)}
+                    onClick={() => handleNavClick(link.view)}
                     className="neu-btn px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-all hover:text-primary"
                   >
                     <link.icon className="size-4" />
                     {link.label}
                   </button>
                 )
+            )}
+
+            {/* Categories Dropdown — between Forums and Members */}
+            {categories.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setCategoriesOpen(!categoriesOpen)}
+                  onBlur={() => setTimeout(() => setCategoriesOpen(false), 150)}
+                  className="neu-btn px-3 py-2 text-sm font-medium flex items-center gap-1.5 transition-all hover:text-primary"
+                  aria-expanded={categoriesOpen}
+                  aria-haspopup="true"
+                >
+                  <FolderOpen className="size-4" />
+                  Categories
+                  <ChevronDown className={`size-3.5 transition-transform ${categoriesOpen ? "rotate-180" : ""}`} />
+                </button>
+                {categoriesOpen && (
+                  <div className="absolute top-full left-0 mt-1 neu-card-static p-2 min-w-[200px] max-h-80 overflow-y-auto z-50">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => handleCategoryClick(cat.id)}
+                        className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-accent/50 flex items-center gap-2 transition-colors"
+                      >
+                        <span className="shrink-0" aria-hidden="true">
+                          {cat.icon ? (
+                            <span className="text-base leading-none">{cat.icon}</span>
+                          ) : (
+                            <FolderOpen className="size-4 text-muted-foreground" />
+                          )}
+                        </span>
+                        <span className="truncate">{cat.name}</span>
+                        {cat.color && (
+                          <span
+                            className="ml-auto size-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: cat.color }}
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </nav>
 
@@ -579,7 +683,7 @@ export default function Header() {
                   link.show && (
                     <button
                       key={`m-${link.view}-${idx}`}
-                      onClick={() => handleNavigate(link.view)}
+                      onClick={() => handleNavClick(link.view)}
                       className="neu-btn px-4 py-3 text-sm font-medium flex items-center gap-3 w-full text-left transition-all hover:text-primary"
                     >
                       <link.icon className="size-4" />
@@ -589,6 +693,41 @@ export default function Header() {
               )}
 
               <div className="neu-divider my-2" />
+
+              {/* Mobile Categories Expandable Section */}
+              {categories.length > 0 && (
+                <>
+                  <button
+                    onClick={() => setMobileCategoriesOpen(!mobileCategoriesOpen)}
+                    className="neu-btn px-4 py-3 text-sm font-medium flex items-center gap-3 w-full text-left transition-all hover:text-primary"
+                  >
+                    <FolderOpen className="size-4" />
+                    Categories
+                    <ChevronRight className={`size-4 ml-auto transition-transform ${mobileCategoriesOpen ? "rotate-90" : ""}`} />
+                  </button>
+                  {mobileCategoriesOpen && (
+                    <div className="ml-6 flex flex-col gap-1">
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => handleCategoryClick(cat.id)}
+                          className="px-4 py-2 text-sm rounded-lg hover:bg-accent/50 flex items-center gap-2 transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                          <span className="shrink-0" aria-hidden="true">
+                            {cat.icon ? (
+                              <span className="text-base leading-none">{cat.icon}</span>
+                            ) : (
+                              <FolderOpen className="size-3.5" />
+                            )}
+                          </span>
+                          <span className="truncate">{cat.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="neu-divider my-2" />
+                </>
+              )}
 
               {currentUser ? (
                 <>

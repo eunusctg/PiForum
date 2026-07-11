@@ -113,6 +113,16 @@ export async function POST(request: Request) {
     if (!userId || !type || !title) {
       return errorResponse('userId, type, and title are required');
     }
+    // Validate input lengths
+    if (typeof title !== 'string' || title.trim().length === 0 || title.length > 200) {
+      return errorResponse('Title must be 1-200 characters');
+    }
+    if (notifBody !== undefined && notifBody !== null && typeof notifBody === 'string' && notifBody.length > 1000) {
+      return errorResponse('Body must be 1000 characters or less');
+    }
+    if (link !== undefined && link !== null && typeof link === 'string' && link.length > 500) {
+      return errorResponse('Link must be 500 characters or less');
+    }
 
     if (type === 'system' && user.role < 2) {
       return errorResponse('Admin access required to send system notifications', 403);

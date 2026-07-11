@@ -1,8 +1,17 @@
 import { db } from '@/lib/db';
 import { successResponse, errorResponse, serverErrorResponse, verifyPassword, parseBody, serializeUser } from '@/lib/api-helpers';
+import { rateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PASSWORD_LENGTH = 128;
 
 export async function POST(request: Request) {
   try {
+    // Rate limit: 5 attempts per IP per 15 minutes
+    const ip = getClientIp(request);
+    const rl = rateLimit(`login:${ip}`, 5, 15 * 60 * 1000);
+    if (!rl.success) return rateLimitResponse();
+
     const body = await parseBody(request);
     if (!body) return errorResponse('Invalid request body');
 
@@ -10,6 +19,14 @@ export async function POST(request: Request) {
 
     if (!email || !password) {
       return errorResponse('Email and password are required');
+    }
+
+    // Input length validation
+    if (typeof email !== 'string' || email.length > MAX_EMAIL_LENGTH) {
+      return errorResponse('Invalid email format');
+    }
+    if (typeof password !== 'string' || password.length > MAX_PASSWORD_LENGTH) {
+      return errorResponse('Invalid email or password', 401);
     }
 
     // Find user by email (include rank for serialization)

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { successResponse, errorResponse, serverErrorResponse, requireAdmin, parseBody } from '@/lib/api-helpers';
+import { successResponse, errorResponse, serverErrorResponse, requireAuth, requireAdmin, parseBody } from '@/lib/api-helpers';
 
 export async function GET(request: Request) {
   try {
@@ -45,6 +45,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // Require auth — any authenticated user can create security log entries
+    // (but only admins can view them)
+    const authCheck = await requireAuth(request);
+    if (authCheck.error) return authCheck.error;
+
     const body = await parseBody(request);
     if (!body) return errorResponse('Invalid request body');
 

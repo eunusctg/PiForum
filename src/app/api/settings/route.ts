@@ -51,6 +51,14 @@ export async function PUT(request: Request) {
     if (!settings || !Array.isArray(settings)) {
       return errorResponse('Settings array is required');
     }
+    // Block attempts to write password or oauth secrets via the settings API
+    const blockedPrefixes = ['password_', 'oauth_state_'];
+    const blockedKeys = ['oauth_google_client_secret', 'oauth_github_client_secret'];
+    for (const s of settings) {
+      if (blockedPrefixes.some((p) => s.key.startsWith(p)) || blockedKeys.includes(s.key)) {
+        return errorResponse(`Cannot modify protected setting: ${s.key}`, 403);
+      }
+    }
 
     // Update each setting using upsert
     const updates = settings.map(({ key, value }) =>

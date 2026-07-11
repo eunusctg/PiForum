@@ -67,6 +67,11 @@ export default function AdminBranding() {
     if (data.success) setValue(key, data.data.url);
   };
 
+  /* Reset a URL field to empty so it falls back to default */
+  const resetToDefault = (key: string) => {
+    setValue(key, '');
+  };
+
   return (
     <div className="space-y-5">
       {/* 1. Site Identity */}
@@ -98,7 +103,25 @@ export default function AdminBranding() {
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, key); }} />
                 </label>
               </div>
-              {v(key) && <img src={v(key)} alt={key} className="h-8 w-auto rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+              {/* Preview of current logo/favicon */}
+              <div className="flex items-center gap-3">
+                {v(key) ? (
+                  <div className="flex items-center gap-2">
+                    <img src={v(key)} alt={key === 'logo_url' ? 'Logo preview' : 'Favicon preview'} className={key === 'logo_url' ? 'h-8 w-auto rounded object-contain' : 'h-6 w-6 rounded object-contain'} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <button
+                      type="button"
+                      onClick={() => resetToDefault(key)}
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors underline underline-offset-2"
+                    >
+                      Reset to default
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {key === 'logo_url' ? 'Using default /logo.png' : 'No favicon set — using browser default'}
+                  </p>
+                )}
+              </div>
             </div>
           ))}
         </div>

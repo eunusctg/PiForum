@@ -297,14 +297,14 @@ export default function AuthModal() {
   return (
     <Dialog open={authModalOpen} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="neu-card-static border-0 sm:max-w-md p-0 overflow-hidden"
+        className="neu-card-static border-0 w-[calc(100vw-2rem)] sm:max-w-md max-h-[90vh] overflow-y-auto p-0"
         showCloseButton
       >
         {/* Tab Headers — Neumorphism-styled custom tabs */}
-        <div className="neu-well rounded-none p-1.5 flex gap-1.5 m-4 mb-0">
+        <div className="neu-well rounded-none p-1 flex gap-1 m-3 mb-0 sm:m-4 sm:mb-0">
           <button
             onClick={() => handleTabChange("login")}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-xl text-center transition-all ${
+            className={`flex-1 py-2 text-sm font-semibold rounded-xl text-center transition-all ${
               activeTab === "login"
                 ? "neu-card shadow-sm text-primary"
                 : "neu-flat hover:text-foreground text-muted-foreground"
@@ -314,7 +314,7 @@ export default function AuthModal() {
           </button>
           <button
             onClick={() => handleTabChange("register")}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-xl text-center transition-all ${
+            className={`flex-1 py-2 text-sm font-semibold rounded-xl text-center transition-all ${
               activeTab === "register"
                 ? "neu-card shadow-sm text-primary"
                 : "neu-flat hover:text-foreground text-muted-foreground"
@@ -324,13 +324,13 @@ export default function AuthModal() {
           </button>
         </div>
 
-        <DialogHeader className="px-6 pt-4 pb-0 sr-only">
+        <DialogHeader className="px-5 pt-3 pb-0 sr-only">
           <DialogTitle>
-            {activeTab === "login" ? "Login to your account" : "Create a new account"}
+            {activeTab === "login" ? "Login to PiForum" : "Join PiForum — Create an account"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-6 pb-6 pt-4">
+        <div className="px-5 pb-5 pt-3 sm:px-5">
           {/* Email Verification Step (shown when registration requires verification) */}
           {verificationRequired ? (
             <div className="flex flex-col gap-4 py-4">
@@ -373,7 +373,7 @@ export default function AuthModal() {
             <>
           {/* Login Form */}
           {activeTab === "login" && (
-            <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleLoginSubmit} className="flex flex-col gap-3">
               {/* Google Sign-in Button */}
               {googleOAuthEnabled && (
                 <>
@@ -381,12 +381,12 @@ export default function AuthModal() {
                     type="button"
                     onClick={handleGoogleSignIn}
                     disabled={loginLoading || googleLoading}
-                    className="neu-btn w-full h-11 flex items-center justify-center gap-2.5 text-sm font-semibold transition-all hover:shadow-md"
+                    className="neu-btn w-full h-10 flex items-center justify-center gap-2 text-sm font-semibold transition-all hover:shadow-md"
                   >
                     {googleLoading ? (
                       <Loader2 className="size-4 animate-spin" />
                     ) : (
-                      <svg className="size-5" viewBox="0 0 24 24">
+                      <svg className="size-4" viewBox="0 0 24 24">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -403,10 +403,10 @@ export default function AuthModal() {
                 </>
               )}
               {/* Email */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <label
                   htmlFor="login-email"
-                  className="text-sm font-medium text-foreground px-1"
+                  className="text-xs font-medium text-foreground px-1"
                 >
                   Email
                 </label>
@@ -420,7 +420,7 @@ export default function AuthModal() {
                     onChange={(e) =>
                       setLoginForm((prev) => ({ ...prev, email: e.target.value }))
                     }
-                    className="neu-input w-full h-11 pl-10 pr-4 text-sm placeholder:text-muted-foreground"
+                    className="neu-input w-full h-10 pl-10 pr-4 text-sm placeholder:text-muted-foreground"
                     autoComplete="email"
                     disabled={loginLoading}
                   />
@@ -428,10 +428,10 @@ export default function AuthModal() {
               </div>
 
               {/* Password */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <label
                   htmlFor="login-password"
-                  className="text-sm font-medium text-foreground px-1"
+                  className="text-xs font-medium text-foreground px-1"
                 >
                   Password
                 </label>
@@ -448,7 +448,7 @@ export default function AuthModal() {
                         password: e.target.value,
                       }))
                     }
-                    className="neu-input w-full h-11 pl-10 pr-10 text-sm placeholder:text-muted-foreground"
+                    className="neu-input w-full h-10 pl-10 pr-10 text-sm placeholder:text-muted-foreground"
                     autoComplete="current-password"
                     disabled={loginLoading}
                   />
@@ -479,7 +479,7 @@ export default function AuthModal() {
               <button
                 type="submit"
                 disabled={loginLoading}
-                className={`neu-btn w-full h-11 flex items-center justify-center gap-2 text-sm font-semibold transition-all ${
+                className={`neu-btn w-full h-10 flex items-center justify-center gap-2 text-sm font-semibold transition-all ${
                   loginLoading
                     ? "neu-btn-inset opacity-70 cursor-wait"
                     : "hover:text-primary"
@@ -496,7 +496,7 @@ export default function AuthModal() {
               </button>
 
               {/* Switch to Register */}
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-xs text-muted-foreground">
                 Don&apos;t have an account?{" "}
                 <button
                   type="button"
@@ -511,7 +511,7 @@ export default function AuthModal() {
 
           {/* Register Form */}
           {activeTab === "register" && (
-            <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-3">
               {/* Google Sign-in Button */}
               {googleOAuthEnabled && (
                 <>
@@ -519,12 +519,12 @@ export default function AuthModal() {
                     type="button"
                     onClick={handleGoogleSignIn}
                     disabled={registerLoading || googleLoading}
-                    className="neu-btn w-full h-11 flex items-center justify-center gap-2.5 text-sm font-semibold transition-all hover:shadow-md"
+                    className="neu-btn w-full h-10 flex items-center justify-center gap-2 text-sm font-semibold transition-all hover:shadow-md"
                   >
                     {googleLoading ? (
                       <Loader2 className="size-4 animate-spin" />
                     ) : (
-                      <svg className="size-5" viewBox="0 0 24 24">
+                      <svg className="size-4" viewBox="0 0 24 24">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -542,10 +542,10 @@ export default function AuthModal() {
               )}
 
               {/* Username */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <label
                   htmlFor="register-username"
-                  className="text-sm font-medium text-foreground px-1"
+                  className="text-xs font-medium text-foreground px-1"
                 >
                   Username
                 </label>
@@ -562,7 +562,7 @@ export default function AuthModal() {
                         username: e.target.value,
                       }))
                     }
-                    className="neu-input w-full h-11 pl-10 pr-4 text-sm placeholder:text-muted-foreground"
+                    className="neu-input w-full h-10 pl-10 pr-4 text-sm placeholder:text-muted-foreground"
                     autoComplete="username"
                     disabled={registerLoading}
                   />
@@ -570,10 +570,10 @@ export default function AuthModal() {
               </div>
 
               {/* Email */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <label
                   htmlFor="register-email"
-                  className="text-sm font-medium text-foreground px-1"
+                  className="text-xs font-medium text-foreground px-1"
                 >
                   Email
                 </label>
@@ -590,7 +590,7 @@ export default function AuthModal() {
                         email: e.target.value,
                       }))
                     }
-                    className="neu-input w-full h-11 pl-10 pr-4 text-sm placeholder:text-muted-foreground"
+                    className="neu-input w-full h-10 pl-10 pr-4 text-sm placeholder:text-muted-foreground"
                     autoComplete="email"
                     disabled={registerLoading}
                   />
@@ -598,10 +598,10 @@ export default function AuthModal() {
               </div>
 
               {/* Password */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <label
                   htmlFor="register-password"
-                  className="text-sm font-medium text-foreground px-1"
+                  className="text-xs font-medium text-foreground px-1"
                 >
                   Password
                 </label>
@@ -618,7 +618,7 @@ export default function AuthModal() {
                         password: e.target.value,
                       }))
                     }
-                    className="neu-input w-full h-11 pl-10 pr-10 text-sm placeholder:text-muted-foreground"
+                    className="neu-input w-full h-10 pl-10 pr-10 text-sm placeholder:text-muted-foreground"
                     autoComplete="new-password"
                     disabled={registerLoading}
                   />
@@ -641,10 +641,10 @@ export default function AuthModal() {
               </div>
 
               {/* Confirm Password */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <label
                   htmlFor="register-confirm-password"
-                  className="text-sm font-medium text-foreground px-1"
+                  className="text-xs font-medium text-foreground px-1"
                 >
                   Confirm Password
                 </label>
@@ -661,7 +661,7 @@ export default function AuthModal() {
                         confirmPassword: e.target.value,
                       }))
                     }
-                    className="neu-input w-full h-11 pl-10 pr-10 text-sm placeholder:text-muted-foreground"
+                    className="neu-input w-full h-10 pl-10 pr-10 text-sm placeholder:text-muted-foreground"
                     autoComplete="new-password"
                     disabled={registerLoading}
                   />
@@ -694,7 +694,7 @@ export default function AuthModal() {
               <button
                 type="submit"
                 disabled={registerLoading}
-                className={`neu-btn w-full h-11 flex items-center justify-center gap-2 text-sm font-semibold transition-all ${
+                className={`neu-btn w-full h-10 flex items-center justify-center gap-2 text-sm font-semibold transition-all ${
                   registerLoading
                     ? "neu-btn-inset opacity-70 cursor-wait"
                     : "hover:text-primary"
@@ -711,7 +711,7 @@ export default function AuthModal() {
               </button>
 
               {/* Switch to Login */}
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-xs text-muted-foreground">
                 Already have an account?{" "}
                 <button
                   type="button"

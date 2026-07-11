@@ -91,6 +91,19 @@ export async function PUT(
       if (authCheck.user!.id !== existing.authorId && authCheck.user!.role < 2) {
         return errorResponse('You can only edit your own threads', 403);
       }
+      // Validate title/content if being updated
+      if (title !== undefined && (typeof title !== 'string' || title.trim().length === 0)) {
+        return errorResponse('Title must not be empty');
+      }
+      if (title !== undefined && title.trim().length > 200) {
+        return errorResponse('Title must be 200 characters or less');
+      }
+      if (content !== undefined && (typeof content !== 'string' || content.trim().length === 0)) {
+        return errorResponse('Content must not be empty');
+      }
+      if (content !== undefined && content.length > 50000) {
+        return errorResponse('Content must be 50000 characters or less');
+      }
     }
 
     const thread = await db.thread.update({

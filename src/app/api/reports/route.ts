@@ -9,10 +9,12 @@ import {
   getQueryParam,
   getPagination,
 } from '@/lib/api-helpers';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 const ALLOWED_REASONS = ['spam', 'harassment', 'off-topic', 'inappropriate', 'other'] as const;
 const ALLOWED_TARGET_TYPES = ['thread', 'post', 'user'] as const;
 const ALLOWED_STATUSES = ['pending', 'reviewing', 'resolved', 'dismissed'] as const;
+const MAX_DETAILS_LENGTH = 2000;
 
 const userSelect = {
   id: true,
@@ -26,6 +28,10 @@ export async function POST(request: Request) {
     const authCheck = await requireAuth(request);
     if (authCheck.error) return authCheck.error;
     const user = authCheck.user!;
+
+    // Rate limit: 10 reports per user per hour
+    const rl = rateLimit(`report:${user.id}`, 10, 60 * 60 * 1000);
+    if (!rl.success) return rateLimitResponse();
 
     const body = await parseBody(request);
     if (!body) return errorResponse('Invalid request body');
@@ -43,6 +49,9 @@ export async function POST(request: Request) {
     }
     if (targetType === 'user' && !targetUserId) {
       return errorResponse('targetUserId is required when reporting a user');
+    }
+    if (details !== undefined && details !== null && typeof details === 'string' && details.length > MAX_DETAILS_LENGTH) {
+      return errorResponse(`Details must be ${MAX_DETAILS_LENGTH} characters or less`);
     }
 
     const report = await db.report.create({

@@ -27,6 +27,9 @@ export async function GET(request: Request) {
     if (!q) {
       return errorResponse('Query parameter q is required');
     }
+    if (q.length > 200) {
+      return errorResponse('Search query must be 200 characters or less');
+    }
     if (!VALID_TYPES.includes(typeParam as SearchType)) {
       return errorResponse('Invalid type. Must be one of: all, threads, posts, users, tags');
     }
@@ -88,7 +91,7 @@ export async function GET(request: Request) {
 
     const publicUsers = users.map((u) => {
       const serialized = serializeUser(u);
-      const { email: _email, ...publicFields } = serialized;
+      const { email: _email, firebaseUid: _firebaseUid, ...publicFields } = serialized;
       return publicFields;
     });
 

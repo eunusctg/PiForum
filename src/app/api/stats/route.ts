@@ -23,11 +23,9 @@ export async function GET() {
         select: {
           id: true,
           username: true,
-          email: true,
           displayName: true,
           avatarUrl: true,
           role: true,
-          banned: true,
           createdAt: true,
           updatedAt: true,
         },

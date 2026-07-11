@@ -43,6 +43,9 @@ export async function POST(request: Request) {
     if (!name || typeof name !== 'string' || !name.trim()) {
       return errorResponse('Tag name is required');
     }
+    if (name.trim().length > 30) {
+      return errorResponse('Tag name must be 30 characters or less');
+    }
 
     const slug = slugify(name);
     if (!slug) return errorResponse('Tag name must contain valid alphanumeric characters');

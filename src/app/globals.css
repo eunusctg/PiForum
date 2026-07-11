@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -51,9 +52,8 @@
 
 /* ============================================================
    DAY THEME (Light) — Soft Grey Neumorphism, base: #e0e0e0
-   Repolished: deeper dual-shadows with soft off-white highlights
-   (no harsh pure-white), warmer indigo accent, crisper text contrast,
-   refined hover lifts.
+   Repolished: teal accent (#00897b), warm grey neumorphic bg,
+   crisper text contrast, refined hover lifts.
    ============================================================ */
 :root {
   --radius: 1rem;
@@ -68,14 +68,17 @@
   --neu-shadow-inset-sm: inset 5px 5px 10px var(--neu-lo), inset -5px -5px 10px var(--neu-hi);
   --neu-shadow-lg: 14px 14px 28px #b8b8bc, -14px -14px 28px var(--neu-hi);
 
-  /* shadcn/ui overrides adapted for #e6e6e8 base */
+  /* Primary RGB for pulse-glow animation */
+  --primary-rgb: 0, 137, 123;
+
+  /* shadcn/ui overrides adapted for #e6e6e8 base — teal accent */
   --background: #e6e6e8;
   --foreground: #1f2937;
   --card: #e9e9eb;
   --card-foreground: #1f2937;
   --popover: #ececee;
   --popover-foreground: #1f2937;
-  --primary: #6366f1;
+  --primary: #00897b;
   --primary-foreground: #ffffff;
   --secondary: #d8d8db;
   --secondary-foreground: #1f2937;
@@ -87,69 +90,76 @@
   --destructive-foreground: #ffffff;
   --border: #c4c4c8;
   --input: #c4c4c8;
-  --ring: #6366f1;
-  --chart-1: #6366f1;
+  --ring: #00897b;
+  --chart-1: #00897b;
   --chart-2: #10b981;
   --chart-3: #f59e0b;
   --chart-4: #ec4899;
   --chart-5: #06b6d4;
   --sidebar: #dcdce0;
   --sidebar-foreground: #1f2937;
-  --sidebar-primary: #6366f1;
+  --sidebar-primary: #00897b;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #d2d2d6;
   --sidebar-accent-foreground: #1f2937;
   --sidebar-border: #c4c4c8;
-  --sidebar-ring: #6366f1;
+  --sidebar-ring: #00897b;
 }
 
 /* ============================================================
-   NIGHT THEME (Dark) — Deep Bronze Espresso, base: #2A1F0A
-   Repolished: luminous bronze highlights, near-black shadows,
-   gold accents for a luxurious dark companion to Golden mode.
+   NIGHT THEME (Dark) — Pure Black OLED, base: #000000
+   Deep, OLED-friendly pure black with subtle dark gray shadows.
+   Teal/cyan accent (#00bcd4) for a tech-forward feel.
+   Neumorphism adapted: inner shadows + subtle borders instead
+   of raised shadows on pure black.
    ============================================================ */
 .dark {
-  /* Core Neumorphism tokens */
-  --neu-bg: #2A1F0A;
-  --neu-shadow: 10px 10px 20px #0D0900, -10px -10px 20px #5C4516;
-  --neu-shadow-inset: inset 10px 10px 20px #0D0900, inset -10px -10px 20px #5C4516;
-  --neu-shadow-sm: 5px 5px 12px #0D0900, -5px -5px 12px #5C4516;
-  --neu-shadow-inset-sm: inset 5px 5px 12px #0D0900, inset -5px -5px 12px #5C4516;
-  --neu-shadow-lg: 16px 16px 32px #050300, -16px -16px 32px #6E5520;
+  /* Core Neumorphism tokens — pure black base with very subtle grays */
+  --neu-bg: #000000;
+  --neu-hi: rgba(255,255,255,0.06);
+  --neu-lo: rgba(0,0,0,0.8);
+  --neu-shadow: 9px 9px 18px rgba(0,0,0,0.8), -9px -9px 18px rgba(255,255,255,0.06);
+  --neu-shadow-inset: inset 9px 9px 18px rgba(0,0,0,0.8), inset -9px -9px 18px rgba(255,255,255,0.06);
+  --neu-shadow-sm: 5px 5px 10px rgba(0,0,0,0.8), -5px -5px 10px rgba(255,255,255,0.06);
+  --neu-shadow-inset-sm: inset 5px 5px 10px rgba(0,0,0,0.8), inset -5px -5px 10px rgba(255,255,255,0.06);
+  --neu-shadow-lg: 14px 14px 28px rgba(0,0,0,0.9), -14px -14px 28px rgba(255,255,255,0.08);
 
-  /* shadcn/ui overrides adapted for dark bronze base */
-  --background: #2A1F0A;
-  --foreground: #FFEAA7;
-  --card: #2E230B;
-  --card-foreground: #FFEAA7;
-  --popover: #32260E;
-  --popover-foreground: #FFEAA7;
-  --primary: #D4AF37;
-  --primary-foreground: #2A1F0A;
-  --secondary: #3D2E10;
-  --secondary-foreground: #FFEAA7;
-  --muted: #3D2E10;
-  --muted-foreground: #C9A845;
-  --accent: #3D2E10;
-  --accent-foreground: #FFEAA7;
-  --destructive: #DC2626;
-  --destructive-foreground: #FFFDF3;
-  --border: #5C4516;
-  --input: #3D2E10;
-  --ring: #D4AF37;
-  --chart-1: #D4AF37;
-  --chart-2: #FFEAA7;
-  --chart-3: #E5C158;
-  --chart-4: #AA820A;
-  --chart-5: #FFFDF3;
-  --sidebar: #1F1707;
-  --sidebar-foreground: #FFEAA7;
-  --sidebar-primary: #D4AF37;
-  --sidebar-primary-foreground: #2A1F0A;
-  --sidebar-accent: #3D2E10;
-  --sidebar-accent-foreground: #FFEAA7;
-  --sidebar-border: #5C4516;
-  --sidebar-ring: #D4AF37;
+  /* Primary RGB for pulse-glow animation */
+  --primary-rgb: 0, 188, 212;
+
+  /* shadcn/ui overrides adapted for pure black OLED base */
+  --background: #000000;
+  --foreground: #e5e5e5;
+  --card: #0a0a0a;
+  --card-foreground: #e5e5e5;
+  --popover: #0a0a0a;
+  --popover-foreground: #e5e5e5;
+  --primary: #00bcd4;
+  --primary-foreground: #000000;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #e5e5e5;
+  --muted: #1a1a1a;
+  --muted-foreground: #888888;
+  --accent: #1a1a1a;
+  --accent-foreground: #e5e5e5;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #222222;
+  --input: #1a1a1a;
+  --ring: #00bcd4;
+  --chart-1: #00bcd4;
+  --chart-2: #00e5ff;
+  --chart-3: #4dd0e1;
+  --chart-4: #26c6da;
+  --chart-5: #80deea;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #e5e5e5;
+  --sidebar-primary: #00bcd4;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #e5e5e5;
+  --sidebar-border: #222222;
+  --sidebar-ring: #00bcd4;
 }
 
 /* ============================================================
@@ -170,6 +180,9 @@
   --neu-shadow-sm: 5px 5px 12px #8B6A08, -5px -5px 12px #FFF1BD;
   --neu-shadow-inset-sm: inset 5px 5px 12px #8B6A08, inset -5px -5px 12px #FFF1BD;
   --neu-shadow-lg: 18px 18px 36px #6E5206, -18px -18px 36px #FFF7D8;
+
+  /* Primary RGB for pulse-glow animation */
+  --primary-rgb: 74, 53, 0;
 
   /* Golden palette constants for reuse */
   --gold-base: #D4AF37;
@@ -298,6 +311,15 @@
   transform: translateY(-2px);
 }
 
+/* Dark theme — pure black cards use subtle border instead of raised shadow */
+.dark .neu-card {
+  border: 1px solid var(--border);
+}
+
+.dark .neu-card:hover {
+  border-color: rgba(0, 188, 212, 0.15);
+}
+
 /* Static neumorphic card — same raised look, but no hover lift.
    Use for modals/dialogs/popovers where a transform on hover would
    fight the centering transform and cause the dialog to jump.
@@ -309,6 +331,11 @@
   background-color: var(--neu-bg);
   border-radius: 18px;
   box-shadow: var(--neu-shadow);
+}
+
+/* Dark theme — static card border */
+.dark .neu-card-static {
+  border: 1px solid var(--border);
 }
 
 /* Golden theme — luxe metallic sheen overlay on cards.
@@ -363,6 +390,11 @@
   transition: box-shadow 0.35s ease;
 }
 
+/* Dark theme — inset card uses inner shadow + border */
+.dark .neu-card-inset {
+  border: 1px solid var(--border);
+}
+
 /* Raised button — interactive extruded element */
 .neu-btn {
   background-color: var(--neu-bg);
@@ -378,6 +410,15 @@
 .neu-btn:hover {
   box-shadow: var(--neu-shadow);
   transform: translateY(-1px);
+}
+
+/* Dark theme — buttons use subtle border on pure black */
+.dark .neu-btn {
+  border: 1px solid var(--border);
+}
+
+.dark .neu-btn:hover {
+  border-color: rgba(0, 188, 212, 0.2);
 }
 
 .neu-btn:active,
@@ -398,6 +439,11 @@
   border: none;
   outline: none;
   transition: box-shadow 0.25s ease;
+}
+
+/* Dark theme — input uses border on pure black */
+.dark .neu-input {
+  border: 1px solid var(--border);
 }
 
 .neu-input:focus {
@@ -538,6 +584,13 @@
   border: 1px solid rgba(212, 175, 55, 0.45);
 }
 
+/* Dark theme — make verified badges use teal/cyan */
+.dark .verified-badge-primary {
+  background: linear-gradient(135deg, rgba(0, 188, 212, 0.15), rgba(0, 150, 170, 0.1));
+  color: #00bcd4;
+  border: 1px solid rgba(0, 188, 212, 0.3);
+}
+
 /* ============================================================
    NEUMORPHISM INTERACTION TRANSITIONS
    ============================================================ */
@@ -575,6 +628,11 @@
   padding: 1.5rem;
 }
 
+/* Dark theme — well uses border on pure black */
+.dark .neu-well {
+  border: 1px solid var(--border);
+}
+
 /* Convex bump — raised surface for emphasis */
 .neu-bump {
   background-color: var(--neu-bg);
@@ -586,6 +644,11 @@
 .neu-bump:hover {
   box-shadow: var(--neu-shadow-lg);
   transform: translateY(-1px);
+}
+
+/* Dark theme — bump uses border on pure black */
+.dark .neu-bump {
+  border: 1px solid var(--border);
 }
 
 /* Circular neumorphic element (avatars, icons) */
@@ -602,10 +665,24 @@
   transform: translateY(-2px);
 }
 
+/* Dark theme — circle uses border on pure black */
+.dark .neu-circle {
+  border: 1px solid var(--border);
+}
+
+.dark .neu-circle:hover {
+  border-color: rgba(0, 188, 212, 0.2);
+}
+
 .neu-circle-inset {
   background-color: var(--neu-bg);
   border-radius: 50%;
   box-shadow: var(--neu-shadow-inset-sm);
+}
+
+/* Dark theme — circle inset uses border */
+.dark .neu-circle-inset {
+  border: 1px solid var(--border);
 }
 
 /* Divider with subtle neumorphic groove — no harsh white highlight */
@@ -617,7 +694,7 @@
 }
 
 .dark .neu-divider {
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), inset 0 -1px 2px rgba(255, 234, 167, 0.06);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), inset 0 -1px 2px rgba(255, 255, 255, 0.03);
 }
 
 .gold .neu-divider {
@@ -660,6 +737,11 @@
   background-color: var(--neu-bg);
 }
 
+/* Dark theme — checkbox uses border */
+.dark .neu-checkbox {
+  border: 1px solid var(--border);
+}
+
 /* ============================================================
    TYPOGRAPHY & ELEMENT ENHANCEMENTS — Repolished (theme-aware)
    ============================================================ */
@@ -675,7 +757,7 @@
 }
 
 .dark .neu-etched-text {
-  text-shadow: 1px 1px 1px rgba(255, 234, 167, 0.18), -1px -1px 1px rgba(0, 0, 0, 0.5);
+  text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.04), -1px -1px 1px rgba(0, 0, 0, 0.6);
 }
 
 .gold .neu-etched-text {
@@ -721,7 +803,7 @@
 
 .dark .neu-badge,
 .dark .neu-thread-title {
-  text-shadow: 0 1px 0 rgba(255, 234, 167, 0.14), 0 -1px 0 rgba(0, 0, 0, 0.42);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 -1px 0 rgba(0, 0, 0, 0.5);
 }
 
 .gold .neu-badge,
@@ -742,7 +824,7 @@
 }
 
 .dark .neu-thread-title:hover {
-  color: var(--gold-highlight, #FFEAA7);
+  color: var(--primary);
 }
 
 .gold .neu-thread-title:hover {
@@ -796,6 +878,15 @@
   color: var(--primary-foreground);
 }
 
+/* Dark theme — FAB uses border on pure black */
+.dark .neu-fab {
+  border: 1px solid var(--border);
+}
+
+.dark .neu-fab:hover {
+  border-color: rgba(0, 188, 212, 0.25);
+}
+
 /* ============================================================
    RESPONSIVE NEUMORPHISM ADJUSTMENTS
    ============================================================ */
@@ -811,11 +902,11 @@
   }
 
   .dark {
-    --neu-shadow: 6px 6px 12px #0D0900, -6px -6px 12px #5C4516;
-    --neu-shadow-inset: inset 6px 6px 12px #0D0900, inset -6px -6px 12px #5C4516;
-    --neu-shadow-sm: 3px 3px 6px #0D0900, -3px -3px 6px #5C4516;
-    --neu-shadow-inset-sm: inset 3px 3px 6px #0D0900, inset -3px -3px 6px #5C4516;
-    --neu-shadow-lg: 10px 10px 20px #050300, -10px -10px 20px #6E5520;
+    --neu-shadow: 6px 6px 12px rgba(0,0,0,0.8), -6px -6px 12px rgba(255,255,255,0.06);
+    --neu-shadow-inset: inset 6px 6px 12px rgba(0,0,0,0.8), inset -6px -6px 12px rgba(255,255,255,0.06);
+    --neu-shadow-sm: 3px 3px 6px rgba(0,0,0,0.8), -3px -3px 6px rgba(255,255,255,0.06);
+    --neu-shadow-inset-sm: inset 3px 3px 6px rgba(0,0,0,0.8), inset -3px -3px 6px rgba(255,255,255,0.06);
+    --neu-shadow-lg: 10px 10px 20px rgba(0,0,0,0.9), -10px -10px 20px rgba(255,255,255,0.08);
   }
 
   .gold {
@@ -976,6 +1067,86 @@ summary,
 }
 
 /* ============================================================
+   3D ANIMATIONS & ENHANCED ANIMATIONS
+   ============================================================ */
+
+/* 3D Card hover effect */
+.neu-card-3d {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+.neu-card-3d:hover {
+  transform: translateY(-4px) rotateX(2deg);
+}
+
+/* 3D Button press */
+.neu-btn-3d {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+}
+.neu-btn-3d:active {
+  transform: translateY(2px) translateZ(0);
+}
+
+/* Staggered fade-in for lists */
+@keyframes piforum-stagger-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-stagger-in {
+  animation: piforum-stagger-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Pulse glow for notifications */
+@keyframes piforum-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(var(--primary-rgb), 0); }
+}
+.animate-pulse-glow {
+  animation: piforum-pulse-glow 2s ease-in-out infinite;
+}
+
+/* Subtle float animation */
+@keyframes piforum-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float {
+  animation: piforum-float 3s ease-in-out infinite;
+}
+
+/* Shimmer loading */
+@keyframes piforum-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(128,128,128,0.1) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: piforum-shimmer 1.5s ease-in-out infinite;
+}
+
+/* 3D flip for theme switch */
+@keyframes piforum-flip {
+  0% { transform: perspective(400px) rotateY(0); }
+  100% { transform: perspective(400px) rotateY(360deg); }
+}
+.animate-flip {
+  animation: piforum-flip 0.6s ease-in-out;
+}
+
+/* Slide up with bounce */
+@keyframes piforum-bounce-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  60% { transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-bounce-up {
+  animation: piforum-bounce-up 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================================
    REDUCED MOTION — respect user's accessibility preference.
    When the user has "reduce motion" enabled at the OS level,
    disable all non-essential animations and transitions.
@@ -1010,7 +1181,8 @@ summary,
   .verified-icon-wrap:hover,
   .neu-card:hover,
   .neu-btn:hover,
-  .neu-fab:hover {
+  .neu-fab:hover,
+  .neu-card-3d:hover {
     transform: none !important;
   }
 }

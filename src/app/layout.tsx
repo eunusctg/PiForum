@@ -19,42 +19,82 @@ const geistMono = Geist_Mono({
 });
 
 /* Dynamic metadata generated from DB settings so SEO changes in the admin
-   panel take effect without a rebuild. Falls back to sensible defaults. */
+   panel take effect without a rebuild. Falls back to comprehensive
+   tech-focused PiForum defaults. */
 export async function generateMetadata(): Promise<Metadata> {
   const s = await getSettingsMap();
   const forumName = settingStr(s, "forum_name", "PiForum");
-  const description = settingStr(s, "forum_description", "A modern, neumorphic forum CMS.");
+  const description = settingStr(
+    s,
+    "forum_description",
+    "PiForum is a modern tech community forum for developers, engineers, and tech enthusiasts. Discuss programming, web development, AI, hardware, gaming, and more.",
+  );
   const suffix = settingStr(s, "seo_title_suffix", `— ${forumName}`);
-  const keywords = settingStr(s, "seo_keywords", "forum, community, discussion");
+  const keywords = settingStr(
+    s,
+    "seo_keywords",
+    "tech forum,developer community,programming forum,web development,AI discussion,coding help,tech community,PiForum,software engineering,open source,dev forum,hardware forum,gaming community",
+  );
   const author = settingStr(s, "seo_author", "PiForum");
-  const ogImage = settingStr(s, "seo_og_image", "");
+  const ogImage = settingStr(s, "seo_og_image", "/og-image.png");
   const twitter = settingStr(s, "seo_twitter_handle", "");
-  const canonical = settingStr(s, "seo_canonical_url", "");
+  const canonical = settingStr(s, "seo_canonical_url", "https://piforum.eu.org");
   const indexable = settingBool(s, "seo_indexable", true);
   const logoUrl = settingStr(s, "logo_url", "/logo.svg");
   const favicon = settingStr(s, "favicon_url", logoUrl || "/logo.svg");
 
   return {
-    title: { default: `${forumName} ${suffix}`.trim(), template: `%s ${suffix}`.trim() },
-    description: description,
-    keywords: keywords ? keywords.split(",").map((k) => k.trim()).filter(Boolean) : undefined,
+    title: {
+      default: `PiForum — Tech Community & Developer Forum`,
+      template: `%s — PiForum`,
+    },
+    description,
+    keywords: keywords
+      ? keywords.split(",").map((k) => k.trim()).filter(Boolean)
+      : undefined,
     authors: [{ name: author }],
+    creator: "PiForum",
+    publisher: "PiForum",
     icons: { icon: favicon, apple: favicon },
-    metadataBase: canonical ? new URL(canonical) : undefined,
-    alternates: { canonical: canonical || undefined },
+    metadataBase: new URL(canonical),
+    alternates: { canonical: "/" },
     openGraph: {
-      title: forumName,
-      description,
       type: "website",
-      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
+      locale: "en_US",
+      url: canonical,
+      siteName: forumName,
+      title: "PiForum — Tech Community & Developer Forum",
+      description:
+        "Join PiForum — the modern tech community for developers, engineers, and enthusiasts. Discuss programming, AI, hardware, gaming and more.",
+      images: [
+        {
+          url: ogImage,
+          width: 1344,
+          height: 768,
+          alt: "PiForum — Tech Community Forum",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
+      title: "PiForum — Tech Community & Developer Forum",
+      description:
+        "Join PiForum — the modern tech community for developers and tech enthusiasts.",
+      images: [ogImage],
       ...(twitter ? { creator: twitter, site: twitter } : {}),
-      ...(ogImage ? { images: [ogImage] } : {}),
     },
     robots: indexable
-      ? { index: true, follow: true }
+      ? {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-video-preview": -1,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+          },
+        }
       : { index: false, follow: false },
     manifest: "/manifest.webmanifest",
   };
@@ -68,8 +108,8 @@ export const viewport: Viewport = {
   // Golden (#D4AF37) is used as the default light-scheme color because the
   // PiForum brand is gold-themed; the dark-scheme uses the dark bronze bg.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#D4AF37" },
-    { media: "(prefers-color-scheme: dark)", color: "#2A1F0A" },
+    { media: "(prefers-color-scheme: light)", color: "#00897b" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
   width: "device-width",
   initialScale: 1,

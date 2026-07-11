@@ -1,6 +1,8 @@
 import { getSettingsMap, settingBool, getOrigin } from '@/lib/server-settings';
 
-/* GET /robots.txt — dynamically generated based on SEO settings. */
+/* GET /robots.txt — dynamically generated based on SEO settings.
+   Disallows private areas (admin, API, new-thread, bookmarks,
+   notifications, profile) and points to the sitemap. */
 export async function GET(request: Request) {
   const origin = getOrigin(request);
   const s = await getSettingsMap();
@@ -13,6 +15,9 @@ export async function GET(request: Request) {
     lines.push('Disallow: /admin');
     lines.push('Disallow: /api/');
     lines.push('Disallow: /new-thread');
+    lines.push('Disallow: /bookmarks');
+    lines.push('Disallow: /notifications');
+    lines.push('Disallow: /profile/');
   } else {
     lines.push('User-agent: *');
     lines.push('Disallow: /');

@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Sparkles,
   FolderOpen,
+  ChevronRight,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -76,10 +77,12 @@ export default function ForumHome() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStats();
   }, [fetchStats]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchThreads();
   }, [fetchThreads]);
 
@@ -87,7 +90,7 @@ export default function ForumHome() {
   const forumName = getSetting('forum_name', 'PiForum');
   const forumDescription = getSetting(
     'forum_description',
-    'A community for thoughtful discussions.',
+    'PiForum — Where tech conversations find their form. A modern community for developers, engineers, and tech enthusiasts.',
   );
 
   const sortedThreads = useMemo(() => {
@@ -284,7 +287,7 @@ function ThreadRow({
   return (
     <button
       onClick={onClick}
-      className="neu-card w-full text-left p-4 sm:p-5 group"
+      className="neu-card neu-card-3d w-full text-left p-4 sm:p-5 group"
     >
       <div className="flex items-start gap-3 sm:gap-4">
         {/* Avatar */}
@@ -363,7 +366,18 @@ function ThreadRow({
                 }}
               >
                 <FolderOpen className="size-3" />
-                {thread.forum.name}
+                {thread.forum.category ? (
+                  <>
+                    {thread.forum.category.icon && (
+                      <span className="text-xs leading-none">{thread.forum.category.icon}</span>
+                    )}
+                    <span className="hover:text-primary transition-colors">{thread.forum.category.name}</span>
+                    <ChevronRight className="size-2.5 opacity-50" />
+                    <span>{thread.forum.name}</span>
+                  </>
+                ) : (
+                  thread.forum.name
+                )}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1">
@@ -418,7 +432,7 @@ function EmptyThreadState({
         No discussions yet
       </h3>
       <p className="text-muted-foreground text-sm max-w-md mx-auto">
-        Be the first to start a conversation in the community!
+        Be the first to start a conversation on PiForum!
       </p>
       {canPost && (
         <button

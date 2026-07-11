@@ -20,7 +20,7 @@ import { useAppStore, type ThemeMode } from "@/lib/store";
  *
  * Browser chrome color: the `<meta name="theme-color">` tag is synced
  * live with the active theme so mobile browser headers, PWA toolbars,
- * and the iOS status bar match the page (Day=#e6e6e8, Night=#2A1F0A,
+ * and the iOS status bar match the page (Day=#e6e6e8, Night=#000000,
  * Golden=#D4AF37). Both the static tag (in <head>) and any dynamically
  * injected tags are kept in sync.
  */
@@ -29,7 +29,7 @@ import { useAppStore, type ThemeMode } from "@/lib/store";
    Kept in sync with src/app/globals.css. */
 const THEME_COLORS: Record<ThemeMode, string> = {
   light: "#e6e6e8",
-  dark: "#2A1F0A",
+  dark: "#000000",
   gold: "#D4AF37",
 };
 

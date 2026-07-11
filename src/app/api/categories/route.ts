@@ -31,6 +31,12 @@ export async function POST(request: Request) {
     if (!name) {
       return errorResponse('Category name is required');
     }
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      return errorResponse('Category name must not be empty');
+    }
+    if (name.length > 50) {
+      return errorResponse('Category name must be 50 characters or less');
+    }
 
     const category = await db.category.create({
       data: {

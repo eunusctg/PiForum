@@ -64,6 +64,7 @@ export interface Forum {
   postCount: number;
   createdAt: string;
   updatedAt: string;
+  category?: Category | null;
 }
 
 export interface Thread {

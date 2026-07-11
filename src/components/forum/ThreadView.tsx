@@ -293,7 +293,11 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
           if (thread.forum) {
             setParentForum(thread.forum);
             setCurrentForum(thread.forum);
-            const cat = categories.find((c) => c.id === thread.forum!.categoryId);
+            // Prefer the embedded category from the API; fall back to the
+            // categories list if the API did not include it.
+            const cat = (thread.forum as Forum & { category?: Category | null }).category
+              ?? categories.find((c) => c.id === thread.forum!.categoryId)
+              ?? null;
             setParentCategory(cat ?? null);
           } else {
             const forumRes = await fetch(`/api/forums/${thread.forumId}`);
@@ -303,7 +307,9 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
               setParentForum(forum);
               setCurrentForum(forum);
 
-              const cat = categories.find((c) => c.id === forum.categoryId);
+              const cat = (forum as Forum & { category?: Category | null }).category
+                ?? categories.find((c) => c.id === forum.categoryId)
+                ?? null;
               setParentCategory(cat ?? null);
             }
           }
@@ -338,11 +344,13 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
   }, [threadId, page, currentUser, setPosts]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchThread();
   }, [fetchThread]);
 
   useEffect(() => {
     if (threadData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchPosts();
     }
   }, [fetchPosts, threadData]);
@@ -1148,7 +1156,7 @@ function PostCard({
   return (
     <div
       className={cn(
-        'neu-card p-4 sm:p-5',
+        'neu-card neu-card-3d p-4 sm:p-5',
         isBestAnswer && 'ring-2 ring-emerald-500/40 overflow-hidden',
       )}
     >

@@ -6,6 +6,7 @@ import {
   getPagination,
   getQueryParam,
   serializeUser,
+  requireAuth,
 } from '@/lib/api-helpers';
 
 const VALID_SORTS = ['newest', 'oldest', 'reputation', 'posts'] as const;
@@ -13,6 +14,10 @@ type SortKey = (typeof VALID_SORTS)[number];
 
 export async function GET(request: Request) {
   try {
+    // Require authentication to view members
+    const authCheck = await requireAuth(request);
+    if (authCheck.error) return authCheck.error;
+
     const { page, limit, skip } = getPagination(request);
     const q = getQueryParam(request, 'q');
     const sortParam = getQueryParam(request, 'sort') || 'newest';
@@ -49,7 +54,7 @@ export async function GET(request: Request) {
 
     const publicUsers = users.map((u) => {
       const serialized = serializeUser(u);
-      const { email: _email, ...publicFields } = serialized;
+      const { email: _email, firebaseUid: _firebaseUid, ...publicFields } = serialized;
       return publicFields;
     });
 

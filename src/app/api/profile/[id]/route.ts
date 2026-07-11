@@ -71,6 +71,19 @@ export async function PUT(
 
     const { displayName, bio, signature, location, website, avatarUrl } = body;
 
+    // Input length validation
+    if (displayName !== undefined && typeof displayName === 'string' && displayName.length > 50) {
+      return errorResponse('Display name must be 50 characters or less');
+    }
+    if (bio !== undefined && typeof bio === 'string' && bio.length > 500) {
+      return errorResponse('Bio must be 500 characters or less');
+    }
+    if (signature !== undefined && typeof signature === 'string' && signature.length > 200) {
+      return errorResponse('Signature must be 200 characters or less');
+    }
+    if (location !== undefined && typeof location === 'string' && location.length > 100) {
+      return errorResponse('Location must be 100 characters or less');
+    }
     if (website !== undefined && website !== null && website !== '' && !isValidUrl(website)) {
       return errorResponse('website must be a valid http(s) URL');
     }

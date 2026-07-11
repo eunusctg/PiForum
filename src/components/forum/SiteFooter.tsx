@@ -49,9 +49,9 @@ export default function SiteFooter() {
   const [showTop, setShowTop] = useState(false);
 
   const forumName = getSetting('forum_name', 'PiForum');
-  const forumTagline = getSetting('forum_tagline', '');
+  const forumTagline = getSetting('forum_tagline', 'Where tech conversations find their form.');
   const forumDescription =
-    getSetting('forum_description', '') || forumTagline || '';
+    getSetting('forum_description', 'PiForum — Where tech conversations find their form. A modern community for developers, engineers, and tech enthusiasts.') || forumTagline || '';
   const logoUrl = getSetting('logo_url', '');
   const year = new Date().getFullYear();
 
@@ -155,7 +155,7 @@ export default function SiteFooter() {
       setEmail('');
       toast({
         title: 'You’re subscribed!',
-        description: 'Thanks for joining the PiForum newsletter.',
+        description: 'Thanks for subscribing to the PiForum newsletter.',
       });
     }, 600);
   }
@@ -193,23 +193,19 @@ export default function SiteFooter() {
           {/* 1. Brand */}
           <section aria-labelledby="footer-brand-heading">
             <div className="flex items-center gap-3">
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={`${forumName} logo`}
-                  className="h-9 w-auto rounded-md object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              ) : (
-                <span
-                  className="neu-circle flex items-center justify-center size-9 text-base font-bold text-primary"
-                  aria-hidden="true"
-                >
-                  π
-                </span>
-              )}
+              <img
+                src={logoUrl || '/logo.png'}
+                alt={`${forumName} logo`}
+                className="h-9 w-auto rounded-md object-contain"
+                onError={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  if (img.src !== window.location.origin + '/logo.png') {
+                    img.src = '/logo.png';
+                  } else {
+                    img.style.display = 'none';
+                  }
+                }}
+              />
               <div className="min-w-0">
                 <h2
                   id="footer-brand-heading"
@@ -360,15 +356,6 @@ export default function SiteFooter() {
               className="text-xs text-muted-foreground hover:text-primary transition-colors"
             >
               Rules
-            </button>
-
-            <button
-              type="button"
-              onClick={scrollToTop}
-              aria-label="Back to top"
-              className="neu-circle ml-1 inline-flex items-center justify-center size-8 text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ChevronUp className="size-4" aria-hidden="true" />
             </button>
           </nav>
         </div>

@@ -24,6 +24,12 @@ export async function PUT(
 
     const { content } = body;
     if (!content) return errorResponse('Content is required');
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return errorResponse('Content must not be empty');
+    }
+    if (content.length > 50000) {
+      return errorResponse('Content must be 50000 characters or less');
+    }
 
     const post = await db.post.update({
       where: { id },

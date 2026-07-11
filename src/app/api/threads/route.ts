@@ -7,6 +7,7 @@ import {
   parseBody,
   slugify,
 } from '@/lib/api-helpers';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 /* ------------------------------------------------------------------ */
 /*  /api/threads                                                       */
@@ -25,6 +26,7 @@ import {
 /* ------------------------------------------------------------------ */
 
 const MAX_TITLE_LENGTH = 200;
+const MAX_CONTENT_LENGTH = 50000;
 
 /** Find or create a catch-all "General" forum for direct posts. */
 async function ensureGeneralForum(): Promise<{ id: string }> {
@@ -109,6 +111,14 @@ export async function GET(request: Request) {
               name: true,
               description: true,
               icon: true,
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  icon: true,
+                  color: true,
+                },
+              },
             },
           },
           tags: { include: { tag: true } },
@@ -151,6 +161,10 @@ export async function POST(request: Request) {
     if (authCheck.error) return authCheck.error;
     const user = authCheck.user!;
 
+    // Rate limit: 10 threads per user per hour
+    const rl = rateLimit(`thread:${user.id}`, 10, 60 * 60 * 1000);
+    if (!rl.success) return rateLimitResponse();
+
     const body = await parseBody(request);
     if (!body) return errorResponse('Invalid request body');
 
@@ -164,9 +178,20 @@ export async function POST(request: Request) {
     if (!title || !content) {
       return errorResponse('Title and content are required');
     }
+    if (typeof title !== 'string' || title.trim().length === 0) {
+      return errorResponse('Title must not be empty');
+    }
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return errorResponse('Content must not be empty');
+    }
     if (title.trim().length > MAX_TITLE_LENGTH) {
       return errorResponse(
         `Title must be ${MAX_TITLE_LENGTH} characters or less`,
+      );
+    }
+    if (content.length > MAX_CONTENT_LENGTH) {
+      return errorResponse(
+        `Content must be ${MAX_CONTENT_LENGTH} characters or less`,
       );
     }
 

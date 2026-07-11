@@ -1,9 +1,19 @@
 import { db } from '@/lib/db';
 import { successResponse, errorResponse, serverErrorResponse, hashPassword, generateUUID, parseBody, serializeUser } from '@/lib/api-helpers';
+import { rateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 import crypto from 'crypto';
+
+const MAX_USERNAME_LENGTH = 30;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PASSWORD_LENGTH = 128;
 
 export async function POST(request: Request) {
   try {
+    // Rate limit: 3 registrations per IP per hour
+    const ip = getClientIp(request);
+    const rl = rateLimit(`register:${ip}`, 3, 60 * 60 * 1000);
+    if (!rl.success) return rateLimitResponse();
+
     const body = await parseBody(request);
     if (!body) return errorResponse('Invalid request body');
 
@@ -11,6 +21,17 @@ export async function POST(request: Request) {
 
     if (!username || !email || !password) {
       return errorResponse('Username, email, and password are required');
+    }
+
+    // Type and length validation
+    if (typeof username !== 'string' || username.length > MAX_USERNAME_LENGTH) {
+      return errorResponse(`Username must be at most ${MAX_USERNAME_LENGTH} characters`);
+    }
+    if (typeof email !== 'string' || email.length > MAX_EMAIL_LENGTH) {
+      return errorResponse('Invalid email format');
+    }
+    if (typeof password !== 'string' || password.length > MAX_PASSWORD_LENGTH) {
+      return errorResponse('Password is too long');
     }
 
     // Validate username length (respect admin-configured limits)

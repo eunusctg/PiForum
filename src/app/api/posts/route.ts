@@ -1,5 +1,8 @@
 import { db } from '@/lib/db';
 import { successResponse, errorResponse, serverErrorResponse, requireAuth, parseBody } from '@/lib/api-helpers';
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+
+const MAX_CONTENT_LENGTH = 50000;
 
 export async function GET(request: Request) {
   try {
@@ -89,6 +92,10 @@ export async function POST(request: Request) {
     if (authCheck.error) return authCheck.error;
     const user = authCheck.user!;
 
+    // Rate limit: 30 posts per user per hour
+    const rl = rateLimit(`post:${user.id}`, 30, 60 * 60 * 1000);
+    if (!rl.success) return rateLimitResponse();
+
     const body = await parseBody(request);
     if (!body) return errorResponse('Invalid request body');
 
@@ -96,6 +103,12 @@ export async function POST(request: Request) {
 
     if (!threadId || !content) {
       return errorResponse('Thread ID and content are required');
+    }
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return errorResponse('Content must not be empty');
+    }
+    if (content.length > MAX_CONTENT_LENGTH) {
+      return errorResponse(`Content must be ${MAX_CONTENT_LENGTH} characters or less`);
     }
 
     // Verify thread exists and is not locked
