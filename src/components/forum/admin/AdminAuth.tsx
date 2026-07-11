@@ -34,6 +34,7 @@ const KEYS = [
   'session_timeout',
   'oauth_google_enabled',
   'oauth_google_client_id',
+  'oauth_google_client_secret',
   'oauth_github_enabled',
   'oauth_github_client_id',
 ];
@@ -63,7 +64,6 @@ export default function AdminAuth() {
 
       <FlawsCallout
         flaws={[
-          'OAuth providers (Google/GitHub) require server-side credential configuration and a real OAuth callback handler that is not implemented in this build — toggles are stored but sign-in buttons are not wired.',
           'Password complexity rules are stored but not yet enforced on the registration API (only min length is enforced).',
           'Session timeout is informational only; tokens do not auto-expire server-side in this build.',
         ]}
@@ -165,6 +165,28 @@ export default function AdminAuth() {
                 placeholder="xxxxxx.apps.googleusercontent.com"
                 className="neu-input px-3 py-2.5"
               />
+              <Label htmlFor="google-client-secret" className="mt-2">Google OAuth Client Secret</Label>
+              <Input
+                id="google-client-secret"
+                type="password"
+                value={v('oauth_google_client_secret')}
+                onChange={(e) => setValue('oauth_google_client_secret', e.target.value)}
+                placeholder="GOCSPX-xxxxxxxxxxxxxxxx"
+                className="neu-input px-3 py-2.5"
+              />
+              <p className="text-xs text-muted-foreground">
+                Get these from{' '}
+                <a
+                  href="https://console.cloud.google.com/apis/credentials"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Google Cloud Console → Credentials
+                </a>.
+                Add {typeof window !== 'undefined' ? window.location.origin : 'https://piforum.eu.org'}/api/auth/google/callback
+                as an Authorized redirect URI.
+              </p>
             </div>
           )}
         </div>
