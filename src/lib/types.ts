@@ -68,7 +68,7 @@ export interface Forum {
 
 export interface Thread {
   id: string;
-  forumId: string;
+  forumId: string | null;
   authorId: string;
   title: string;
   content: string;
@@ -77,9 +77,13 @@ export interface Thread {
   locked: boolean;
   featured: boolean;
   solved: boolean;
+  bestAnswerId?: string | null;
+  bestAnswerSelectedAt?: string | null;
+  bestAnswerSelectedBy?: string | null;
   createdAt: string;
   updatedAt: string;
   author?: ForumUser;
+  forum?: Forum | null;
   posts?: Post[];
   postCount?: number;
   tags?: Tag[];
@@ -93,6 +97,7 @@ export interface Post {
   authorId: string;
   content: string;
   editedAt: string | null;
+  isBestAnswer?: boolean;
   createdAt: string;
   updatedAt: string;
   author?: ForumUser;
@@ -111,11 +116,13 @@ export interface PostVote {
 
 export interface Attachment {
   id: string;
-  postId: string;
+  postId: string | null;
+  userId?: string | null;
   url: string;
   filename: string;
   size: number;
   mimeType: string;
+  purpose?: string;
   createdAt: string;
 }
 

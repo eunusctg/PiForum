@@ -98,7 +98,7 @@ model Forum {
 
 model Thread {
   id         String   @id @default(cuid())
-  forumId    String
+  forumId    String?
   authorId   String
   title      String
   content    String
@@ -107,20 +107,25 @@ model Thread {
   locked     Boolean  @default(false)
   featured   Boolean  @default(false)
   solved     Boolean  @default(false)
+  bestAnswerId String?  @unique
+  bestAnswerSelectedAt DateTime?
+  bestAnswerSelectedBy String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  forum      Forum    @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  forum      Forum?   @relation(fields: [forumId], references: [id], onDelete: Cascade)
   author     User     @relation(fields: [authorId], references: [id])
   posts      Post[]
   tags       ThreadTag[]
   bookmarks  Bookmark[]
   subscriptions Subscription[]
   poll       Poll?
+  bestAnswer Post?    @relation("ThreadBestAnswer", fields: [bestAnswerId], references: [id], onDelete: SetNull)
 
   @@index([forumId])
   @@index([authorId])
   @@index([createdAt])
+  @@index([solved])
 }
 
 model Post {
@@ -129,6 +134,7 @@ model Post {
   authorId   String
   content    String
   editedAt   DateTime?
+  isBestAnswer Boolean @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -136,9 +142,11 @@ model Post {
   author     User     @relation(fields: [authorId], references: [id])
   votes      PostVote[]
   attachments Attachment[]
+  bestAnswerFor Thread? @relation("ThreadBestAnswer")
 
   @@index([threadId])
   @@index([authorId])
+  @@index([isBestAnswer])
 }
 
 model PostVote {
@@ -155,16 +163,20 @@ model PostVote {
 
 model Attachment {
   id        String   @id @default(cuid())
-  postId    String
+  postId    String?
+  userId    String?
   url       String
   filename  String
   size      Int
   mimeType  String
+  purpose   String   @default("post")
   createdAt DateTime @default(now())
 
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId])
+  @@index([userId])
+  @@index([purpose])
 }
 
 model SecurityLog {

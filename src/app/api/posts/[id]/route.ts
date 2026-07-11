@@ -78,17 +78,19 @@ export async function DELETE(
       return errorResponse('You can only delete your own posts', 403);
     }
 
-    // Delete post and update counters
-    await db.$transaction(async (tx) => {
-      await tx.post.delete({ where: { id } });
+    // Delete post and update counters (sequential — Workers proxy doesn't
+    // support interactive transactions)
+    await db.post.delete({ where: { id } });
 
-      await tx.forum.update({
+    // Update forum counters only if thread belongs to a forum
+    if (existing.thread.forumId) {
+      await db.forum.update({
         where: { id: existing.thread.forumId },
         data: {
           postCount: { decrement: 1 },
         },
       });
-    });
+    }
 
     return successResponse({ message: 'Post deleted successfully' });
   } catch (e: any) {

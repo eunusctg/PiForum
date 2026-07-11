@@ -20,6 +20,21 @@ export async function GET(
             role: true,
           },
         },
+        forum: {
+          select: {
+            id: true,
+            categoryId: true,
+            name: true,
+            description: true,
+            icon: true,
+            sortOrder: true,
+            lastPostAt: true,
+            threadCount: true,
+            postCount: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
         _count: {
           select: { posts: true },
         },
@@ -123,21 +138,22 @@ export async function DELETE(
       return errorResponse('You can only delete your own threads', 403);
     }
 
-    // Delete thread and update forum counters
-    await db.$transaction(async (tx) => {
-      // Get post count for the thread
-      const postCount = await tx.post.count({ where: { threadId: id } });
+    // Delete thread and update forum counters (sequential — Workers proxy
+    // doesn't support interactive transactions)
+    const postCount = await db.post.count({ where: { threadId: id } });
 
-      await tx.thread.delete({ where: { id } });
+    await db.thread.delete({ where: { id } });
 
-      await tx.forum.update({
+    // Update forum counters only if thread was in a forum
+    if (existing.forumId) {
+      await db.forum.update({
         where: { id: existing.forumId },
         data: {
           threadCount: { decrement: 1 },
           postCount: { decrement: postCount },
         },
       });
-    });
+    }
 
     return successResponse({ message: 'Thread deleted successfully' });
   } catch (e: any) {

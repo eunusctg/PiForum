@@ -2,17 +2,27 @@ import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// Response helpers
+// Response helpers — all API responses get no-store to prevent CDN/edge
+// caching of dynamic data (critical for forums where content changes often).
 export function successResponse(data: any, status = 200) {
-  return NextResponse.json({ success: true, data }, { status });
+  return NextResponse.json(
+    { success: true, data },
+    { status, headers: { 'Cache-Control': 'no-store, max-age=0' } },
+  );
 }
 
 export function errorResponse(message: string, status = 400) {
-  return NextResponse.json({ success: false, error: message }, { status });
+  return NextResponse.json(
+    { success: false, error: message },
+    { status, headers: { 'Cache-Control': 'no-store, max-age=0' } },
+  );
 }
 
 export function serverErrorResponse(message: string) {
-  return NextResponse.json({ success: false, error: message }, { status: 500 });
+  return NextResponse.json(
+    { success: false, error: message },
+    { status: 500, headers: { 'Cache-Control': 'no-store, max-age=0' } },
+  );
 }
 
 // Password hashing helpers

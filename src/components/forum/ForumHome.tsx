@@ -1,69 +1,84 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/lib/store';
-import type { Category, ForumStats, Forum } from '@/lib/types';
+import type { Thread, ForumStats, Tag } from '@/lib/types';
 import {
   MessageSquare,
   Users,
   FileText,
   Star,
-  ChevronRight,
   Plus,
   Loader2,
   Pin,
+  Lock,
   Clock,
-  LayoutGrid,
+  Eye,
+  User,
+  Home as HomeIcon,
+  Hash,
   X,
-  Search,
+  Flame,
+  TrendingUp,
+  Sparkles,
+  FolderOpen,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import VerifiedBadge from '@/components/forum/VerifiedBadge';
 
 /* ------------------------------------------------------------------ */
-/*  Forum Home — Categories & Forums overview                         */
+/*  Forum Home — Flat "All Discussions" view (Flarum/Discourse style)  */
+/*                                                                    */
+/*  No category/forum nesting. Every thread across the site is shown   */
+/*  in one flat list. Tags act as filters (pills above the list).      */
 /* ------------------------------------------------------------------ */
 
-interface ForumHomeProps {
-  onNavigateForum?: (forumId: string) => void;
-}
+type SortMode = 'recent' | 'top' | 'pinned';
 
-export default function ForumHome({ onNavigateForum }: ForumHomeProps) {
-  const {
-    categories,
-    setCategories,
-    currentUser,
-    navigateTo,
-    getSetting,
-    settings,
-  } = useAppStore();
+export default function ForumHome() {
+  const { currentUser, navigateTo, getSetting } = useAppStore();
 
   const [loading, setLoading] = useState(true);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortMode>('recent');
   const [stats, setStats] = useState<ForumStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  // ---------- fetch categories ----------
-  const fetchCategories = useCallback(async () => {
+  // ---------- fetch threads (flat, global) ----------
+  const fetchThreads = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/categories');
+      const params = new URLSearchParams({ page: '1', limit: '30' });
+      if (activeTag) params.set('tag', activeTag);
+      const res = await fetch(`/api/threads?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
-        setCategories(data.data);
+        setThreads(data.data.threads);
       }
     } catch (err) {
-      console.error('Failed to fetch categories:', err);
+      console.error('Failed to fetch threads:', err);
     } finally {
       setLoading(false);
     }
-  }, [setCategories]);
+  }, [activeTag]);
+
+  // ---------- fetch tags ----------
+  const fetchTags = useCallback(async () => {
+    try {
+      const res = await fetch('/api/tags');
+      const data = await res.json();
+      if (data.success) {
+        setTags(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch tags:', err);
+    }
+  }, []);
 
   // ---------- fetch stats ----------
   const fetchStats = useCallback(async () => {
@@ -82,65 +97,50 @@ export default function ForumHome({ onNavigateForum }: ForumHomeProps) {
   }, []);
 
   useEffect(() => {
-    fetchCategories();
+    fetchTags();
     fetchStats();
-  }, [fetchCategories, fetchStats]);
+  }, [fetchTags, fetchStats]);
 
-  // ---------- handlers ----------
-  const handleForumClick = (forumId: string) => {
-    if (onNavigateForum) {
-      onNavigateForum(forumId);
-    } else {
-      navigateTo('forum', { forumId });
-    }
-  };
-
-  const [showForumPicker, setShowForumPicker] = useState(false);
-  const [allForums, setAllForums] = useState<Forum[]>([]);
-  const [forumPickerLoading, setForumPickerLoading] = useState(false);
-  const [forumSearch, setForumSearch] = useState('');
-
-  const handleNewThread = useCallback(async () => {
-    // Fetch all forums so the user can pick one to post in.
-    setForumPickerLoading(true);
-    setShowForumPicker(true);
-    try {
-      const res = await fetch('/api/forums?categoryId=all');
-      const data = await res.json();
-      if (data.success) {
-        setAllForums(data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch forums for picker:', err);
-    } finally {
-      setForumPickerLoading(false);
-    }
-  }, []);
-
-  const handlePickForum = (forumId: string) => {
-    setShowForumPicker(false);
-    setForumSearch('');
-    navigateTo('new-thread', { forumId });
-  };
-
-  const filteredForums = forumSearch.trim()
-    ? allForums.filter(
-        (f) =>
-          f.name.toLowerCase().includes(forumSearch.toLowerCase()) ||
-          (f.description ?? '').toLowerCase().includes(forumSearch.toLowerCase())
-      )
-    : allForums;
+  useEffect(() => {
+    fetchThreads();
+  }, [fetchThreads]);
 
   // ---------- derived ----------
   const forumName = getSetting('forum_name', 'PiForum');
-  const forumDescription = getSetting('forum_description', 'Welcome to the community forum');
+  const forumDescription = getSetting(
+    'forum_description',
+    'A community for thoughtful discussions.',
+  );
+
+  const sortedThreads = useMemo(() => {
+    const list = [...threads];
+    if (sort === 'top') {
+      list.sort(
+        (a, b) =>
+          (b.postCount ?? 0) - (a.postCount ?? 0) || b.views - a.views,
+      );
+    } else if (sort === 'pinned') {
+      list.sort((a, b) => Number(b.pinned) - Number(a.pinned));
+    }
+    // 'recent' already comes sorted by updatedAt desc from the API
+    return list;
+  }, [threads, sort]);
+
+  // ---------- handlers ----------
+  const handleNewThread = () => navigateTo('new-thread');
+  const handleThreadClick = (threadId: string) =>
+    navigateTo('thread', { threadId });
+
+  const handleTagClick = (slug: string) => {
+    setActiveTag((prev) => (prev === slug ? null : slug));
+  };
 
   // ================================================================
   //  RENDER
   // ================================================================
 
   return (
-    <div className="relative w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8">
+    <div className="relative w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* ---- Hero Section ---- */}
       <section className="neu-card p-6 sm:p-8 text-center space-y-2">
         <div className="flex items-center justify-center gap-3">
@@ -156,32 +156,95 @@ export default function ForumHome({ onNavigateForum }: ForumHomeProps) {
         </p>
       </section>
 
-      {/* ---- Category Sections ---- */}
-      {loading ? (
-        <CategorySkeletons />
-      ) : categories.length === 0 ? (
-        <section className="neu-card p-8 text-center">
-          <LayoutGrid className="size-12 text-muted-foreground mx-auto mb-3" />
-          <h3 className="text-lg font-semibold mb-1">No categories yet</h3>
-          <p className="text-muted-foreground text-sm">
-            The forum is being set up. Check back soon!
-          </p>
-        </section>
-      ) : (
-        categories.map((category) => (
-          <CategorySection
-            key={category.id}
-            category={category}
-            onForumClick={handleForumClick}
+      {/* ---- Toolbar: sort tabs + New Thread button ---- */}
+      <section className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <SortTab
+            active={sort === 'recent'}
+            onClick={() => setSort('recent')}
+            icon={<Clock className="size-3.5" />}
+            label="Recent"
           />
-        ))
+          <SortTab
+            active={sort === 'top'}
+            onClick={() => setSort('top')}
+            icon={<TrendingUp className="size-3.5" />}
+            label="Top"
+          />
+          <SortTab
+            active={sort === 'pinned'}
+            onClick={() => setSort('pinned')}
+            icon={<Pin className="size-3.5" />}
+            label="Pinned"
+          />
+        </div>
+
+        {currentUser && (
+          <button
+            onClick={handleNewThread}
+            className="neu-btn px-4 py-2.5 text-sm font-medium text-primary flex items-center gap-2"
+          >
+            <Plus className="size-4" />
+            New Thread
+          </button>
+        )}
+      </section>
+
+      {/* ---- Tag filter pills (only if there are tags) ---- */}
+      {tags.length > 0 && (
+        <section className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+            <Hash className="size-3" />
+            Tags
+          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {tags.slice(0, 12).map((tag) => (
+              <TagPill
+                key={tag.id}
+                tag={tag}
+                active={activeTag === tag.slug}
+                onClick={() => handleTagClick(tag.slug)}
+              />
+            ))}
+            {activeTag && (
+              <button
+                onClick={() => setActiveTag(null)}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-1"
+              >
+                <X className="size-3" />
+                Clear
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ---- Flat Thread List ---- */}
+      {loading ? (
+        <ThreadListSkeletons />
+      ) : sortedThreads.length === 0 ? (
+        <EmptyThreadState
+          hasFilter={!!activeTag}
+          canPost={!!currentUser}
+          onNewThread={handleNewThread}
+        />
+      ) : (
+        <div className="space-y-3">
+          {sortedThreads.map((thread) => (
+            <ThreadRow
+              key={thread.id}
+              thread={thread}
+              onClick={() => handleThreadClick(thread.id)}
+            />
+          ))}
+        </div>
       )}
 
       {/* ---- Forum Statistics ---- */}
       <section>
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Star className="size-5 text-primary" />
-          Forum Statistics
+          <Sparkles className="size-5 text-primary" />
+          Community Stats
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -214,233 +277,272 @@ export default function ForumHome({ onNavigateForum }: ForumHomeProps) {
         </div>
       </section>
 
-      {/* ---- Floating New Thread Button ---- */}
+      {/* ---- Floating New Thread Button (mobile) ---- */}
       {currentUser && (
         <button
           onClick={handleNewThread}
-          className="fixed bottom-6 right-6 neu-btn p-4 text-primary hover:text-primary/80 z-50"
+          className="fixed bottom-6 right-6 neu-btn p-4 text-primary hover:text-primary/80 z-50 sm:hidden"
           aria-label="Create new thread"
         >
           <Plus className="size-6" />
         </button>
       )}
-
-      {/* ---- Forum Picker Dialog (for "New Thread" from home) ---- */}
-      <Dialog open={showForumPicker} onOpenChange={setShowForumPicker}>
-        <DialogContent className="neu-card-static border-0 sm:max-w-lg p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-              <Plus className="size-5 text-primary" />
-              Choose a Forum
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              Select which forum you&apos;d like to post your new thread in.
-            </p>
-          </DialogHeader>
-
-          {/* Search */}
-          <div className="px-6 pb-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-              <input
-                type="text"
-                autoFocus
-                placeholder="Search forums..."
-                value={forumSearch}
-                onChange={(e) => setForumSearch(e.target.value)}
-                className="neu-input w-full h-10 pl-9 pr-9 text-sm placeholder:text-muted-foreground"
-              />
-              {forumSearch && (
-                <button
-                  onClick={() => setForumSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <X className="size-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Forum list */}
-          <div className="px-6 pb-6 max-h-[50vh] overflow-y-auto">
-            {forumPickerLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 className="size-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : filteredForums.length === 0 ? (
-              <div className="text-center py-10 text-sm text-muted-foreground">
-                No forums found. Try a different search.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {filteredForums.map((forum) => {
-                  const cat = categories.find((c) => c.id === forum.categoryId);
-                  return (
-                    <button
-                      key={forum.id}
-                      onClick={() => handlePickForum(forum.id)}
-                      className="neu-btn p-3 flex items-center gap-3 text-left hover:text-primary transition-all"
-                    >
-                      <span className="text-xl shrink-0">{forum.icon || '💬'}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm truncate">{forum.name}</span>
-                          {cat && (
-                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
-                              {cat.icon} {cat.name}
-                            </span>
-                          )}
-                        </div>
-                        {forum.description && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            {forum.description}
-                          </p>
-                        )}
-                      </div>
-                      <ChevronRight className="size-4 text-muted-foreground shrink-0" />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Category Section                                                   */
+/*  Sort Tab                                                           */
 /* ------------------------------------------------------------------ */
 
-function CategorySection({
-  category,
-  onForumClick,
+function SortTab({
+  active,
+  onClick,
+  icon,
+  label,
 }: {
-  category: Category;
-  onForumClick: (forumId: string) => void;
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
 }) {
   return (
-    <section>
-      {/* Category Header */}
-      <div className="neu-card p-4 sm:p-5 mb-1">
-        <div className="flex items-center gap-3">
-          <div className="neu-circle p-2.5">
-            {category.icon ? (
-              <span className="text-lg">{category.icon}</span>
-            ) : (
-              <LayoutGrid className="size-5 text-primary" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base sm:text-lg font-semibold truncate">
-              {category.name}
-            </h2>
-            {category.description && (
-              <p className="text-muted-foreground text-xs sm:text-sm truncate">
-                {category.description}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Forum List */}
-      <div className="space-y-2 mt-2">
-        {category.forums && category.forums.length > 0 ? (
-          category.forums.map((forum) => (
-            <ForumRow
-              key={forum.id}
-              forum={forum}
-              onClick={() => onForumClick(forum.id)}
-            />
-          ))
-        ) : (
-          <div className="neu-card-inset p-4 text-center text-muted-foreground text-sm">
-            No forums in this category
-          </div>
-        )}
-      </div>
-    </section>
+    <button
+      onClick={onClick}
+      className={`neu-btn px-3 py-2 text-xs font-medium flex items-center gap-1.5 transition-all ${
+        active
+          ? 'text-primary'
+          : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Forum Row                                                          */
+/*  Tag Pill                                                           */
 /* ------------------------------------------------------------------ */
 
-interface ForumRowData {
-  id: string;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  threadCount: number;
-  postCount: number;
-  lastPostAt: string | null;
-}
-
-function ForumRow({ forum, onClick }: { forum: ForumRowData; onClick: () => void }) {
+function TagPill({
+  tag,
+  active,
+  onClick,
+}: {
+  tag: Tag;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
-      className="neu-card w-full text-left p-4 sm:p-5 flex items-center gap-4 group"
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+        active
+          ? 'neu-btn text-primary'
+          : 'neu-card-inset text-muted-foreground hover:text-foreground'
+      }`}
+      style={
+        tag.color && !active
+          ? { color: tag.color }
+          : undefined
+      }
     >
-      {/* Icon */}
-      <div className="neu-circle p-2.5 shrink-0">
-        {forum.icon ? (
-          <span className="text-base">{forum.icon}</span>
-        ) : (
-          <MessageSquare className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
-        )}
-      </div>
-
-      {/* Name + Description */}
-      <div className="min-w-0 flex-1">
-        <h3 className="font-semibold text-sm sm:text-base group-hover:text-primary transition-colors truncate">
-          {forum.name}
-        </h3>
-        {forum.description && (
-          <p className="text-muted-foreground text-xs sm:text-sm truncate mt-0.5">
-            {forum.description}
-          </p>
-        )}
-      </div>
-
-      {/* Stats */}
-      <div className="hidden sm:flex items-center gap-6 shrink-0 text-center">
-        <div>
-          <div className="text-sm font-semibold">{forum.threadCount}</div>
-          <div className="text-xs text-muted-foreground">Threads</div>
-        </div>
-        <div>
-          <div className="text-sm font-semibold">{forum.postCount}</div>
-          <div className="text-xs text-muted-foreground">Posts</div>
-        </div>
-        <div className="min-w-[80px]">
-          {forum.lastPostAt ? (
-            <>
-              <Clock className="size-3.5 text-muted-foreground mx-auto mb-0.5" />
-              <div className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(forum.lastPostAt), { addSuffix: true })}
-              </div>
-            </>
-          ) : (
-            <div className="text-xs text-muted-foreground">No posts</div>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile stats (compact) */}
-      <div className="flex sm:hidden items-center gap-2 shrink-0 text-xs text-muted-foreground">
-        <span>{forum.threadCount}T</span>
-        <span>{forum.postCount}P</span>
-      </div>
-
-      {/* Chevron */}
-      <ChevronRight className="size-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+      <Hash className="size-3" />
+      {tag.name}
+      <span className="text-[10px] opacity-60">{tag.usageCount}</span>
     </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Thread Row (flat, tag-aware)                                       */
+/* ------------------------------------------------------------------ */
+
+function ThreadRow({
+  thread,
+  onClick,
+}: {
+  thread: Thread;
+  onClick: () => void;
+}) {
+  const authorName =
+    thread.author?.displayName || thread.author?.username || 'Unknown';
+  const authorInitial = authorName.charAt(0).toUpperCase();
+  const replies = Math.max(0, (thread.postCount ?? 0) - 1);
+
+  return (
+    <button
+      onClick={onClick}
+      className="neu-card w-full text-left p-4 sm:p-5 group"
+    >
+      <div className="flex items-start gap-3 sm:gap-4">
+        {/* Avatar */}
+        <div className="shrink-0 mt-0.5">
+          <div className="neu-circle p-0.5">
+            <Avatar className="size-9 sm:size-10">
+              {thread.author?.avatarUrl ? (
+                <AvatarImage
+                  src={thread.author.avatarUrl}
+                  alt={authorName}
+                />
+              ) : null}
+              <AvatarFallback className="text-xs font-semibold">
+                {authorInitial}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2 flex-wrap">
+            {/* Badges */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {thread.pinned && (
+                <Badge
+                  variant="secondary"
+                  className="text-xs px-1.5 py-0 h-5 gap-0.5"
+                >
+                  <Pin className="size-3" />
+                  Pinned
+                </Badge>
+              )}
+              {thread.locked && (
+                <Badge
+                  variant="outline"
+                  className="text-xs px-1.5 py-0 h-5 gap-0.5"
+                >
+                  <Lock className="size-3" />
+                  Locked
+                </Badge>
+              )}
+              {thread.solved && (
+                <Badge className="text-xs px-1.5 py-0 h-5 gap-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20">
+                  Solved
+                </Badge>
+              )}
+            </div>
+
+            {/* Title */}
+            <h3 className="font-semibold text-sm sm:text-base group-hover:text-primary transition-colors leading-snug">
+              {thread.title}
+            </h3>
+          </div>
+
+          {/* Tags row */}
+          {thread.tags && thread.tags.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+              {thread.tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground"
+                  style={tag.color ? { color: tag.color } : undefined}
+                >
+                  <Hash className="size-2.5" />
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Meta row */}
+          <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1">
+              <User className="size-3" />
+              {authorName}
+              {thread.author?.isVerified && <VerifiedBadge size="xs" />}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="size-3" />
+              {formatDistanceToNow(new Date(thread.createdAt), {
+                addSuffix: true,
+              })}
+            </span>
+            {thread.forum ? (
+              <span
+                className="inline-flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Navigate to the forum
+                }}
+              >
+                <FolderOpen className="size-3" />
+                {thread.forum.name}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <FolderOpen className="size-3" />
+                Uncategorized
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <MessageSquare className="size-3" />
+              {replies} replies
+            </span>
+            <span className="flex items-center gap-1">
+              <Eye className="size-3" />
+              {thread.views} views
+            </span>
+          </div>
+        </div>
+
+        {/* Right-side stats (desktop) */}
+        <div className="hidden md:flex items-center gap-4 shrink-0 text-center">
+          <div>
+            <div className="text-sm font-semibold">{thread.postCount ?? 0}</div>
+            <div className="text-xs text-muted-foreground">Posts</div>
+          </div>
+          <div>
+            <div className="text-sm font-semibold">{thread.views}</div>
+            <div className="text-xs text-muted-foreground">Views</div>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Empty State                                                        */
+/* ------------------------------------------------------------------ */
+
+function EmptyThreadState({
+  hasFilter,
+  canPost,
+  onNewThread,
+}: {
+  hasFilter: boolean;
+  canPost: boolean;
+  onNewThread: () => void;
+}) {
+  return (
+    <div className="neu-card p-8 sm:p-12 text-center space-y-4">
+      <div className="neu-circle p-4 mx-auto w-fit">
+        {hasFilter ? (
+          <Hash className="size-10 text-muted-foreground" />
+        ) : (
+          <FileText className="size-10 text-muted-foreground" />
+        )}
+      </div>
+      <h3 className="text-lg font-semibold">
+        {hasFilter ? 'No threads with this tag' : 'No discussions yet'}
+      </h3>
+      <p className="text-muted-foreground text-sm max-w-md mx-auto">
+        {hasFilter
+          ? 'Try a different tag or clear the filter to see all discussions.'
+          : 'Be the first to start a conversation in the community!'}
+      </p>
+      {canPost && !hasFilter && (
+        <button
+          onClick={onNewThread}
+          className="neu-btn px-5 py-2.5 text-sm font-medium text-primary inline-flex items-center gap-2 mx-auto"
+        >
+          <Plus className="size-4" />
+          Start a Discussion
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -466,7 +568,9 @@ function StatCard({
         {value === null ? (
           <Skeleton className="h-7 w-16 mx-auto" />
         ) : isText ? (
-          <span className="text-base sm:text-lg truncate max-w-full">{value}</span>
+          <span className="text-base sm:text-lg truncate max-w-full">
+            {value}
+          </span>
         ) : (
           value.toLocaleString()
         )}
@@ -480,34 +584,28 @@ function StatCard({
 /*  Loading Skeletons                                                  */
 /* ------------------------------------------------------------------ */
 
-function CategorySkeletons() {
+function ThreadListSkeletons() {
   return (
-    <div className="space-y-8">
-      {[1, 2].map((i) => (
-        <section key={i}>
-          <div className="neu-card p-4 sm:p-5 mb-1">
-            <div className="flex items-center gap-3">
-              <Skeleton className="size-10 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-5 w-40" />
-                <Skeleton className="h-3 w-60" />
-              </div>
+    <div className="space-y-3">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div
+          key={i}
+          className="neu-card p-4 sm:p-5 flex items-start gap-3 sm:gap-4"
+        >
+          <Skeleton className="size-10 rounded-full shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <div className="flex gap-3">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 w-16" />
             </div>
           </div>
-          <div className="space-y-2 mt-2">
-            {[1, 2, 3].map((j) => (
-              <div key={j} className="neu-card p-4 sm:p-5 flex items-center gap-4">
-                <Skeleton className="size-10 rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-48" />
-                </div>
-                <Skeleton className="h-4 w-12 hidden sm:block" />
-                <Skeleton className="h-4 w-12 hidden sm:block" />
-              </div>
-            ))}
+          <div className="hidden md:flex items-center gap-4">
+            <Skeleton className="h-5 w-10" />
+            <Skeleton className="h-5 w-10" />
           </div>
-        </section>
+        </div>
       ))}
     </div>
   );

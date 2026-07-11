@@ -78,11 +78,36 @@ async function buildClient(): Promise<PrismaClient> {
     }
   }
 
-  // Local Node.js dev path — plain PrismaClient using DATABASE_URL.
-  return new BasePrismaClient({
-    log:
-      process.env.NODE_ENV !== 'production' ? ['error', 'warn'] : ['error'],
-  })
+  // Local Node.js dev path — Prisma 7 removed the native Rust engine, so we
+  // must provide a driver adapter. Use the libsql adapter against the local
+  // SQLite file (DATABASE_URL=file:.../custom.db).
+  //
+  // IMPORTANT: the module specifier is built via string concatenation so
+  // esbuild/wrangler cannot statically resolve it at build time. This
+  // prevents the 20 MiB @prisma/adapter-libsql dependency tree from being
+  // bundled into the Cloudflare Worker — which only ever uses the D1
+  // adapter branch above and never reaches this code. Without this trick
+  // the worker's compressed size exceeds the 3 MiB free-plan limit.
+  try {
+    const spec = '@prisma/' + 'adapter-libsql'
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const dynImport = new Function('s', 'return import(s)') as (
+      s: string,
+    ) => Promise<{ PrismaLibSql: new (opts: { url: string }) => unknown }>
+    const mod = await dynImport(spec)
+    const url =
+      process.env.DATABASE_URL || 'file:./db/custom.db'
+    return new BasePrismaClient({
+      adapter: new mod.PrismaLibSql({ url }) as never,
+      log:
+        process.env.NODE_ENV !== 'production'
+          ? ['error', 'warn']
+          : ['error'],
+    })
+  } catch (err) {
+    console.error('[db] Local Prisma init failed:', err)
+    throw err
+  }
 }
 
 function getClient(): Promise<PrismaClient> {

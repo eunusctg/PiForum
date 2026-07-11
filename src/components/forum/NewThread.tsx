@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
-import type { Forum, Category } from '@/lib/types';
 import {
   Home,
   Loader2,
@@ -14,9 +13,10 @@ import {
   Type,
   AlignLeft,
   AlertCircle,
+  Hash,
+  Plus,
+  FolderOpen,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -27,74 +27,38 @@ import {
 } from '@/components/ui/breadcrumb';
 
 /* ------------------------------------------------------------------ */
-/*  NewThread — Form to create a new thread                            */
+/*  NewThread — Create a new discussion (Flarum/Discourse style)       */
+/*                                                                    */
+/*  No category/forum picker required. Users just enter a title,       */
+/*  content, optional tags, and optional attachments. If no forumId    */
+/*  is provided, the thread is created as "uncategorized" — it will    */
+/*  still appear in the global flat thread list on the home page.      */
 /* ------------------------------------------------------------------ */
 
+const MAX_TITLE_LENGTH = 200;
+const MAX_TAGS = 5;
+const MAX_TAG_LENGTH = 30;
+
 interface NewThreadProps {
-  forumId: string;
+  forumId?: string;
 }
 
-const MAX_TITLE_LENGTH = 200;
-
 export default function NewThread({ forumId }: NewThreadProps) {
-  const { currentUser, navigateTo, categories, currentForum, setCurrentForum } = useAppStore();
+  const { currentUser, navigateTo } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Forum info for breadcrumb
-  const [parentForum, setParentForum] = useState<Forum | null>(currentForum?.id === forumId ? currentForum : null);
-  const [parentCategory, setParentCategory] = useState<Category | null>(null);
-
-  // ---------- fetch forum details ----------
-  useEffect(() => {
-    if (currentForum && currentForum.id === forumId) {
-      setParentForum(currentForum);
-      const cat = categories.find((c) => c.id === currentForum.categoryId);
-      setParentCategory(cat ?? null);
-      return;
-    }
-
-    const fetchForum = async () => {
-      try {
-        const res = await fetch(`/api/forums/${forumId}`);
-        const data = await res.json();
-        if (data.success) {
-          const forum: Forum = data.data;
-          setParentForum(forum);
-          setCurrentForum(forum);
-          const cat = categories.find((c) => c.id === forum.categoryId);
-          setParentCategory(cat ?? null);
-        }
-      } catch (err) {
-        console.error('Failed to fetch forum details:', err);
-      }
-    };
-
-    fetchForum();
-  }, [forumId, currentForum, categories, setCurrentForum]);
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
   // ---------- handlers ----------
   const handleHomeClick = () => navigateTo('home');
 
-  const handleCategoryClick = () => navigateTo('home');
-
-  const handleForumClick = () => {
-    if (parentForum) {
-      navigateTo('forum', { forumId: parentForum.id });
-    }
-  };
-
-  const handleCancel = () => {
-    if (parentForum) {
-      navigateTo('forum', { forumId: parentForum.id });
-    } else {
-      navigateTo('home');
-    }
-  };
+  const handleCancel = () => navigateTo('home');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -106,6 +70,39 @@ export default function NewThread({ forumId }: NewThreadProps) {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // ---------- tag handlers ----------
+  const addTag = useCallback(
+    (raw: string) => {
+      const value = raw.trim().toLowerCase();
+      if (!value) return;
+      if (value.length > MAX_TAG_LENGTH) return;
+      if (tags.includes(value)) return;
+      if (tags.length >= MAX_TAGS) return;
+      setTags((prev) => [...prev, value]);
+      setTagInput('');
+    },
+    [tags],
+  );
+
+  const removeTag = (tag: string) => {
+    setTags((prev) => prev.filter((t) => t !== tag));
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(tagInput);
+    } else if (e.key === 'Backspace' && tagInput === '' && tags.length > 0) {
+      e.preventDefault();
+      setTags((prev) => prev.slice(0, -1));
+    }
+  };
+
+  const handleTagInputBlur = () => {
+    if (tagInput.trim()) addTag(tagInput);
+  };
+
+  // ---------- submit ----------
   const handleSubmit = async () => {
     if (!currentUser) return;
     if (!title.trim()) {
@@ -126,19 +123,14 @@ export default function NewThread({ forumId }: NewThreadProps) {
 
     try {
       // Upload files first if any
-      const uploadedAttachments: string[] = [];
       for (const file of files) {
         const formData = new FormData();
         formData.append('file', file);
-        const uploadRes = await fetch('/api/upload', {
+        await fetch('/api/upload', {
           method: 'POST',
           headers: { 'x-user-id': currentUser.id },
           body: formData,
         });
-        const uploadData = await uploadRes.json();
-        if (uploadData.success) {
-          uploadedAttachments.push(uploadData.data.url);
-        }
       }
 
       const res = await fetch('/api/threads', {
@@ -148,9 +140,11 @@ export default function NewThread({ forumId }: NewThreadProps) {
           'x-user-id': currentUser.id,
         },
         body: JSON.stringify({
-          forumId,
+          // forumId is optional — thread will be uncategorized if omitted
+          ...(forumId ? { forumId } : {}),
           title: title.trim(),
           content: content.trim(),
+          tags,
           authorId: currentUser.id,
         }),
       });
@@ -173,7 +167,11 @@ export default function NewThread({ forumId }: NewThreadProps) {
   // ---------- derived ----------
   const titleCharsRemaining = MAX_TITLE_LENGTH - title.length;
   const isTitleOverLimit = title.length > MAX_TITLE_LENGTH;
-  const canSubmit = title.trim().length > 0 && content.trim().length > 0 && !isTitleOverLimit && !submitting;
+  const canSubmit =
+    title.trim().length > 0 &&
+    content.trim().length > 0 &&
+    !isTitleOverLimit &&
+    !submitting;
 
   // ================================================================
   //  RENDER
@@ -186,7 +184,9 @@ export default function NewThread({ forumId }: NewThreadProps) {
         <div className="neu-card p-8 text-center space-y-3">
           <AlertCircle className="size-10 text-muted-foreground mx-auto" />
           <h2 className="text-lg font-semibold">Authentication Required</h2>
-          <p className="text-muted-foreground text-sm">You must be logged in to create a new thread.</p>
+          <p className="text-muted-foreground text-sm">
+            You must be logged in to start a discussion.
+          </p>
           <button
             onClick={() => navigateTo('login')}
             className="neu-btn px-5 py-2.5 text-sm font-medium text-primary"
@@ -212,37 +212,11 @@ export default function NewThread({ forumId }: NewThreadProps) {
               Home
             </BreadcrumbLink>
           </BreadcrumbItem>
-          {parentCategory && (
-            <>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  className="cursor-pointer hover:text-primary transition-colors"
-                  onClick={handleCategoryClick}
-                >
-                  {parentCategory.icon && <span className="mr-1">{parentCategory.icon}</span>}
-                  {parentCategory.name}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-            </>
-          )}
-          {parentForum && (
-            <>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  className="cursor-pointer hover:text-primary transition-colors"
-                  onClick={handleForumClick}
-                >
-                  {parentForum.icon && <span className="mr-1">{parentForum.icon}</span>}
-                  {parentForum.name}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-            </>
-          )}
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage className="font-medium">New Thread</BreadcrumbPage>
+            <BreadcrumbPage className="font-medium">
+              New Discussion
+            </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -255,14 +229,28 @@ export default function NewThread({ forumId }: NewThreadProps) {
             <FileText className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Create New Thread</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">
+              Start a Discussion
+            </h1>
             <p className="text-sm text-muted-foreground">
-              in {parentForum?.name ?? 'Forum'}
+              {!forumId
+                ? 'This discussion will be uncategorized — visible on the home page'
+                : 'Share your thoughts with the community'}
             </p>
           </div>
         </div>
 
         <div className="neu-divider" />
+
+        {/* Uncategorized info banner (when no forum selected) */}
+        {!forumId && (
+          <div className="neu-card-inset rounded-lg p-3 flex items-center gap-3">
+            <FolderOpen className="size-4 text-muted-foreground shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              No category selected. Your discussion will appear in the global thread list and can be found via tags.
+            </p>
+          </div>
+        )}
 
         {/* Error message */}
         {error && (
@@ -279,20 +267,22 @@ export default function NewThread({ forumId }: NewThreadProps) {
         <div className="space-y-2">
           <label className="text-sm font-medium flex items-center gap-2">
             <Type className="size-4 text-primary" />
-            Thread Title
+            Title
           </label>
           <div className="neu-input p-1">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter a descriptive title for your thread..."
+              placeholder="What's your discussion about?"
               maxLength={MAX_TITLE_LENGTH + 10}
               className="w-full bg-transparent p-3 text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Make it clear and descriptive</span>
+            <span className="text-muted-foreground">
+              Make it clear and descriptive
+            </span>
             <span
               className={`font-medium ${
                 isTitleOverLimit
@@ -317,7 +307,7 @@ export default function NewThread({ forumId }: NewThreadProps) {
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Write your thread content here...&#10;&#10;Supports basic formatting:&#10;**bold**, *italic*, `inline code`, ```code blocks```, > blockquotes, [links](url)"
+              placeholder={'Write your discussion here...\n\nSupports basic formatting:\n**bold**, *italic*, `inline code`, ```code blocks```, > blockquotes, [links](url)'}
               rows={10}
               className="w-full bg-transparent resize-y min-h-[200px] p-3 text-sm outline-none placeholder:text-muted-foreground"
             />
@@ -327,8 +317,71 @@ export default function NewThread({ forumId }: NewThreadProps) {
               Supports **bold**, *italic*, `code`, &gt; quotes, and [links](url)
             </span>
             {content.length > 0 && (
-              <span className="text-muted-foreground">{content.length} characters</span>
+              <span className="text-muted-foreground">
+                {content.length} characters
+              </span>
             )}
+          </div>
+        </div>
+
+        {/* Tags Field */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Hash className="size-4 text-primary" />
+            Tags
+            <span className="text-muted-foreground font-normal">
+              (optional, up to {MAX_TAGS})
+            </span>
+          </label>
+          <div
+            className="neu-input p-1.5 flex flex-wrap items-center gap-1.5 min-h-[44px] cursor-text"
+            onClick={() => tagInputRef.current?.focus()}
+          >
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 neu-card-inset px-2 py-0.5 rounded-full text-xs font-medium text-primary"
+              >
+                <Hash className="size-2.5" />
+                {tag}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeTag(tag);
+                  }}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                  aria-label={`Remove tag ${tag}`}
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+            {tags.length < MAX_TAGS && (
+              <input
+                ref={tagInputRef}
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                onBlur={handleTagInputBlur}
+                placeholder={
+                  tags.length === 0
+                    ? 'Add tags (press Enter to add)'
+                    : 'Add another tag...'
+                }
+                maxLength={MAX_TAG_LENGTH}
+                className="flex-1 min-w-[120px] bg-transparent p-1.5 text-sm outline-none placeholder:text-muted-foreground"
+              />
+            )}
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              Tags help others find your discussion
+            </span>
+            <span className="text-muted-foreground">
+              {tags.length}/{MAX_TAGS}
+            </span>
           </div>
         </div>
 
@@ -352,7 +405,9 @@ export default function NewThread({ forumId }: NewThreadProps) {
               />
             </label>
             {files.length > 0 && (
-              <span className="text-xs text-muted-foreground">{files.length} file(s) selected</span>
+              <span className="text-xs text-muted-foreground">
+                {files.length} file(s) selected
+              </span>
             )}
           </div>
 
@@ -406,7 +461,7 @@ export default function NewThread({ forumId }: NewThreadProps) {
             ) : (
               <>
                 <Send className="size-4" />
-                Create Thread
+                Post Discussion
               </>
             )}
           </button>

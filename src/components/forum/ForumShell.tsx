@@ -43,7 +43,7 @@ import AdminGdpr from '@/components/forum/admin/AdminGdpr';
 import AdminMonetization from '@/components/forum/admin/AdminMonetization';
 import AdminBackup from '@/components/forum/admin/AdminBackup';
 import StaticPageView from '@/components/forum/StaticPageView';
-import { Loader2 } from 'lucide-react';
+import Preloader from '@/components/forum/Preloader';
 import type { AppView } from '@/lib/types';
 
 /**
@@ -191,23 +191,7 @@ export default function ForumShell({
 
   // Show loading screen during initialization
   if (initializing) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: 'var(--neu-bg)' }}
-      >
-        <div className="neu-card p-8 flex flex-col items-center gap-4">
-          <div className="neu-circle w-16 h-16 flex items-center justify-center">
-            <span className="text-3xl font-bold text-primary">π</span>
-          </div>
-          <h2 className="text-xl font-semibold">PiForum</h2>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Loading...</span>
-          </div>
-        </div>
-      </div>
-    );
+    return <Preloader />;
   }
 
   // Installation wizard - no header/footer
@@ -232,7 +216,7 @@ export default function ForumShell({
       case 'thread':
         return <ThreadView threadId={viewParams.threadId || ''} />;
       case 'new-thread':
-        return <NewThread forumId={viewParams.forumId || ''} />;
+        return <NewThread forumId={viewParams.forumId} />;
       case 'search':
         return <SearchView />;
       case 'members':

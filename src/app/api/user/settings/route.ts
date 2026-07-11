@@ -43,15 +43,14 @@ export async function PUT(request: Request) {
       }
     }
 
-    await db.$transaction(
-      settings.map((s: { key: string; value: string }) =>
-        db.userSetting.upsert({
-          where: { userId_key: { userId: user.id, key: s.key } },
-          update: { value: s.value },
-          create: { userId: user.id, key: s.key, value: s.value },
-        })
-      )
-    );
+    // Sequential upserts (Workers proxy doesn't support $transaction)
+    for (const s of settings) {
+      await db.userSetting.upsert({
+        where: { userId_key: { userId: user.id, key: s.key } },
+        update: { value: s.value },
+        create: { userId: user.id, key: s.key, value: s.value },
+      });
+    }
 
     const all = await db.userSetting.findMany({ where: { userId: user.id } });
     const map: Record<string, string> = {};

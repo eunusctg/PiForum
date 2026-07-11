@@ -30,7 +30,11 @@ import {
   ArrowUp,
   ArrowDown,
   MoreHorizontal,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -248,6 +252,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
     posts,
     setPosts,
   } = useAppStore();
+  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [threadData, setThreadData] = useState<Thread | null>(null);
@@ -282,16 +287,30 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
         setThreadData(thread);
         setCurrentThread(thread);
 
-        // Fetch forum details for breadcrumb
-        const forumRes = await fetch(`/api/forums/${thread.forumId}`);
-        const forumData = await forumRes.json();
-        if (forumData.success) {
-          const forum: Forum = forumData.data;
-          setParentForum(forum);
-          setCurrentForum(forum);
+        // Fetch forum details for breadcrumb (only if thread has a forum)
+        if (thread.forumId) {
+          // If the API already included the forum relation, use it directly
+          if (thread.forum) {
+            setParentForum(thread.forum);
+            setCurrentForum(thread.forum);
+            const cat = categories.find((c) => c.id === thread.forum!.categoryId);
+            setParentCategory(cat ?? null);
+          } else {
+            const forumRes = await fetch(`/api/forums/${thread.forumId}`);
+            const forumData = await forumRes.json();
+            if (forumData.success) {
+              const forum: Forum = forumData.data;
+              setParentForum(forum);
+              setCurrentForum(forum);
 
-          const cat = categories.find((c) => c.id === forum.categoryId);
-          setParentCategory(cat ?? null);
+              const cat = categories.find((c) => c.id === forum.categoryId);
+              setParentCategory(cat ?? null);
+            }
+          }
+        } else {
+          // Thread has no forum — uncategorized
+          setParentForum(null);
+          setParentCategory(null);
         }
       }
     } catch (err) {
@@ -546,6 +565,93 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
     setReplyFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // ---------- Best Answer handlers ----------
+  const handleMarkBestAnswer = async (postId: string) => {
+    if (!currentUser || !threadData) return;
+    try {
+      const res = await fetch(`/api/threads/${threadId}/best-answer`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser.id,
+        },
+        body: JSON.stringify({ postId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Optimistic update of the thread header Solved badge
+        const updated = {
+          ...threadData,
+          solved: true,
+          bestAnswerId: postId,
+          bestAnswerSelectedAt: new Date().toISOString(),
+          bestAnswerSelectedBy: currentUser.id,
+        } as Thread;
+        setThreadData(updated);
+        setCurrentThread(updated);
+        // Refetch posts so the best answer floats to the top and shows its banner
+        fetchPosts();
+        toast({
+          title: 'Best Answer Selected',
+          description: 'This reply has been marked as the best answer.',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to mark best answer',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      console.error('Failed to mark best answer:', err);
+      toast({
+        title: 'Error',
+        description: 'Network error. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUnmarkBestAnswer = async () => {
+    if (!currentUser || !threadData) return;
+    try {
+      const res = await fetch(`/api/threads/${threadId}/best-answer`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': currentUser.id },
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updated = {
+          ...threadData,
+          solved: false,
+          bestAnswerId: null,
+          bestAnswerSelectedAt: null,
+          bestAnswerSelectedBy: null,
+        } as Thread;
+        setThreadData(updated);
+        setCurrentThread(updated);
+        fetchPosts();
+        toast({
+          title: 'Best Answer Removed',
+          description: 'The best answer has been unmarked.',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to remove best answer',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      console.error('Failed to unmark best answer:', err);
+      toast({
+        title: 'Error',
+        description: 'Network error. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // ---------- derived ----------
   const isAdminOrMod = currentUser && currentUser.role >= UserRole.Moderator;
   const canReply = currentUser && !threadData?.locked;
@@ -623,6 +729,16 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
               </BreadcrumbItem>
             </>
           )}
+          {!parentForum && threadData && !threadData.forumId && (
+            <>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="font-medium text-muted-foreground">
+                  Uncategorized
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </>
+          )}
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage className="font-medium truncate max-w-[200px] sm:max-w-[300px]">
@@ -649,6 +765,15 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
                   <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 gap-0.5">
                     <Lock className="size-3" />
                     Locked
+                  </Badge>
+                )}
+                {threadData.solved && (
+                  <Badge
+                    variant="default"
+                    className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs px-1.5 py-0 h-5 gap-0.5"
+                  >
+                    <CheckCircle2 className="size-3" />
+                    Solved
                   </Badge>
                 )}
               </div>
@@ -763,6 +888,19 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
             const isAuthor = currentUser && currentUser.id === post.authorId;
             const isAdminUser = currentUser && currentUser.role >= UserRole.Admin;
 
+            // Best Answer permissions:
+            //  - Mods/Admins (role >= Moderator) can mark any reply
+            //  - Thread author can mark OTHERS' replies (not their own)
+            //  - Only Mods/Admins can revoke (handled by canUnmarkBestAnswer)
+            const canMarkBestAnswer =
+              !!currentUser &&
+              !!threadData &&
+              (currentUser.role >= UserRole.Moderator ||
+                currentUser.id === threadData.authorId) &&
+              post.authorId !== threadData.authorId;
+            const canUnmarkBestAnswer =
+              !!currentUser && currentUser.role >= UserRole.Moderator;
+
             return (
               <PostCard
                 key={post.id}
@@ -794,6 +932,11 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
                   setEditingPostId(null);
                   setEditContent('');
                 }}
+                isBestAnswer={post.isBestAnswer === true}
+                canMarkBestAnswer={canMarkBestAnswer}
+                canUnmarkBestAnswer={canUnmarkBestAnswer}
+                onMarkBestAnswer={() => handleMarkBestAnswer(post.id)}
+                onUnmarkBestAnswer={handleUnmarkBestAnswer}
               />
             );
           })}
@@ -957,6 +1100,11 @@ interface PostCardProps {
   onEditContentChange?: (value: string) => void;
   onSaveEdit?: () => void;
   onCancelEdit?: () => void;
+  isBestAnswer?: boolean;
+  canMarkBestAnswer?: boolean;
+  canUnmarkBestAnswer?: boolean;
+  onMarkBestAnswer?: () => void;
+  onUnmarkBestAnswer?: () => void;
 }
 
 function PostCard({
@@ -982,12 +1130,34 @@ function PostCard({
   onEditContentChange,
   onSaveEdit,
   onCancelEdit,
+  isBestAnswer = false,
+  canMarkBestAnswer = false,
+  canUnmarkBestAnswer = false,
+  onMarkBestAnswer,
+  onUnmarkBestAnswer,
 }: PostCardProps) {
   const authorName = author?.displayName || author?.username || 'Unknown';
   const authorInitial = authorName.charAt(0).toUpperCase();
 
+  const showActions =
+    !isEditing &&
+    ((canEdit || canDelete) ||
+      (canMarkBestAnswer && !isBestAnswer) ||
+      (isBestAnswer && canUnmarkBestAnswer));
+
   return (
-    <div className="neu-card p-4 sm:p-5">
+    <div
+      className={cn(
+        'neu-card p-4 sm:p-5',
+        isBestAnswer && 'ring-2 ring-emerald-500/40 overflow-hidden',
+      )}
+    >
+      {isBestAnswer && (
+        <div className="-mx-4 sm:-mx-5 -mt-4 sm:-mt-5 mb-4 flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+          <CheckCircle2 className="size-4" />
+          <span className="text-sm font-semibold">Best Answer</span>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row gap-4">
         {/* ---- Author Sidebar ---- */}
         <div className="flex sm:flex-col items-center sm:items-center gap-3 sm:gap-2 sm:w-36 shrink-0">
@@ -1031,9 +1201,28 @@ function PostCard({
               )}
             </div>
 
-            {/* Edit/Delete buttons */}
-            {(canEdit || canDelete) && !isEditing && (
+            {/* Edit/Delete + Best Answer actions */}
+            {showActions && (
               <div className="flex items-center gap-1">
+                {canMarkBestAnswer && !isBestAnswer && (
+                  <button
+                    onClick={onMarkBestAnswer}
+                    className="neu-btn px-2 py-1 text-xs font-medium flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                    title="Mark as Best Answer"
+                  >
+                    <CheckCircle2 className="size-3.5" />
+                    <span className="hidden sm:inline">Best Answer</span>
+                  </button>
+                )}
+                {isBestAnswer && canUnmarkBestAnswer && (
+                  <button
+                    onClick={onUnmarkBestAnswer}
+                    className="neu-btn p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                    title="Remove Best Answer"
+                  >
+                    <XCircle className="size-3.5" />
+                  </button>
+                )}
                 {canEdit && (
                   <button
                     onClick={onEdit}

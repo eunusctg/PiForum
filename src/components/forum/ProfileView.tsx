@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
 import type { ForumUser, Thread } from '@/lib/types';
 import {
@@ -18,6 +18,10 @@ import {
   Save,
   UserX,
   ExternalLink,
+  Upload,
+  X,
+  Camera,
+  ChevronRight,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +32,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from '@/components/ui/collapsible';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -37,7 +46,25 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import VerifiedBadge from '@/components/forum/VerifiedBadge';
+
+/* ------------------------------------------------------------------ */
+/*  Avatar upload helper                                               */
+/* ------------------------------------------------------------------ */
+
+async function uploadAvatar(file: File, userId: string): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch('/api/upload?purpose=avatar', {
+    method: 'POST',
+    headers: { 'x-user-id': userId },
+    body: formData,
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'Upload failed');
+  return data.data.url as string;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Profile View — view a user's full profile                          */
@@ -477,6 +504,9 @@ function EditProfileDialog({
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [urlPasteOpen, setUrlPasteOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     displayName: profile.displayName || '',
     bio: profile.bio || '',
@@ -497,6 +527,54 @@ function EditProfileDialog({
       avatarUrl: profile.avatarUrl || '',
     });
   }, [profile]);
+
+  // ---------- Avatar upload ----------
+  const handleAvatarFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    // Reset input value so picking the same file again still triggers change
+    if (e.target) e.target.value = '';
+    if (!file) return;
+
+    // Basic client-side validation
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Invalid file',
+        description: 'Please choose an image file (PNG, JPG, GIF, or WebP).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Avatar must be 5 MB or smaller.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setAvatarUploading(true);
+      const url = await uploadAvatar(file, profile.id);
+      setForm((f) => ({ ...f, avatarUrl: url }));
+      toast({
+        title: 'Avatar uploaded',
+        description: 'Your new avatar has been uploaded. Save changes to apply.',
+      });
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+      toast({
+        title: 'Upload failed',
+        description:
+          err instanceof Error ? err.message : 'Could not upload avatar. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -564,25 +642,113 @@ function EditProfileDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-avatarUrl">Avatar URL</Label>
-            <Input
-              id="edit-avatarUrl"
-              value={form.avatarUrl}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, avatarUrl: e.target.value }))
-              }
-              placeholder="https://example.com/avatar.png"
-              className="neu-input px-3 py-2.5"
-            />
-            {form.avatarUrl && (
-              <div className="flex items-center gap-2 mt-2">
-                <Avatar className="size-10">
-                  <AvatarImage src={form.avatarUrl} alt="Preview" />
-                  <AvatarFallback className="text-xs">?</AvatarFallback>
-                </Avatar>
-                <span className="text-xs text-muted-foreground">Preview</span>
+            <Label>Avatar</Label>
+            <div className="flex items-center gap-4">
+              {/* Avatar preview — click to upload */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="neu-circle p-0.5 group cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Upload new avatar"
+                  aria-label="Upload new avatar"
+                >
+                  <Avatar className="size-16">
+                    {form.avatarUrl ? (
+                      <AvatarImage src={form.avatarUrl} alt="Avatar preview" />
+                    ) : null}
+                    <AvatarFallback className="text-base font-semibold">
+                      {(form.displayName || profile.username || 'U')
+                        .charAt(0)
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+                <span
+                  className="pointer-events-none absolute bottom-0 right-0 neu-circle size-5 p-1 text-primary opacity-90"
+                  aria-hidden
+                >
+                  <Camera className="size-3" />
+                </span>
               </div>
-            )}
+
+              <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={avatarUploading}
+                    className="neu-btn px-3 py-1.5 text-xs font-medium shadow-none h-8"
+                  >
+                    {avatarUploading ? (
+                      <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <Upload className="size-3.5 mr-1.5" />
+                    )}
+                    {avatarUploading ? 'Uploading...' : 'Upload'}
+                  </Button>
+                  {form.avatarUrl && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setForm((f) => ({ ...f, avatarUrl: '' }))
+                      }
+                      disabled={avatarUploading}
+                      className="neu-btn px-3 py-1.5 text-xs font-medium shadow-none h-8"
+                    >
+                      <X className="size-3.5 mr-1.5" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  PNG, JPG, GIF or WebP. Max 5 MB.
+                </p>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarFileChange}
+                className="hidden"
+              />
+            </div>
+
+            {/* Advanced: paste URL manually */}
+            <Collapsible
+              open={urlPasteOpen}
+              onOpenChange={setUrlPasteOpen}
+            >
+              <CollapsibleTrigger
+                className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
+                type="button"
+              >
+                <ChevronRight
+                  className={cn(
+                    'size-3 transition-transform',
+                    urlPasteOpen && 'rotate-90',
+                  )}
+                />
+                Or paste URL manually
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <Input
+                  id="edit-avatarUrl"
+                  value={form.avatarUrl}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, avatarUrl: e.target.value }))
+                  }
+                  placeholder="https://example.com/avatar.png"
+                  className="neu-input px-3 py-2.5 mt-2"
+                />
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
           <div className="space-y-2">

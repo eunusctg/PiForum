@@ -18,6 +18,16 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // Keep heavy Node-only packages out of the Cloudflare Worker bundle.
+  // These are only used in local dev (Node.js) and never on the Workers
+  // runtime. Listing them here prevents Next/OpenNext from bundling them,
+  // which keeps the worker's compressed size under the 3 MiB free-plan limit.
+  serverExternalPackages: [
+    "@prisma/adapter-libsql",
+    "@libsql/core",
+    "@libsql/client",
+    "libsql",
+  ],
 };
 
 export default nextConfig;
