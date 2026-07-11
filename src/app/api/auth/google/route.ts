@@ -25,8 +25,16 @@ export async function GET() {
     const clientIdSetting = await db.setting.findUnique({ where: { key: 'oauth_google_client_id' } });
     const clientId = clientIdSetting?.value || envClientId;
 
+    // Read client secret to verify OAuth is fully configured (fail early)
+    const clientSecretSetting = await db.setting.findUnique({ where: { key: 'oauth_google_client_secret' } });
+    const hasClientSecret = !!(clientSecretSetting?.value || process.env.GOOGLE_CLIENT_SECRET);
+
     if (!clientId) {
       return errorResponse('Google OAuth Client ID is not configured', 500);
+    }
+
+    if (!hasClientSecret) {
+      return errorResponse('Google OAuth Client Secret is not configured. The callback will fail.', 500);
     }
 
     // Build the redirect URI — must match what's registered in Google Cloud Console
@@ -50,8 +58,8 @@ export async function GET() {
     googleAuthUrl.searchParams.set('response_type', 'code');
     googleAuthUrl.searchParams.set('scope', 'openid email profile');
     googleAuthUrl.searchParams.set('state', state);
-    googleAuthUrl.searchParams.set('access_type', 'offline');
-    googleAuthUrl.searchParams.set('prompt', 'consent');
+    // Use select_account for returning users (better UX), consent for first time
+    googleAuthUrl.searchParams.set('prompt', 'select_account');
 
     // Redirect to Google
     return Response.redirect(googleAuthUrl.toString(), 302);

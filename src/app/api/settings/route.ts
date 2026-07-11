@@ -5,11 +5,12 @@ export async function GET() {
   try {
     const settings = await db.setting.findMany({
       where: {
-        NOT: {
-          key: {
-            startsWith: 'password_',
-          },
-        },
+        NOT: [
+          { key: { startsWith: 'password_' } },
+          { key: { startsWith: 'oauth_state_' } },
+          { key: { equals: 'oauth_google_client_secret' } },
+          { key: { equals: 'oauth_github_client_secret' } },
+        ],
       },
       orderBy: { key: 'asc' },
     });
@@ -63,11 +64,12 @@ export async function PUT(request: Request) {
     // Return updated settings
     const updatedSettings = await db.setting.findMany({
       where: {
-        NOT: {
-          key: {
-            startsWith: 'password_',
-          },
-        },
+        NOT: [
+          { key: { startsWith: 'password_' } },
+          { key: { startsWith: 'oauth_state_' } },
+          { key: { equals: 'oauth_google_client_secret' } },
+          { key: { equals: 'oauth_github_client_secret' } },
+        ],
       },
       orderBy: { key: 'asc' },
     });

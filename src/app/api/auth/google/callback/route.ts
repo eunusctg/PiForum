@@ -34,7 +34,16 @@ export async function GET(request: Request) {
       return Response.redirect(`${siteUrl}?auth_error=missing_params`, 302);
     }
 
-    // Verify state (CSRF protection)
+    // Verify state (CSRF protection) — also clean up expired states
+    // Delete all expired states (older than 10 min) to prevent table bloat
+    const tenMinAgo = Date.now() - 10 * 60 * 1000;
+    await db.setting.deleteMany({
+      where: {
+        key: { startsWith: 'oauth_state_' },
+        value: { lt: tenMinAgo.toString() },
+      },
+    }).catch(() => {});
+
     const stateRecord = await db.setting.findUnique({ where: { key: `oauth_state_${state}` } });
     if (!stateRecord) {
       return Response.redirect(`${siteUrl}?auth_error=invalid_state`, 302);
@@ -87,11 +96,17 @@ export async function GET(request: Request) {
       return Response.redirect(`${siteUrl}?auth_error=no_id_token`, 302);
     }
 
-    // Decode the ID token to get user info (JWT decode without verification
+    // Decode the ID token to get user info (JWT decode without full verification
     // since we trust the token came directly from Google's token endpoint)
     const payload = JSON.parse(
       Buffer.from(id_token.split('.')[1], 'base64').toString('utf-8'),
     );
+
+    // Verify the audience claim matches our client ID (security check)
+    if (payload.aud !== clientId) {
+      console.error('[google-callback] Audience mismatch:', payload.aud, '!==', clientId);
+      return Response.redirect(`${siteUrl}?auth_error=invalid_audience`, 302);
+    }
 
     const googleEmail = payload.email as string;
     const googleName = payload.name as string;
