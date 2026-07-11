@@ -21,6 +21,17 @@ export async function GET() {
       settingsMap[s.key] = s.value;
     });
 
+    // Compute OAuth enabled flags: DB setting takes precedence, but if not
+    // explicitly set, auto-enable when the corresponding env vars exist.
+    // This allows Google/GitHub OAuth to work immediately when secrets are
+    // set via `wrangler secret put` without requiring admin panel toggle.
+    if (!settingsMap['oauth_google_enabled']) {
+      settingsMap['oauth_google_enabled'] = !!process.env.GOOGLE_CLIENT_ID ? 'true' : 'false';
+    }
+    if (!settingsMap['oauth_github_enabled']) {
+      settingsMap['oauth_github_enabled'] = !!process.env.GITHUB_CLIENT_ID ? 'true' : 'false';
+    }
+
     return successResponse(settingsMap);
   } catch (e: any) {
     return serverErrorResponse(e.message || 'Failed to fetch settings');
