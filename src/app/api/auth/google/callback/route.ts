@@ -189,18 +189,18 @@ export async function GET(request: Request) {
     const token = user.firebaseUid;
 
     // Redirect to frontend with token in URL hash (so it's not sent to server logs)
-    // The frontend AuthModal will pick it up and set it in the store
+    // The frontend AuthModal will pick it up and set it in the store.
+    // NOTE: Response.redirect() creates immutable headers on Cloudflare Workers,
+    // so we build a new Response with Location + Set-Cookie in the init headers.
     const redirectUrl = `${siteUrl}#auth_token=${encodeURIComponent(token)}&auth_user=${encodeURIComponent(JSON.stringify(serializedUser))}`;
 
-    const response = Response.redirect(redirectUrl, 302);
-
-    // Also set a secure HttpOnly cookie as backup
-    response.headers.append(
-      'Set-Cookie',
-      `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 14}`,
-    );
-
-    return response;
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: redirectUrl,
+        'Set-Cookie': `auth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 14}`,
+      },
+    });
   } catch (e: any) {
     console.error('[google-callback] Error:', e);
     return serverErrorResponse(e.message || 'Google OAuth callback failed');
