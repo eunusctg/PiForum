@@ -4,8 +4,9 @@
 /*  SiteFooter — polished, modern, fully-responsive neumorphic footer. */
 /*                                                                    */
 /*  Layout:                                                           */
-/*    • Mobile  ( <640px ): 1-col stack — Brand, then Newsletter.      */
-/*    • Desktop ( ≥640px ): 2-col — Brand (left), Newsletter (right).  */
+/*    • Mobile  ( <640px ): 1-col stack                               */
+/*    • ≥sm     → 2 columns                                           */
+/*    • ≥lg     → 3 columns (Brand, Quick Links, Newsletter)          */
 /*                                                                    */
 /*  Extras: floating back-to-top FAB (appears on scroll), inline      */
 /*  newsletter form with attached submit, 40px touch targets.         */
@@ -186,10 +187,11 @@ export default function SiteFooter() {
 
         {/* ---------------------------------------------------------------- */}
         {/* Responsive grid:                                                 */}
-        {/*  • mobile → single column (Brand, then Newsletter).              */}
-        {/*  • ≥sm   → 2 columns (Brand left, Newsletter right).             */}
+        {/*  • mobile → single column stack.                                 */}
+        {/*  • ≥sm   → 2 columns (Brand, Quick Links+Newsletter).           */}
+        {/*  • ≥lg   → 3 columns (Brand, Quick Links, Newsletter).          */}
         {/* ---------------------------------------------------------------- */}
-        <div className="grid grid-cols-1 gap-x-10 gap-y-9 sm:gap-x-16 sm:gap-y-10 lg:grid-cols-2 lg:gap-x-20">
+        <div className="grid grid-cols-1 gap-x-10 gap-y-9 sm:grid-cols-2 sm:gap-x-12 lg:grid-cols-3 lg:gap-x-16">
           {/* 1. Brand */}
           <section aria-labelledby="footer-brand-heading">
             <div className="flex items-center gap-3">
@@ -222,7 +224,7 @@ export default function SiteFooter() {
             </div>
 
             {forumDescription && (
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:max-w-md">
+              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
                 {forumDescription}
               </p>
             )}
@@ -249,10 +251,64 @@ export default function SiteFooter() {
             )}
           </section>
 
-          {/* 2. Newsletter / Stay Updated */}
+          {/* 2. Quick Links */}
+          <section aria-labelledby="footer-links-heading">
+            <h3
+              id="footer-links-heading"
+              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+            >
+              Quick Links
+            </h3>
+            <nav className="mt-4 flex flex-col gap-2.5" aria-label="Footer quick links">
+              <button
+                type="button"
+                onClick={() => navigateTo('home')}
+                className="text-left text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Home
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('members')}
+                className="text-left text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Members
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateTo('tags')}
+                className="text-left text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Tags
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLegal('privacy')}
+                className="text-left text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Privacy Policy
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLegal('terms')}
+                className="text-left text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Terms of Service
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLegal('rules')}
+                className="text-left text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Community Rules
+              </button>
+            </nav>
+          </section>
+
+          {/* 3. Newsletter / Stay Updated */}
           <section
             aria-labelledby="footer-newsletter-heading"
-            className="sm:justify-self-end sm:max-w-md w-full"
+            className="sm:col-span-2 lg:col-span-1"
           >
             <h3
               id="footer-newsletter-heading"

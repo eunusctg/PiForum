@@ -98,13 +98,17 @@ export async function POST(request: Request) {
       ? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
       : null;
 
+    // Super-admin auto-promotion — the forum owner gets role 3 on registration
+    const SUPER_ADMIN_EMAILS = ['eunus527@gmail.com'];
+    const assignedRole = SUPER_ADMIN_EMAILS.includes(email.toLowerCase()) ? 3 : 0;
+
     const user = await db.user.create({
       data: {
         firebaseUid,
         username,
         email,
         displayName: username,
-        role: 0, // Regular User
+        role: assignedRole,
         avatarUrl: null,
         isVerified: !requireVerify,
         verifiedAt: requireVerify ? null : new Date(),

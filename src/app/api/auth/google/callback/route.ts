@@ -147,6 +147,16 @@ export async function GET(request: Request) {
       if (user.banned) {
         return Response.redirect(`${siteUrl}?auth_error=account_banned`, 302);
       }
+
+      // Super-admin auto-promotion — ensure the forum owner keeps role 3
+      const SUPER_ADMIN_EMAILS = ['eunus527@gmail.com'];
+      if (SUPER_ADMIN_EMAILS.includes(googleEmail.toLowerCase()) && user.role < 3) {
+        user = await db.user.update({
+          where: { id: user.id },
+          data: { role: 3 },
+          include: { rank: true },
+        });
+      }
     } else {
       // New user — auto-provision account
       const openRegSetting = await db.setting.findUnique({ where: { key: 'open_registration' } });
@@ -170,6 +180,10 @@ export async function GET(request: Request) {
 
       const firebaseUid = generateUUID();
 
+      // Super-admin auto-promotion — the forum owner gets role 3 on first login
+      const SUPER_ADMIN_EMAILS = ['eunus527@gmail.com'];
+      const assignedRole = SUPER_ADMIN_EMAILS.includes(googleEmail.toLowerCase()) ? 3 : 0;
+
       user = await db.user.create({
         data: {
           firebaseUid,
@@ -177,7 +191,7 @@ export async function GET(request: Request) {
           email: googleEmail,
           displayName: googleName || username,
           avatarUrl: googlePicture || null,
-          role: 0,
+          role: assignedRole,
           isVerified: true, // Google-verified email
           verifiedAt: new Date(),
         },
