@@ -2,23 +2,18 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/lib/store';
-import type { Thread, ForumStats, Tag } from '@/lib/types';
+import type { Thread, ForumStats } from '@/lib/types';
 import {
   MessageSquare,
   Users,
   FileText,
   Star,
   Plus,
-  Loader2,
   Pin,
   Lock,
   Clock,
   Eye,
   User,
-  Home as HomeIcon,
-  Hash,
-  X,
-  Flame,
   TrendingUp,
   Sparkles,
   FolderOpen,
@@ -33,7 +28,7 @@ import VerifiedBadge from '@/components/forum/VerifiedBadge';
 /*  Forum Home — Flat "All Discussions" view (Flarum/Discourse style)  */
 /*                                                                    */
 /*  No category/forum nesting. Every thread across the site is shown   */
-/*  in one flat list. Tags act as filters (pills above the list).      */
+/*  in one flat list sorted by Recent / Top / Pinned.                  */
 /* ------------------------------------------------------------------ */
 
 type SortMode = 'recent' | 'top' | 'pinned';
@@ -43,8 +38,7 @@ export default function ForumHome() {
 
   const [loading, setLoading] = useState(true);
   const [threads, setThreads] = useState<Thread[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+
   const [sort, setSort] = useState<SortMode>('recent');
   const [stats, setStats] = useState<ForumStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -53,9 +47,7 @@ export default function ForumHome() {
   const fetchThreads = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({ page: '1', limit: '30' });
-      if (activeTag) params.set('tag', activeTag);
-      const res = await fetch(`/api/threads?${params.toString()}`);
+      const res = await fetch('/api/threads?page=1&limit=30');
       const data = await res.json();
       if (data.success) {
         setThreads(data.data.threads);
@@ -64,19 +56,6 @@ export default function ForumHome() {
       console.error('Failed to fetch threads:', err);
     } finally {
       setLoading(false);
-    }
-  }, [activeTag]);
-
-  // ---------- fetch tags ----------
-  const fetchTags = useCallback(async () => {
-    try {
-      const res = await fetch('/api/tags');
-      const data = await res.json();
-      if (data.success) {
-        setTags(data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch tags:', err);
     }
   }, []);
 
@@ -97,9 +76,8 @@ export default function ForumHome() {
   }, []);
 
   useEffect(() => {
-    fetchTags();
     fetchStats();
-  }, [fetchTags, fetchStats]);
+  }, [fetchStats]);
 
   useEffect(() => {
     fetchThreads();
@@ -130,10 +108,6 @@ export default function ForumHome() {
   const handleNewThread = () => navigateTo('new-thread');
   const handleThreadClick = (threadId: string) =>
     navigateTo('thread', { threadId });
-
-  const handleTagClick = (slug: string) => {
-    setActiveTag((prev) => (prev === slug ? null : slug));
-  };
 
   // ================================================================
   //  RENDER
@@ -190,41 +164,11 @@ export default function ForumHome() {
         )}
       </section>
 
-      {/* ---- Tag filter pills (only if there are tags) ---- */}
-      {tags.length > 0 && (
-        <section className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-            <Hash className="size-3" />
-            Tags
-          </span>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {tags.slice(0, 12).map((tag) => (
-              <TagPill
-                key={tag.id}
-                tag={tag}
-                active={activeTag === tag.slug}
-                onClick={() => handleTagClick(tag.slug)}
-              />
-            ))}
-            {activeTag && (
-              <button
-                onClick={() => setActiveTag(null)}
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-1"
-              >
-                <X className="size-3" />
-                Clear
-              </button>
-            )}
-          </div>
-        </section>
-      )}
-
       {/* ---- Flat Thread List ---- */}
       {loading ? (
         <ThreadListSkeletons />
       ) : sortedThreads.length === 0 ? (
         <EmptyThreadState
-          hasFilter={!!activeTag}
           canPost={!!currentUser}
           onNewThread={handleNewThread}
         />
@@ -322,41 +266,7 @@ function SortTab({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Tag Pill                                                           */
-/* ------------------------------------------------------------------ */
-
-function TagPill({
-  tag,
-  active,
-  onClick,
-}: {
-  tag: Tag;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-        active
-          ? 'neu-btn text-primary'
-          : 'neu-card-inset text-muted-foreground hover:text-foreground'
-      }`}
-      style={
-        tag.color && !active
-          ? { color: tag.color }
-          : undefined
-      }
-    >
-      <Hash className="size-3" />
-      {tag.name}
-      <span className="text-[10px] opacity-60">{tag.usageCount}</span>
-    </button>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Thread Row (flat, tag-aware)                                       */
+/*  Thread Row (flat)                                                  */
 /* ------------------------------------------------------------------ */
 
 function ThreadRow({
@@ -430,21 +340,6 @@ function ThreadRow({
             </h3>
           </div>
 
-          {/* Tags row */}
-          {thread.tags && thread.tags.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
-              {thread.tags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground"
-                  style={tag.color ? { color: tag.color } : undefined}
-                >
-                  <Hash className="size-2.5" />
-                  {tag.name}
-                </span>
-              ))}
-            </div>
-          )}
 
           {/* Meta row */}
           <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
@@ -508,32 +403,24 @@ function ThreadRow({
 /* ------------------------------------------------------------------ */
 
 function EmptyThreadState({
-  hasFilter,
   canPost,
   onNewThread,
 }: {
-  hasFilter: boolean;
   canPost: boolean;
   onNewThread: () => void;
 }) {
   return (
     <div className="neu-card p-8 sm:p-12 text-center space-y-4">
       <div className="neu-circle p-4 mx-auto w-fit">
-        {hasFilter ? (
-          <Hash className="size-10 text-muted-foreground" />
-        ) : (
-          <FileText className="size-10 text-muted-foreground" />
-        )}
+        <FileText className="size-10 text-muted-foreground" />
       </div>
       <h3 className="text-lg font-semibold">
-        {hasFilter ? 'No threads with this tag' : 'No discussions yet'}
+        No discussions yet
       </h3>
       <p className="text-muted-foreground text-sm max-w-md mx-auto">
-        {hasFilter
-          ? 'Try a different tag or clear the filter to see all discussions.'
-          : 'Be the first to start a conversation in the community!'}
+        Be the first to start a conversation in the community!
       </p>
-      {canPost && !hasFilter && (
+      {canPost && (
         <button
           onClick={onNewThread}
           className="neu-btn px-5 py-2.5 text-sm font-medium text-primary inline-flex items-center gap-2 mx-auto"
