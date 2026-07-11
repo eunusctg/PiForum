@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { errorResponse, serverErrorResponse, serializeUser, generateUUID } from '@/lib/api-helpers';
+import { serverErrorResponse, serializeUser, generateUUID } from '@/lib/api-helpers';
 
 /**
  * GET /api/auth/google/callback
@@ -8,6 +8,9 @@ import { errorResponse, serverErrorResponse, serializeUser, generateUUID } from 
  * code for tokens, fetches the user's profile, then either:
  *   1. Logs in an existing user (matched by email), or
  *   2. Creates a new account automatically (auto-provision).
+ *
+ * Credentials are read from DB settings first, falling back to env vars
+ * (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET set via wrangler secret).
  *
  * On success, redirects to the frontend with the auth token in a secure
  * cookie and URL fragment so the client-side store can pick it up.
@@ -19,28 +22,22 @@ export async function GET(request: Request) {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
+    const siteUrlSetting = await db.setting.findUnique({ where: { key: 'seo_canonical_url' } });
+    const siteUrl = siteUrlSetting?.value || process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org';
+
     // User denied access
     if (error) {
-      return Response.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org'}?auth_error=access_denied`,
-        302,
-      );
+      return Response.redirect(`${siteUrl}?auth_error=access_denied`, 302);
     }
 
     if (!code || !state) {
-      return Response.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org'}?auth_error=missing_params`,
-        302,
-      );
+      return Response.redirect(`${siteUrl}?auth_error=missing_params`, 302);
     }
 
     // Verify state (CSRF protection)
     const stateRecord = await db.setting.findUnique({ where: { key: `oauth_state_${state}` } });
     if (!stateRecord) {
-      return Response.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org'}?auth_error=invalid_state`,
-        302,
-      );
+      return Response.redirect(`${siteUrl}?auth_error=invalid_state`, 302);
     }
 
     // Clean up the used state
@@ -49,27 +46,19 @@ export async function GET(request: Request) {
     // Check state hasn't expired (10 min)
     const stateAge = Date.now() - parseInt(stateRecord.value, 10);
     if (stateAge > 10 * 60 * 1000) {
-      return Response.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org'}?auth_error=expired_state`,
-        302,
-      );
+      return Response.redirect(`${siteUrl}?auth_error=expired_state`, 302);
     }
 
-    // Get Google OAuth credentials from settings
+    // Get Google OAuth credentials: DB settings first, then env vars
     const clientIdSetting = await db.setting.findUnique({ where: { key: 'oauth_google_client_id' } });
     const clientSecretSetting = await db.setting.findUnique({ where: { key: 'oauth_google_client_secret' } });
-    const clientId = clientIdSetting?.value;
-    const clientSecret = clientSecretSetting?.value;
+    const clientId = clientIdSetting?.value || process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = clientSecretSetting?.value || process.env.GOOGLE_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      return Response.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org'}?auth_error=oauth_not_configured`,
-        302,
-      );
+      return Response.redirect(`${siteUrl}?auth_error=oauth_not_configured`, 302);
     }
 
-    const siteUrlSetting = await db.setting.findUnique({ where: { key: 'seo_canonical_url' } });
-    const siteUrl = siteUrlSetting?.value || process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org';
     const redirectUri = `${siteUrl}/api/auth/google/callback`;
 
     // Exchange code for tokens
@@ -88,20 +77,14 @@ export async function GET(request: Request) {
     if (!tokenResponse.ok) {
       const errText = await tokenResponse.text();
       console.error('[google-callback] Token exchange failed:', errText);
-      return Response.redirect(
-        `${siteUrl}?auth_error=token_exchange_failed`,
-        302,
-      );
+      return Response.redirect(`${siteUrl}?auth_error=token_exchange_failed`, 302);
     }
 
     const tokenData = await tokenResponse.json();
     const { id_token } = tokenData;
 
     if (!id_token) {
-      return Response.redirect(
-        `${siteUrl}?auth_error=no_id_token`,
-        302,
-      );
+      return Response.redirect(`${siteUrl}?auth_error=no_id_token`, 302);
     }
 
     // Decode the ID token to get user info (JWT decode without verification
@@ -113,17 +96,10 @@ export async function GET(request: Request) {
     const googleEmail = payload.email as string;
     const googleName = payload.name as string;
     const googlePicture = payload.picture as string;
-    const googleSub = payload.sub as string; // Google's unique user ID
 
     if (!googleEmail) {
-      return Response.redirect(
-        `${siteUrl}?auth_error=no_email`,
-        302,
-      );
+      return Response.redirect(`${siteUrl}?auth_error=no_email`, 302);
     }
-
-    // Check if registration is open (for new users)
-    const openRegSetting = await db.setting.findUnique({ where: { key: 'open_registration' } });
 
     // Try to find existing user by email
     let user = await db.user.findUnique({
@@ -154,18 +130,13 @@ export async function GET(request: Request) {
 
       // Check if banned
       if (user.banned) {
-        return Response.redirect(
-          `${siteUrl}?auth_error=account_banned`,
-          302,
-        );
+        return Response.redirect(`${siteUrl}?auth_error=account_banned`, 302);
       }
     } else {
       // New user — auto-provision account
+      const openRegSetting = await db.setting.findUnique({ where: { key: 'open_registration' } });
       if (openRegSetting && openRegSetting.value === 'false') {
-        return Response.redirect(
-          `${siteUrl}?auth_error=registration_closed`,
-          302,
-        );
+        return Response.redirect(`${siteUrl}?auth_error=registration_closed`, 302);
       }
 
       // Generate a unique username from the Google name
@@ -203,7 +174,7 @@ export async function GET(request: Request) {
     const token = user.firebaseUid;
 
     // Redirect to frontend with token in URL hash (so it's not sent to server logs)
-    // The frontend AuthCallbackHandler will pick it up and set it in the store
+    // The frontend AuthModal will pick it up and set it in the store
     const redirectUrl = `${siteUrl}#auth_token=${encodeURIComponent(token)}&auth_user=${encodeURIComponent(JSON.stringify(serializedUser))}`;
 
     const response = Response.redirect(redirectUrl, 302);

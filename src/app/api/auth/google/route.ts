@@ -1,28 +1,33 @@
 import { db } from '@/lib/db';
-import { successResponse, errorResponse, serverErrorResponse, serializeUser } from '@/lib/api-helpers';
+import { errorResponse, serverErrorResponse } from '@/lib/api-helpers';
 
 /**
  * GET /api/auth/google
  *
  * Initiates Google OAuth 2.0 sign-in. Redirects the user to Google's
- * authorization endpoint. The client_id and client_secret are read from
- * the Setting table at runtime so they can be configured via the admin
- * panel without redeploying.
+ * authorization endpoint. Credentials are read from:
+ *   1. DB Setting table (configured via admin panel)
+ *   2. Environment variables (GOOGLE_CLIENT_ID set via wrangler secret)
  */
 export async function GET() {
   try {
-    // Check if Google OAuth is enabled
+    // Check if Google OAuth is enabled — check DB setting first, then
+    // assume enabled if GOOGLE_CLIENT_ID env var exists
     const enabledSetting = await db.setting.findUnique({ where: { key: 'oauth_google_enabled' } });
-    if (!enabledSetting || enabledSetting.value !== 'true') {
+    const envClientId = process.env.GOOGLE_CLIENT_ID;
+    const isEnabled = enabledSetting?.value === 'true' || !!envClientId;
+
+    if (!isEnabled) {
       return errorResponse('Google OAuth is not enabled', 403);
     }
 
+    // Read client ID from DB first, fall back to env var
     const clientIdSetting = await db.setting.findUnique({ where: { key: 'oauth_google_client_id' } });
-    if (!clientIdSetting || !clientIdSetting.value) {
+    const clientId = clientIdSetting?.value || envClientId;
+
+    if (!clientId) {
       return errorResponse('Google OAuth Client ID is not configured', 500);
     }
-
-    const clientId = clientIdSetting.value;
 
     // Build the redirect URI — must match what's registered in Google Cloud Console
     const siteUrlSetting = await db.setting.findUnique({ where: { key: 'seo_canonical_url' } });
