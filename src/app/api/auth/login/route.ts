@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { successResponse, errorResponse, serverErrorResponse, verifyPassword, parseBody, serializeUser } from '@/lib/api-helpers';
 import { rateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { createLoginNotification } from '@/lib/notifications';
 
 const MAX_EMAIL_LENGTH = 254;
 const MAX_PASSWORD_LENGTH = 128;
@@ -53,6 +54,28 @@ export async function POST(request: Request) {
     if (!verifyPassword(password, passwordSetting.value)) {
       return errorResponse('Invalid email or password', 401);
     }
+
+    // Update last seen
+    await db.user.update({
+      where: { id: user.id },
+      data: { lastSeenAt: new Date() },
+    });
+
+    // Create login notification with new-device detection
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+    createLoginNotification(user.id, ip, userAgent).catch(() => {
+      // Non-critical — don't block login if notification creation fails
+    });
+
+    // Log security event
+    await db.securityLog.create({
+      data: {
+        userId: user.id,
+        eventType: 'LOGIN_SUCCESS',
+        details: `Login from IP: ${ip}`,
+        ipAddress: ip,
+      },
+    });
 
     // Return user data and token (firebaseUid as token)
     return successResponse({

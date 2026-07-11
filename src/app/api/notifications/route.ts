@@ -6,6 +6,7 @@ import {
   requireAuth,
   parseBody,
   getQueryParam,
+  getPagination,
 } from '@/lib/api-helpers';
 
 const actorSelect = {
@@ -42,18 +43,39 @@ export async function GET(request: Request) {
     const user = authCheck.user!;
 
     const unreadOnly = getQueryParam(request, 'unreadOnly') === 'true';
+    const countOnly = getQueryParam(request, 'count') === 'true';
+
     const where: any = { userId: user.id };
     if (unreadOnly) where.read = false;
 
-    const notifications = await db.notification.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
+    // If just counting, return the count quickly
+    if (countOnly) {
+      const count = await db.notification.count({ where });
+      return successResponse({ count });
+    }
+
+    // Paginated list
+    const { page, limit, skip } = getPagination(request);
+
+    const [notifications, total] = await Promise.all([
+      db.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      db.notification.count({ where }),
+    ]);
 
     const withActors = await attachActors(notifications);
 
-    return successResponse({ notifications: withActors });
+    return successResponse({
+      notifications: withActors,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (e: any) {
     return serverErrorResponse(e.message || 'Failed to fetch notifications');
   }

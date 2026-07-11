@@ -8,6 +8,7 @@ import {
   slugify,
 } from '@/lib/api-helpers';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { isUserAllowedToCreateThread } from '@/lib/verification-guard';
 
 /* ------------------------------------------------------------------ */
 /*  /api/threads                                                       */
@@ -160,6 +161,12 @@ export async function POST(request: Request) {
     const authCheck = await requireAuth(request);
     if (authCheck.error) return authCheck.error;
     const user = authCheck.user!;
+
+    // Check if unverified users are allowed to create threads
+    const verifyCheck = await isUserAllowedToCreateThread(user.id);
+    if (!verifyCheck.allowed) {
+      return errorResponse(verifyCheck.reason || 'Email verification required', 403);
+    }
 
     // Rate limit: 10 threads per user per hour
     const rl = rateLimit(`thread:${user.id}`, 10, 60 * 60 * 1000);

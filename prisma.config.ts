@@ -6,8 +6,11 @@ export default defineConfig({
   migrations: {
     path: path.join('prisma', 'migrations'),
   },
-  // Use the libsql adapter for local SQLite via DATABASE_URL.
-  // Prisma 7 removed the native Rust engine — the adapter does the DB work.
+  // Provide the database URL for prisma db push / migrate commands
+  // (the adapter handles the runtime connection in the app itself)
+  db: {
+    url: process.env.DATABASE_URL || 'file:./db/custom.db',
+  },
   adapter: async () => {
     const { PrismaLibSQL } = await import('@prisma/adapter-libsql')
     const url = process.env.DATABASE_URL || 'file:./db/custom.db'

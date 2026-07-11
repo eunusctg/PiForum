@@ -23,6 +23,7 @@ import {
   Flag,
   FolderOpen,
   ChevronRight,
+  Mail,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import type { ThemeMode as StoreThemeMode } from "@/lib/store";
@@ -200,12 +201,12 @@ export default function Header() {
     let active = true;
     async function loadUnread() {
       try {
-        const res = await fetch("/api/notifications?unreadOnly=true", {
+        const res = await fetch("/api/notifications?count=true", {
           headers: { "x-user-id": currentUser!.id },
         });
         const data = await res.json();
         if (active && data.success) {
-          setUnreadCount(data.data?.length ?? 0);
+          setUnreadCount(data.data?.count ?? 0);
         }
       } catch {
         // Non-critical
@@ -318,6 +319,19 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full">
+      {/* Verification Banner — shown to unverified users when verification is required */}
+      {currentUser && !currentUser.isVerified && getSetting("require_email_verification", "false") === "true" && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs sm:text-sm px-4 py-2 flex items-center justify-center gap-2">
+          <Mail className="size-3.5 shrink-0" />
+          <span>Please verify your email address to unlock full access.</span>
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            className="font-semibold underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
+          >
+            Verify now
+          </button>
+        </div>
+      )}
       <div className="neu-card rounded-none px-4 py-3 sm:rounded-b-2xl sm:mx-2 sm:mt-2">
         <div className="flex items-center justify-between gap-4">
           {/* Logo / Brand */}
@@ -332,10 +346,10 @@ export default function Header() {
                 alt={`${forumName} logo`}
                 className="h-9 w-auto rounded-lg object-contain transition-all group-hover:opacity-80"
                 onError={(e) => {
-                  // Fallback to the default logo.png if custom logo fails
+                  // Fallback to the default logo.svg if custom logo fails
                   const img = e.target as HTMLImageElement;
-                  if (img.src !== window.location.origin + '/logo.png') {
-                    img.src = '/logo.png';
+                  if (img.src !== window.location.origin + '/logo.svg') {
+                    img.src = '/logo.svg';
                   } else {
                     img.style.display = 'none';
                   }
@@ -343,7 +357,7 @@ export default function Header() {
               />
             ) : (
               <img
-                src="/logo.png"
+                src="/logo.svg"
                 alt={`${forumName} logo`}
                 className="h-9 w-auto rounded-lg object-contain transition-all group-hover:opacity-80"
                 onError={(e) => {

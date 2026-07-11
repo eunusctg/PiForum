@@ -1,6 +1,9 @@
 import { db } from '@/lib/db';
 import { successResponse, errorResponse, serverErrorResponse, hashPassword, generateUUID, parseBody, serializeUser } from '@/lib/api-helpers';
 import { rateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
+import { createWelcomeNotification } from '@/lib/notifications';
+import { sendEmail, generateVerificationEmailHtml, generateVerificationEmailText } from '@/lib/email';
+import { getOrigin } from '@/lib/server-settings';
 import crypto from 'crypto';
 
 const MAX_USERNAME_LENGTH = 30;
@@ -126,7 +129,8 @@ export async function POST(request: Request) {
       },
     });
 
-    // If verification required, create an EmailVerification record (token log)
+    // If verification required, create an EmailVerification record and attempt to send email
+    let emailSent = false;
     if (requireVerify && verifyToken) {
       await db.emailVerification.create({
         data: {
@@ -136,19 +140,53 @@ export async function POST(request: Request) {
           expiresAt: verifyExpires!,
         },
       });
-      // NOTE: A real email would be sent here via SMTP. In this sandbox SMTP is
-      // usually not configured, so the verification link is surfaced in the
-      // register response for the user to click. This is an intentional
-      // limitation (a "flaw") of the verification system when SMTP is off.
+
+      // Try to send verification email via SMTP
+      const smtpSetting = await db.setting.findUnique({ where: { key: 'smtp_enabled' } });
+      if (smtpSetting?.value === 'true') {
+        try {
+          const origin = getOrigin(request);
+          const forumNameSetting = await db.setting.findUnique({ where: { key: 'forum_name' } });
+          const forumName = forumNameSetting?.value || 'PiForum';
+          const verifyLink = `${origin}/api/verify-email?token=${verifyToken}`;
+
+          await sendEmail({
+            to: user.email,
+            subject: `Verify Your Email - ${forumName}`,
+            html: generateVerificationEmailHtml(forumName, verifyLink, user.username),
+            text: generateVerificationEmailText(forumName, verifyLink, user.username),
+          });
+          emailSent = true;
+        } catch {
+          // Email sending failed — token exposed as fallback
+          emailSent = false;
+        }
+      }
     }
+
+    // Create welcome notification (async, non-blocking)
+    const forumNameSetting = await db.setting.findUnique({ where: { key: 'forum_name' } });
+    const forumName = forumNameSetting?.value || 'PiForum';
+    createWelcomeNotification(user.id, forumName).catch(() => {});
+
+    // Log security event
+    await db.securityLog.create({
+      data: {
+        userId: user.id,
+        eventType: 'REGISTER',
+        details: `New user registered: ${username}`,
+        ipAddress: ip,
+      },
+    });
 
     return successResponse({
       user: serializeUser(user),
       token: user.firebaseUid,
       // When verification is required, expose the token so the frontend can
-      // show a "verify now" link even without email delivery (sandbox flaw).
-      verifyToken: requireVerify ? verifyToken : null,
+      // show a "verify now" link even without email delivery (sandbox fallback).
+      verifyToken: requireVerify ? (emailSent ? null : verifyToken) : null,
       verificationRequired: requireVerify,
+      emailSent,
     }, 201);
   } catch (e: any) {
     return serverErrorResponse(e.message || 'Registration failed');

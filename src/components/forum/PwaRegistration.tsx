@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Download, X, Smartphone, WifiOff, Share, Plus } from 'lucide-react';
+import { Download, X, Smartphone, WifiOff, Share, Plus, Bell, BellOff, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAppStore } from '@/lib/store';
 
 /* Enhanced PWA registration with:
    - Offline/online detection UI (toast notifications)
    - Smart cache purging (only old versions, not all caches)
    - Improved install prompt with custom UI
    - iOS "Add to Home Screen" guidance
-   - SW registered with updateViaCache: 'none' for immediate updates */
+   - SW registered with updateViaCache: 'none' for immediate updates
+   - FCM push notification integration */
 
 const CURRENT_CACHE_PREFIX = 'piforum-v3';
 
@@ -44,7 +46,11 @@ export default function PwaRegistration() {
   const [installed, setInstalled] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | 'default'>('default');
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
   const { toast } = useToast();
+  const { currentUser } = useAppStore();
 
   // ---------- Online/Offline detection with toast ----------
   useEffect(() => {
@@ -179,6 +185,127 @@ export default function PwaRegistration() {
     };
   }, [installed, toast]);
 
+  // ---------- Check push notification permission state ----------
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!('Notification' in window)) return;
+
+    setPushPermission(Notification.permission);
+  }, []);
+
+  // ---------- Show push permission prompt after login ----------
+  useEffect(() => {
+    if (!currentUser) return;
+    if (typeof window === 'undefined') return;
+    if (!('Notification' in window)) return;
+
+    // Check if user already responded to the prompt before
+    const dismissed = localStorage.getItem('piforum_push_dismissed');
+    if (dismissed) return;
+
+    // Check current permission
+    if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
+
+    // Show the push prompt after a short delay
+    const timer = setTimeout(() => setShowPushPrompt(true), 5000);
+    return () => clearTimeout(timer);
+  }, [currentUser]);
+
+  // ---------- Handle FCM token registration ----------
+  const registerFCMToken = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      setPushLoading(true);
+
+      // Request notification permission
+      const permission = await Notification.requestPermission();
+      setPushPermission(permission);
+
+      if (permission !== 'granted') {
+        toast({
+          title: 'Notifications Disabled',
+          description: 'You can enable push notifications later in your browser settings.',
+          duration: 4000,
+        });
+        return;
+      }
+
+      // Get FCM token using Firebase Messaging
+      const { getFirebaseMessaging, VAPID_PUBLIC_KEY } = await import('@/lib/firebase-client');
+      const messaging = await getFirebaseMessaging();
+
+      if (!messaging) {
+        toast({
+          title: 'Push Not Supported',
+          description: 'Your browser does not support push notifications.',
+          variant: 'destructive',
+          duration: 4000,
+        });
+        return;
+      }
+
+      // Dynamically import getToken
+      const { getToken } = await import('firebase/messaging');
+
+      const token = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY });
+
+      if (token) {
+        // Send token to server
+        const res = await fetch('/api/push/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': currentUser.id,
+          },
+          body: JSON.stringify({ token }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          toast({
+            title: 'Push Enabled!',
+            description: 'You will receive push notifications for new activity.',
+            duration: 3000,
+          });
+        }
+      }
+
+      // Set up foreground message handler
+      const { onMessage } = await import('firebase/messaging');
+      onMessage(messaging, (payload) => {
+        // Show in-app notification toast when message is received in foreground
+        const title = payload.notification?.title || 'New Notification';
+        const body = payload.notification?.body || '';
+
+        toast({
+          title,
+          description: body,
+          duration: 6000,
+        });
+
+        // Also play a notification sound
+        try {
+          const audio = new Audio('/notification.mp3');
+          audio.volume = 0.3;
+          audio.play().catch(() => {});
+        } catch {
+          // Audio not supported or blocked
+        }
+      });
+    } catch (err) {
+      console.error('FCM registration failed:', err);
+      toast({
+        title: 'Push Setup Failed',
+        description: 'Could not set up push notifications. Try again later.',
+        variant: 'destructive',
+        duration: 4000,
+      });
+    } finally {
+      setPushLoading(false);
+      setShowPushPrompt(false);
+    }
+  }, [currentUser, toast]);
+
   // ---------- Install handler ----------
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -194,11 +321,64 @@ export default function PwaRegistration() {
   const isIOSDevice = detectIOS();
   const isStandaloneMode = detectStandalone();
 
-  if (installed && isOnline) return null;
+  if (installed && isOnline && !showPushPrompt) return null;
 
   return (
     <>
       {!isOnline && <OfflineBanner />}
+
+      {/* Push Notification Permission Prompt */}
+      {showPushPrompt && currentUser && pushPermission === 'default' && (
+        <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 z-50 animate-bounce-up">
+          <div className="neu-card p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="neu-circle p-2.5 shrink-0">
+                <Bell className="size-5 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Stay Updated</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Enable push notifications to get instant alerts for replies, mentions, and other activity.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowPushPrompt(false);
+                  localStorage.setItem('piforum_push_dismissed', '1');
+                }}
+                className="shrink-0 p-1 text-muted-foreground hover:text-foreground"
+                aria-label="Dismiss"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="flex gap-2 pl-11">
+              <button
+                onClick={registerFCMToken}
+                disabled={pushLoading}
+                className="neu-btn-3d neu-btn px-4 py-2 text-xs font-medium bg-primary text-primary-foreground flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {pushLoading ? (
+                  <span className="size-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                ) : (
+                  <Check className="size-3.5" />
+                )}
+                Enable Push
+              </button>
+              <button
+                onClick={() => {
+                  setShowPushPrompt(false);
+                  localStorage.setItem('piforum_push_dismissed', '1');
+                }}
+                className="neu-btn px-3 py-2 text-xs flex items-center gap-1"
+              >
+                <BellOff className="size-3" />
+                Not Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Standard install prompt (Chrome, Edge, etc.) */}
       {showPrompt && deferredPrompt && !installed && (

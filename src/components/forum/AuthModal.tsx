@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Loader2, Mail, Lock, User, Eye, EyeOff, BadgeCheck, CheckCircle2 } from "lucide-react";
+import { Loader2, Mail, Lock, User, Eye, EyeOff, BadgeCheck, CheckCircle2, Send } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +65,8 @@ export default function AuthModal() {
   const [verifyToken, setVerifyToken] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   // Handle OAuth callback from URL hash (set by Google callback redirect)
   // Uses queueMicrotask to avoid the react-hooks/set-state-in-effect lint rule
@@ -138,6 +140,8 @@ export default function AuthModal() {
       setVerificationRequired(false);
       setVerifyToken(null);
       setVerifying(false);
+      setResendLoading(false);
+      setResendMessage(null);
     }
   }, [authModalOpen]);
 
@@ -294,6 +298,40 @@ export default function AuthModal() {
     }
   }, [verifyToken, setCurrentUser, setAuthModalOpen]);
 
+  // Resend verification email handler
+  const handleResendVerification = useCallback(async () => {
+    setResendLoading(true);
+    setResendMessage(null);
+    try {
+      const user = useAppStore.getState().currentUser;
+      if (!user) return;
+      const res = await fetch("/api/verify-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user.id,
+        },
+        body: JSON.stringify({ action: "send" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // If a new token was returned (UI fallback), update it
+        if (data.data?.verifyToken) {
+          setVerifyToken(data.data.verifyToken);
+        }
+        setResendMessage(data.data?.emailSent
+          ? "A new verification email has been sent to your inbox."
+          : "Verification link ready. Click the button below to verify.");
+      } else {
+        setResendMessage(data.error || "Failed to resend verification email.");
+      }
+    } catch {
+      setResendMessage("Network error. Please try again.");
+    } finally {
+      setResendLoading(false);
+    }
+  }, []);
+
   return (
     <Dialog open={authModalOpen} onOpenChange={handleOpenChange}>
       <DialogContent
@@ -340,13 +378,15 @@ export default function AuthModal() {
                 </div>
                 <h3 className="text-lg font-bold">Verify your email</h3>
                 <p className="text-sm text-muted-foreground">
-                  We sent a verification link to your email. Click the button below to verify
-                  your account now.
-                </p>
-                <p className="text-xs text-muted-foreground/70 bg-muted/30 rounded-lg px-3 py-1.5">
-                  In this sandbox, SMTP is not configured — the verify link is shown directly here.
+                  A verification link has been sent to your email address. Click the button
+                  below to verify your account, or resend the verification email.
                 </p>
               </div>
+              {resendMessage && (
+                <div className="neu-card-inset p-3 rounded-xl text-sm text-primary font-medium">
+                  {resendMessage}
+                </div>
+              )}
               {registerError && (
                 <div className="neu-card-inset p-3 rounded-xl text-sm text-destructive font-medium">
                   {registerError}
@@ -363,9 +403,20 @@ export default function AuthModal() {
                   <><CheckCircle2 className="size-4" /> Verify Email Now</>
                 )}
               </button>
+              <button
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+                className="neu-btn w-full h-10 flex items-center justify-center gap-2 text-sm font-medium text-primary disabled:opacity-50"
+              >
+                {resendLoading ? (
+                  <><Loader2 className="size-4 animate-spin" /> Sending...</>
+                ) : (
+                  <><Send className="size-4" /> Resend Verification Email</>
+                )}
+              </button>
               {!verifyToken && (
                 <p className="text-xs text-center text-muted-foreground">
-                  No verification token was provided. Ask an admin to verify your account manually.
+                  No verification token available. Click &quot;Resend&quot; to get a new one, or ask an admin to verify your account manually.
                 </p>
               )}
             </div>

@@ -1,6 +1,8 @@
 import { db } from '@/lib/db';
 import { successResponse, errorResponse, serverErrorResponse, requireAuth, parseBody } from '@/lib/api-helpers';
 import { rateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { isUserAllowedToPost } from '@/lib/verification-guard';
+import { createNotification } from '@/lib/notifications';
 
 const MAX_CONTENT_LENGTH = 50000;
 
@@ -92,6 +94,12 @@ export async function POST(request: Request) {
     if (authCheck.error) return authCheck.error;
     const user = authCheck.user!;
 
+    // Check if unverified users are allowed to post
+    const verifyCheck = await isUserAllowedToPost(user.id);
+    if (!verifyCheck.allowed) {
+      return errorResponse(verifyCheck.reason || 'Email verification required', 403);
+    }
+
     // Rate limit: 30 posts per user per hour
     const rl = rateLimit(`post:${user.id}`, 30, 60 * 60 * 1000);
     if (!rl.success) return rateLimitResponse();
@@ -178,6 +186,51 @@ export async function POST(request: Request) {
     }
 
     const post = newPost;
+
+    // Create notification for the thread author (reply notification)
+    // Don't notify if the author is replying to their own thread
+    if (thread.authorId !== user.id) {
+      createNotification({
+        userId: thread.authorId,
+        actorId: user.id,
+        type: 'reply',
+        title: `${user.displayName || user.username} replied to your thread`,
+        body: thread.title,
+        link: `/thread/${threadId}`,
+      }).catch(() => {
+        // Non-critical — notification creation shouldn't block the post
+      });
+    }
+
+    // Check for @mentions in the content and notify mentioned users
+    const mentionRegex = /@(\w+)/g;
+    let match;
+    const mentionedUsernames = new Set<string>();
+    while ((match = mentionRegex.exec(content)) !== null) {
+      mentionedUsernames.add(match[1]);
+    }
+    if (mentionedUsernames.size > 0) {
+      // Resolve mentioned users (limit to 10 to prevent abuse)
+      const mentionedUsers = await db.user.findMany({
+        where: {
+          username: { in: Array.from(mentionedUsernames).slice(0, 10) },
+        },
+        select: { id: true },
+      });
+      for (const mentionedUser of mentionedUsers) {
+        // Don't notify yourself or the thread author (they already got a reply notification)
+        if (mentionedUser.id !== user.id) {
+          createNotification({
+            userId: mentionedUser.id,
+            actorId: user.id,
+            type: 'mention',
+            title: `${user.displayName || user.username} mentioned you in a post`,
+            body: thread.title,
+            link: `/thread/${threadId}`,
+          }).catch(() => {});
+        }
+      }
+    }
 
     return successResponse({
       ...post,

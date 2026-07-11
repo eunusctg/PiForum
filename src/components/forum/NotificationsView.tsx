@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
 import type { NotificationItem, AppView } from '@/lib/types';
 import {
@@ -18,11 +18,99 @@ import {
   LogIn,
   ExternalLink,
   ShieldAlert,
+  Heart,
+  PartyPopper,
+  Check,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, isToday, isYesterday, subDays, isAfter, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+
+/* ------------------------------------------------------------------ */
+/*  Notification type config — icon + color                            */
+/* ------------------------------------------------------------------ */
+
+const NOTIFICATION_TYPE_CONFIG: Record<string, { icon: typeof Bell; emoji: string; color: string }> = {
+  reply:    { icon: Reply,   emoji: '💬', color: 'text-emerald-500' },
+  mention:  { icon: AtSign,  emoji: '@',  color: 'text-amber-500' },
+  like:     { icon: Heart,   emoji: '❤️', color: 'text-rose-500' },
+  vote:     { icon: ThumbsUp,emoji: '👍',  color: 'text-emerald-500' },
+  bookmark: { icon: BookmarkIcon, emoji: '🔖', color: 'text-violet-500' },
+  login:    { icon: LogIn,   emoji: '🔐', color: 'text-orange-500' },
+  system:   { icon: Info,    emoji: '📢', color: 'text-primary' },
+  welcome:  { icon: PartyPopper, emoji: '🎉', color: 'text-pink-500' },
+  report:   { icon: Flag,    emoji: '🚩',  color: 'text-red-500' },
+  follow:   { icon: Heart,   emoji: '👥',  color: 'text-sky-500' },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Date grouping helper                                               */
+/* ------------------------------------------------------------------ */
+
+interface GroupedNotifications {
+  label: string;
+  notifications: NotificationItem[];
+}
+
+function groupByDate(notifications: NotificationItem[]): GroupedNotifications[] {
+  const now = new Date();
+  const thisWeekStart = subDays(now, 7);
+
+  const groups: GroupedNotifications[] = [];
+  const today: NotificationItem[] = [];
+  const yesterday: NotificationItem[] = [];
+  const thisWeek: NotificationItem[] = [];
+  const earlier: NotificationItem[] = [];
+
+  for (const n of notifications) {
+    const date = new Date(n.createdAt);
+    if (isToday(date)) {
+      today.push(n);
+    } else if (isYesterday(date)) {
+      yesterday.push(n);
+    } else if (isAfter(date, thisWeekStart)) {
+      thisWeek.push(n);
+    } else {
+      earlier.push(n);
+    }
+  }
+
+  if (today.length > 0) groups.push({ label: 'Today', notifications: today });
+  if (yesterday.length > 0) groups.push({ label: 'Yesterday', notifications: yesterday });
+  if (thisWeek.length > 0) groups.push({ label: 'This Week', notifications: thisWeek });
+  if (earlier.length > 0) groups.push({ label: 'Earlier', notifications: earlier });
+
+  return groups;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Notification sound                                                 */
+/* ------------------------------------------------------------------ */
+
+let _audioCtx: AudioContext | null = null;
+
+function playNotificationSound() {
+  try {
+    if (!_audioCtx) {
+      _audioCtx = new AudioContext();
+    }
+    const osc = _audioCtx.createOscillator();
+    const gain = _audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(_audioCtx.destination);
+    osc.frequency.setValueAtTime(880, _audioCtx.currentTime);
+    osc.frequency.setValueAtTime(660, _audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, _audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.3);
+    osc.start(_audioCtx.currentTime);
+    osc.stop(_audioCtx.currentTime + 0.3);
+  } catch {
+    // Audio not supported or blocked by browser policy
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Notifications View — current user's notifications                  */
@@ -37,23 +125,38 @@ export default function NotificationsView() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [markingAll, setMarkingAll] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [markingId, setMarkingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const prevCountRef = useRef(0);
 
   // ---------- Fetch ----------
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (p: number = 1) => {
     if (!currentUser) {
       setLoading(false);
       return;
     }
     try {
-      setLoading(true);
+      setLoading(p === 1);
       setError(null);
-      const res = await fetch('/api/notifications', {
+      const res = await fetch(`/api/notifications?page=${p}&limit=25`, {
         headers: { 'x-user-id': currentUser.id },
       });
       const data = await res.json();
       if (data.success) {
         const list = data.data?.notifications || data.data || [];
         setNotifications(list as NotificationItem[]);
+        setTotal(data.data?.total ?? list.length);
+        setTotalPages(data.data?.totalPages ?? 1);
+        setPage(p);
+
+        // Play notification sound if new unread notifications appeared
+        const newUnread = (list as NotificationItem[]).filter((n) => !n.read).length;
+        if (newUnread > prevCountRef.current && prevCountRef.current > 0) {
+          playNotificationSound();
+        }
+        prevCountRef.current = newUnread;
       } else {
         setError(data.error || 'Failed to load notifications');
       }
@@ -66,8 +169,15 @@ export default function NotificationsView() {
   }, [currentUser]);
 
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications(1);
   }, [fetchNotifications]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!currentUser) return;
+    const interval = setInterval(() => fetchNotifications(page), 30000);
+    return () => clearInterval(interval);
+  }, [currentUser, page, fetchNotifications]);
 
   // ---------- Derived ----------
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -110,6 +220,41 @@ export default function NotificationsView() {
     }
   };
 
+  const handleMarkAsRead = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      setMarkingId(id);
+      const res = await fetch('/api/notifications', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser.id,
+        },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+        );
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to mark as read',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Network error. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setMarkingId(null);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!currentUser) return;
     try {
@@ -144,30 +289,45 @@ export default function NotificationsView() {
   };
 
   const handleNotificationClick = (notification: NotificationItem) => {
+    // Mark as read when clicking
+    if (!notification.read) {
+      handleMarkAsRead(notification.id);
+    }
+
     if (!notification.link) return;
     try {
       const url = new URL(notification.link, window.location.origin);
-      const view = url.searchParams.get('view') as AppView | null;
-      if (view) {
-        const params: Record<string, string> = {};
-        url.searchParams.forEach((value, key) => {
-          if (key !== 'view') params[key] = value;
-        });
-        navigateTo(view, params);
-      } else {
-        // Try path-based navigation
+      // Check if it's an internal link (same origin or relative)
+      if (url.origin === window.location.origin || notification.link.startsWith('/')) {
+        // Parse path-based routes
         const path = url.pathname;
-        const pathMatch = path.match(/^\/threads\/(.+)$/);
+        const pathMatch = path.match(/^\/thread\/(.+)$/);
         if (pathMatch) {
           navigateTo('thread', { threadId: pathMatch[1] });
           return;
         }
-        const userMatch = path.match(/^\/users\/(.+)$/);
-        if (userMatch) {
-          navigateTo('profile', { userId: userMatch[1] });
+        const forumMatch = path.match(/^\/forum\/(.+)$/);
+        if (forumMatch) {
+          navigateTo('forum', { forumId: forumMatch[1] });
           return;
         }
-        // Unknown link, just dismiss
+        const profileMatch = path.match(/^\/profile\/(.+)$/);
+        if (profileMatch) {
+          navigateTo('profile', { userId: profileMatch[1] });
+          return;
+        }
+        // Fallback: check search params
+        const view = url.searchParams.get('view') as AppView | null;
+        if (view) {
+          const params: Record<string, string> = {};
+          url.searchParams.forEach((value, key) => {
+            if (key !== 'view') params[key] = value;
+          });
+          navigateTo(view, params);
+        }
+      } else {
+        // External link — open in new tab
+        window.open(notification.link, '_blank', 'noopener,noreferrer');
       }
     } catch {
       // Invalid URL — ignore
@@ -176,6 +336,9 @@ export default function NotificationsView() {
 
   const handleBack = () => navigateTo('home');
   const handleLogin = () => setAuthModalOpen(true);
+
+  // Group notifications by date
+  const grouped = groupByDate(notifications);
 
   // ================================================================
   //  RENDER — Login required
@@ -279,7 +442,7 @@ export default function NotificationsView() {
           </div>
           <p className="text-destructive font-medium">{error}</p>
           <button
-            onClick={fetchNotifications}
+            onClick={() => fetchNotifications(page)}
             className="neu-btn px-5 py-2.5 text-sm font-medium text-primary inline-flex items-center gap-2 mx-auto"
           >
             <Loader2 className="size-4" />
@@ -306,18 +469,63 @@ export default function NotificationsView() {
         </div>
       )}
 
-      {/* ---- Notifications List ---- */}
+      {/* ---- Grouped Notifications List ---- */}
       {!loading && !error && notifications.length > 0 && (
-        <div className="space-y-2.5">
-          {notifications.map((notification) => (
-            <NotificationCard
-              key={notification.id}
-              notification={notification}
-              onClick={() => handleNotificationClick(notification)}
-              onDelete={() => handleDelete(notification.id)}
-              deleting={deletingId === notification.id}
-            />
+        <div className="space-y-6">
+          {grouped.map((group) => (
+            <div key={group.label}>
+              {/* Date group header */}
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {group.label}
+                </h3>
+                <div className="flex-1 h-px bg-border/50" />
+                <span className="text-xs text-muted-foreground">
+                  {group.notifications.length}
+                </span>
+              </div>
+
+              {/* Notification cards */}
+              <div className="space-y-2">
+                {group.notifications.map((notification) => (
+                  <NotificationCard
+                    key={notification.id}
+                    notification={notification}
+                    onClick={() => handleNotificationClick(notification)}
+                    onMarkRead={() => handleMarkAsRead(notification.id)}
+                    onDelete={() => handleDelete(notification.id)}
+                    markingRead={markingId === notification.id}
+                    deleting={deletingId === notification.id}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <button
+                onClick={() => fetchNotifications(page - 1)}
+                disabled={page <= 1}
+                className="neu-btn p-2 disabled:opacity-30"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <span className="text-xs text-muted-foreground px-2">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => fetchNotifications(page + 1)}
+                disabled={page >= totalPages}
+                className="neu-btn p-2 disabled:opacity-30"
+                aria-label="Next page"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -331,12 +539,16 @@ export default function NotificationsView() {
 function NotificationCard({
   notification,
   onClick,
+  onMarkRead,
   onDelete,
+  markingRead,
   deleting,
 }: {
   notification: NotificationItem;
   onClick: () => void;
+  onMarkRead: () => void;
   onDelete: () => void;
+  markingRead: boolean;
   deleting: boolean;
 }) {
   const actorName =
@@ -345,21 +557,19 @@ function NotificationCard({
     null;
   const actorInitial = actorName ? actorName.charAt(0).toUpperCase() : '?';
   const clickable = !!notification.link;
+  const typeConfig = NOTIFICATION_TYPE_CONFIG[notification.type];
+  const TypeIcon = typeConfig?.icon || Bell;
+  const typeColor = typeConfig?.color || 'text-muted-foreground';
 
   return (
     <div
       className={`neu-card p-4 sm:p-5 flex items-start gap-3 sm:gap-4 group transition-colors ${
-        !notification.read ? 'bg-primary/5' : ''
+        !notification.read ? 'bg-primary/5 border-l-2 border-l-primary' : ''
       }`}
     >
       {/* Type icon */}
       <div className="neu-circle p-2.5 shrink-0 relative">
-        <NotificationTypeIcon
-          type={notification.type}
-          className={`size-4 ${
-            notification.read ? 'text-muted-foreground' : 'text-primary'
-          }`}
-        />
+        <TypeIcon className={`size-4 ${notification.read ? 'text-muted-foreground' : typeColor}`} />
         {!notification.read && (
           <span className="absolute -top-0.5 -right-0.5 size-2.5 bg-primary rounded-full border-2 border-background" />
         )}
@@ -420,20 +630,37 @@ function NotificationCard({
         </div>
       </button>
 
-      {/* Delete button */}
-      <button
-        onClick={onDelete}
-        disabled={deleting}
-        className="neu-btn p-2 shrink-0 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
-        aria-label="Delete notification"
-        title="Delete"
-      >
-        {deleting ? (
-          <Loader2 className="size-3.5 animate-spin" />
-        ) : (
-          <Trash2 className="size-3.5" />
+      {/* Action buttons */}
+      <div className="flex items-center gap-1 shrink-0">
+        {!notification.read && (
+          <button
+            onClick={onMarkRead}
+            disabled={markingRead}
+            className="neu-btn p-2 text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+            aria-label="Mark as read"
+            title="Mark as read"
+          >
+            {markingRead ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Check className="size-3.5" />
+            )}
+          </button>
         )}
-      </button>
+        <button
+          onClick={onDelete}
+          disabled={deleting}
+          className="neu-btn p-2 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+          aria-label="Delete notification"
+          title="Delete"
+        >
+          {deleting ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Trash2 className="size-3.5" />
+          )}
+        </button>
+      </div>
     </div>
   );
 }
@@ -444,50 +671,28 @@ function NotificationCard({
 
 function NotificationsSkeleton() {
   return (
-    <div className="space-y-2.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div
-          key={i}
-          className="neu-card p-4 sm:p-5 flex items-start gap-3 sm:gap-4"
-        >
-          <Skeleton className="size-10 rounded-full shrink-0" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-24" />
+    <div className="space-y-6">
+      {[1, 2].map((g) => (
+        <div key={g}>
+          <Skeleton className="h-4 w-24 mb-3" />
+          <div className="space-y-2.5">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="neu-card p-4 sm:p-5 flex items-start gap-3 sm:gap-4"
+              >
+                <Skeleton className="size-10 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="size-8 rounded-full shrink-0" />
+              </div>
+            ))}
           </div>
-          <Skeleton className="size-8 rounded-full shrink-0" />
         </div>
       ))}
     </div>
   );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-function NotificationTypeIcon({
-  type,
-  className,
-}: {
-  type: string;
-  className?: string;
-}) {
-  switch (type) {
-    case 'reply':
-      return <Reply className={className} />;
-    case 'mention':
-      return <AtSign className={className} />;
-    case 'vote':
-      return <ThumbsUp className={className} />;
-    case 'bookmark':
-      return <BookmarkIcon className={className} />;
-    case 'report':
-      return <Flag className={className} />;
-    case 'system':
-      return <Info className={className} />;
-    default:
-      return <Bell className={className} />;
-  }
 }

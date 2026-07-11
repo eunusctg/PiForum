@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { successResponse, errorResponse, serverErrorResponse, requireAuth, parseBody } from '@/lib/api-helpers';
+import { createNotification } from '@/lib/notifications';
 
 export async function POST(
   request: Request,
@@ -54,6 +55,19 @@ export async function POST(
       select: { voteType: true },
     });
     const voteScore = allVotes.reduce((sum, v) => sum + v.voteType, 0);
+
+    // Notify the post author about the vote (only for upvotes, to reduce noise)
+    if (voteType === 1 && post.authorId !== user.id) {
+      createNotification({
+        userId: post.authorId,
+        actorId: user.id,
+        type: 'like',
+        title: `${user.displayName || user.username} liked your post`,
+        link: `/thread/${post.threadId}`,
+      }).catch(() => {
+        // Non-critical
+      });
+    }
 
     return successResponse({
       vote,

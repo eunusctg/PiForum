@@ -196,13 +196,13 @@ export default function SiteFooter() {
           <section aria-labelledby="footer-brand-heading">
             <div className="flex items-center gap-3">
               <img
-                src={logoUrl || '/logo.png'}
+                src={logoUrl || '/logo.svg'}
                 alt={`${forumName} logo`}
                 className="h-9 w-auto rounded-md object-contain"
                 onError={(e) => {
                   const img = e.target as HTMLImageElement;
-                  if (img.src !== window.location.origin + '/logo.png') {
-                    img.src = '/logo.png';
+                  if (img.src !== window.location.origin + '/logo.svg') {
+                    img.src = '/logo.svg';
                   } else {
                     img.style.display = 'none';
                   }

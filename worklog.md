@@ -1678,3 +1678,37 @@ Stage Summary:
 - Admin branding page shows logo/favicon preview with "Reset to default" button
 - AuthModal is compact and responsive: mobile-friendly width, max-h-[90vh] with scroll, smaller padding and field sizes
 - Inline footer back-to-top button removed; floating FAB back-to-top preserved
+
+---
+Task ID: 3-4-5-6
+Agent: notifications-verify
+Task: FCM push + email notifications + login notifications + email verification
+
+Work Log:
+- Installed Firebase SDK (firebase@12.16.0)
+- Created Firebase client module at src/lib/firebase-client.ts with lazy messaging init
+- Created FCM token management API at src/app/api/push/token/route.ts (POST/DELETE/GET)
+- Created push notification sending API at src/app/api/push/send/route.ts with FCM HTTP v1 API + Web Crypto RS256 signing
+- Updated PwaRegistration.tsx with FCM integration: push permission prompt, token registration, foreground message handler
+- Created notification triggers utility at src/lib/notifications.ts with createNotification, createLoginNotification, createWelcomeNotification
+- Enhanced notifications API with pagination (page/limit), count-only endpoint
+- Enhanced NotificationsView.tsx with type-specific icons, date grouping, individual mark-as-read, notification sound, auto-refresh, pagination
+- Added login notification to auth/login route with new device detection (IP + user-agent tracking)
+- Created email sending utility at src/lib/email.ts (Resend/SendGrid/Mailgun HTTP APIs)
+- Created email verification templates (HTML + text)
+- Enhanced verify-email API with GET endpoint, resend rate limiting, proper email sending
+- Enhanced registration flow with welcome notification and email sending
+- Enhanced AuthModal with "Resend Verification Email" button
+- Added verification banner in Header for unverified users
+- Created verification guard (src/lib/verification-guard.ts) to block posting for unverified users
+- Added notification triggers to post creation (reply, @mention) and vote (like)
+- Updated Header notification count to use efficient ?count=true endpoint
+
+Stage Summary:
+- Complete FCM web push notification infrastructure
+- Enhanced in-app notification system with type icons, date grouping, mark-as-read, sound, pagination
+- Real-time login notifications with new device detection
+- Complete email verification with resend, banner, and action blocking
+- Email sending supporting multiple providers (Resend, SendGrid, Mailgun)
+- Notification triggers for replies, mentions, and likes
+- Zero ESLint errors (11 pre-existing warnings only)
