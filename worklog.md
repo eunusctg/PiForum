@@ -198,3 +198,27 @@ Work Log:
 Stage Summary:
 - CookieConsent component created and integrated
 - Shows banner on first visit, persists choice in localStorage
+
+---
+Task ID: cf-build
+Agent: Main Agent
+Task: Build and deploy PiForum to Cloudflare Workers
+
+Work Log:
+- Analyzed previous build output: 3067.53 KiB gzip (just over 3 MiB free plan limit)
+- Identified Prisma WASM query compiler (3.38 MiB / ~1125 KiB gzip) as main size contributor
+- Created scripts/postbuild-cf.mjs to optimize the .open-next build:
+  - Moves Prisma WASM from server bundle to static assets (_wasm/prisma-query-compiler.wasm)
+  - Patches handler.mjs to replace static .wasm imports with runtime fetch()
+  - Removes cloudflare-templates/ (build-time only)
+  - Removes image handling code from worker.js
+- Build result: 1935.91 KiB gzip (well under 3072 KiB limit)
+- Successfully deployed to Cloudflare Workers
+
+Stage Summary:
+- Worker deployed at https://piforum.piforum.workers.dev
+- Version ID: 292cfca8-05d3-4b19-a9f0-810b666d531d
+- Total compressed size: 1935.91 KiB (1.89 MiB)
+- Prisma WASM loaded at runtime from static assets
+- Post-build script: scripts/postbuild-cf.mjs
+- Deploy command: CLOUDFLARE_API_TOKEN=cfut_... npx wrangler deploy
