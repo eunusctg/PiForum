@@ -101,9 +101,10 @@ export async function POST(request: Request) {
       ? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
       : null;
 
-    // Super-admin auto-promotion — the forum owner gets role 3 on registration
+    // Super-admin auto-promotion AND auto-verification — the forum owner gets role 3 + verified on registration
     const SUPER_ADMIN_EMAILS = ['eunus527@gmail.com'];
     const assignedRole = SUPER_ADMIN_EMAILS.includes(email.toLowerCase()) ? 3 : 0;
+    const assignedVerified = SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
 
     const user = await db.user.create({
       data: {
@@ -113,8 +114,13 @@ export async function POST(request: Request) {
         displayName: username,
         role: assignedRole,
         avatarUrl: null,
-        isVerified: !requireVerify,
-        verifiedAt: requireVerify ? null : new Date(),
+        // Verified badge is ONLY assigned by super admin.
+        // Email verification (requireVerify) confirms the email is real,
+        // but does NOT grant the "verified" badge.
+        // Regular users: isVerified = false regardless of email verification.
+        // Super admin: isVerified = true (auto-granted).
+        isVerified: assignedVerified,
+        verifiedAt: assignedVerified ? new Date() : null,
         verifyToken,
         verifyExpires,
       },

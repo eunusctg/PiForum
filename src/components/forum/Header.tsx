@@ -298,11 +298,11 @@ export default function Header() {
     [handleNavigate, handleOpenAuthModal, currentUser]
   );
 
-  const navLinks: { label: string; view: AppView; icon: typeof Home; show: boolean }[] = [
+  const navLinks: { label: string; view: AppView; icon: typeof Home; show: boolean; desktopOnly?: boolean; mobileOnly?: boolean }[] = [
     { label: "Home", view: "home", icon: Home, show: true },
     { label: "Forums", view: "home", icon: MessageSquare, show: true },
-    { label: "Members", view: "members", icon: Users, show: true },
-    { label: "Tags", view: "tags", icon: Tag, show: true },
+    { label: "Members", view: "members", icon: Users, show: true, mobileOnly: true },
+    { label: "Tags", view: "tags", icon: Tag, show: true, mobileOnly: true },
     { label: "Admin", view: "admin-dashboard", icon: Shield, show: userIsAdmin },
   ];
 
@@ -319,8 +319,8 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full">
-      {/* Verification Banner — shown to unverified users when verification is required */}
-      {currentUser && !currentUser.isVerified && getSetting("require_email_verification", "false") === "true" && (
+      {/* Verification Banner — shown to users with pending email verification */}
+      {currentUser && currentUser.verifyToken && getSetting("require_email_verification", "false") === "true" && (
         <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs sm:text-sm px-4 py-2 flex items-center justify-center gap-2">
           <Mail className="size-3.5 shrink-0" />
           <span>Please verify your email address to unlock full access.</span>
@@ -394,7 +394,7 @@ export default function Header() {
           <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
             {navLinks.map(
               (link, idx) =>
-                link.show && (
+                link.show && !link.mobileOnly && (
                   <button
                     key={`${link.view}-${idx}`}
                     onClick={() => handleNavClick(link.view)}
@@ -694,7 +694,7 @@ export default function Header() {
             <nav className="flex flex-col gap-2" aria-label="Mobile navigation">
               {navLinks.map(
                 (link, idx) =>
-                  link.show && (
+                  link.show && !link.desktopOnly && (
                     <button
                       key={`m-${link.view}-${idx}`}
                       onClick={() => handleNavClick(link.view)}

@@ -129,8 +129,6 @@ export async function GET(request: Request) {
           where: { id: user.id },
           data: {
             avatarUrl: googlePicture,
-            isVerified: true,
-            verifiedAt: user.verifiedAt || new Date(),
             lastSeenAt: new Date(),
           },
           include: { rank: true },
@@ -180,9 +178,10 @@ export async function GET(request: Request) {
 
       const firebaseUid = generateUUID();
 
-      // Super-admin auto-promotion — the forum owner gets role 3 on first login
+      // Super-admin auto-promotion AND auto-verification
       const SUPER_ADMIN_EMAILS = ['eunus527@gmail.com'];
       const assignedRole = SUPER_ADMIN_EMAILS.includes(googleEmail.toLowerCase()) ? 3 : 0;
+      const assignedVerified = SUPER_ADMIN_EMAILS.includes(googleEmail.toLowerCase());
 
       user = await db.user.create({
         data: {
@@ -192,8 +191,9 @@ export async function GET(request: Request) {
           displayName: googleName || username,
           avatarUrl: googlePicture || null,
           role: assignedRole,
-          isVerified: true, // Google-verified email
-          verifiedAt: new Date(),
+          // Only super admin gets auto-verified; others need admin approval
+          isVerified: assignedVerified,
+          verifiedAt: assignedVerified ? new Date() : null,
         },
         include: { rank: true },
       });

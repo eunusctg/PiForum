@@ -17,6 +17,7 @@ export interface ForumUser {
   reputation: number;
   isVerified: boolean;
   verifiedAt: string | null;
+  verifyToken: string | null;
   twoFactorEnabled: boolean;
   rankId: string | null;
   rank?: Rank | null;

@@ -137,6 +137,7 @@ export function serializeUser(user: any) {
     reputation: user.reputation ?? 0,
     isVerified: user.isVerified ?? false,
     verifiedAt: user.verifiedAt ?? null,
+    verifyToken: user.verifyToken ?? null,
     twoFactorEnabled: user.twoFactorEnabled ?? false,
     totpEnabled: user.totpEnabled ?? false,
     phoneNumber: user.phoneNumber ?? null,

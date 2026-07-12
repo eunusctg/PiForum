@@ -22,6 +22,9 @@ import {
   X,
   Camera,
   ChevronRight,
+  UserPlus,
+  UserMinus,
+  Users,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -72,6 +75,9 @@ async function uploadAvatar(file: File, userId: string): Promise<string> {
 
 interface ProfileData extends ForumUser {
   recentThreads?: Thread[];
+  followerCount?: number;
+  followingCount?: number;
+  isFollowing?: boolean;
 }
 
 export default function ProfileView() {
@@ -85,6 +91,10 @@ export default function ProfileView() {
   const [notFound, setNotFound] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
   const isOwnProfile =
     !!currentUser && !!profile && currentUser.id === profile.id;
@@ -110,8 +120,14 @@ export default function ProfileView() {
         const profileData = {
           ...(d.user || d),
           recentThreads: d.recentThreads || [],
+          followerCount: d.followerCount || 0,
+          followingCount: d.followingCount || 0,
+          isFollowing: d.isFollowing || false,
         } as ProfileData;
         setProfile(profileData);
+        setIsFollowing(profileData.isFollowing || false);
+        setFollowerCount(profileData.followerCount || 0);
+        setFollowingCount(profileData.followingCount || 0);
       } else if (res.status === 404) {
         setNotFound(true);
       } else {
@@ -142,6 +158,47 @@ export default function ProfileView() {
       setCurrentUser(updated);
     }
   };
+
+  // ---------- Follow/Unfollow handler ----------
+  const handleFollowToggle = useCallback(async () => {
+    if (!currentUser || !profile) return;
+    try {
+      setFollowLoading(true);
+      const res = await fetch(`/api/users/${profile.id}/follow`, {
+        method: isFollowing ? 'DELETE' : 'POST',
+        headers: { 'x-user-id': currentUser.id },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsFollowing(data.following);
+        setFollowerCount(data.followerCount);
+        setFollowingCount(data.followingCount);
+        toast({
+          title: isFollowing ? 'Unfollowed' : 'Following',
+          description: isFollowing
+            ? `You are no longer following ${profile.displayName || profile.username}`
+            : `You are now following ${profile.displayName || profile.username}`,
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to update follow status',
+          variant: 'destructive',
+          duration: 3000,
+        });
+      }
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Network error. Please try again.',
+        variant: 'destructive',
+        duration: 3000,
+      });
+    } finally {
+      setFollowLoading(false);
+    }
+  }, [currentUser, profile, isFollowing, toast]);
 
   // ================================================================
   //  RENDER — Not Found
@@ -246,7 +303,7 @@ export default function ProfileView() {
           </button>
           <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
         </div>
-        {isOwnProfile && (
+        {isOwnProfile ? (
           <Button
             onClick={() => setEditOpen(true)}
             className="neu-btn px-4 py-2 text-sm font-medium shadow-none"
@@ -255,7 +312,26 @@ export default function ProfileView() {
             <Pencil className="size-4 mr-2" />
             Edit Profile
           </Button>
-        )}
+        ) : currentUser ? (
+          <button
+            onClick={handleFollowToggle}
+            disabled={followLoading}
+            className={`neu-btn-3d neu-btn px-4 py-2 text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-all ${
+              isFollowing
+                ? 'bg-muted text-foreground hover:text-destructive'
+                : 'bg-primary text-primary-foreground'
+            }`}
+          >
+            {followLoading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : isFollowing ? (
+              <UserMinus className="size-4" />
+            ) : (
+              <UserPlus className="size-4" />
+            )}
+            {isFollowing ? 'Unfollow' : 'Follow'}
+          </button>
+        ) : null}
       </div>
 
       {/* ---- Profile Header ---- */}
@@ -301,6 +377,23 @@ export default function ProfileView() {
 
             {/* Meta info */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4 text-xs text-muted-foreground">
+              {/* Follower / Following counts */}
+              <span
+                className="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
+                onClick={() => navigateTo('profile', { userId: profile.id, tab: 'followers' })}
+                title={`${followerCount} follower${followerCount !== 1 ? 's' : ''}`}
+              >
+                <Users className="size-3.5" />
+                <strong className="text-foreground">{followerCount}</strong> follower{followerCount !== 1 ? 's' : ''}
+              </span>
+              <span
+                className="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors"
+                onClick={() => navigateTo('profile', { userId: profile.id, tab: 'following' })}
+                title={`${followingCount} following`}
+              >
+                <UserPlus className="size-3.5" />
+                <strong className="text-foreground">{followingCount}</strong> following
+              </span>
               {profile.location && (
                 <span className="flex items-center gap-1">
                   <MapPin className="size-3.5" />
@@ -352,7 +445,7 @@ export default function ProfileView() {
         <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
           Statistics
         </h3>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <StatCard
             icon={<FileText className="size-5 text-primary" />}
             label="Threads"
@@ -362,6 +455,11 @@ export default function ProfileView() {
             icon={<MessageSquare className="size-5 text-primary" />}
             label="Posts"
             value={profile.postCount ?? 0}
+          />
+          <StatCard
+            icon={<Users className="size-5 text-primary" />}
+            label="Followers"
+            value={followerCount}
           />
           <StatCard
             icon={<Star className="size-5 text-primary" />}

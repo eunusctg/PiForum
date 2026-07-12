@@ -38,14 +38,18 @@ export async function POST(request: Request) {
         return errorResponse('This verification link has expired. Request a new one.', 400);
       }
 
-      // Mark consumed + verify the user
+      // Mark consumed + clear verification token
+      // NOTE: Email verification is separate from the "Verified" badge.
+      // The isVerified badge is ONLY granted by super admin.
+      // Email verification just clears the pending token and records the time.
       await db.emailVerification.update({
         where: { id: record.id },
         data: { consumedAt: new Date() },
       });
       const user = await db.user.update({
         where: { id: record.userId },
-        data: { isVerified: true, verifiedAt: new Date(), verifyToken: null, verifyExpires: null },
+        // Only clear verify token/expires — do NOT set isVerified (that's admin-only)
+        data: { verifyToken: null, verifyExpires: null },
         include: { rank: true },
       });
 
@@ -72,7 +76,8 @@ export async function POST(request: Request) {
       if (authCheck.error) return authCheck.error;
       const user = authCheck.user!;
 
-      if (user.isVerified) {
+      // Check if user already verified their email (no pending token means verified)
+      if (!user.verifyToken) {
         return errorResponse('Your email is already verified', 400);
       }
 
@@ -202,14 +207,17 @@ export async function GET(request: Request) {
       );
     }
 
-    // Mark consumed + verify the user
+    // Mark consumed + clear verification token
+    // NOTE: Email verification is separate from the "Verified" badge.
+    // The isVerified badge is ONLY granted by super admin.
     await db.emailVerification.update({
       where: { id: record.id },
       data: { consumedAt: new Date() },
     });
     await db.user.update({
       where: { id: record.userId },
-      data: { isVerified: true, verifiedAt: new Date(), verifyToken: null, verifyExpires: null },
+      // Only clear verify token/expires — do NOT set isVerified (that's admin-only)
+      data: { verifyToken: null, verifyExpires: null },
     });
 
     await db.securityLog.create({

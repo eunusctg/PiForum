@@ -1743,3 +1743,37 @@ Stage Summary:
 - PWA icons (192, 512, 72) all created in /public/
 - Logo.png now has transparent background
 - New Discussion form has full category picker with 41 category options loaded from API
+
+---
+Task ID: verified-badge-header-follow
+Agent: Main
+Task: Fix verified badge (admin-only), remove Members/Tags from desktop header, add user follow system
+
+Work Log:
+- Fixed verified badge system: Removed auto-verification from Google OAuth callback and email registration
+  - Google OAuth: New users no longer get isVerified=true automatically (only super admin email gets it)
+  - Google OAuth existing user update: Removed isVerified=true from avatar update
+  - Email registration: isVerified now only true for super admin emails
+  - Email verification route: No longer sets isVerified=true on email verify (verified badge is admin-only)
+  - Header verification banner: Changed from checking !isVerified to checking verifyToken presence
+- Added verifyToken to ForumUser type and serializeUser function
+- Removed Members and Tags from desktop header navigation
+  - Added mobileOnly/desktopOnly properties to navLinks type
+  - Members and Tags set to mobileOnly: true
+  - Desktop nav filters with !link.mobileOnly
+  - Mobile nav includes all links (filters only desktopOnly)
+- Added user follow system:
+  - Created Follow model in Prisma schema (followerId, followingId, unique constraint, indexes)
+  - Added following/followers relations to User model
+  - Created API routes: POST/DELETE /api/users/[id]/follow, GET /api/users/[id]/followers, GET /api/users/[id]/following
+  - Updated /api/profile/[id] to include followerCount, followingCount, isFollowing
+  - Updated ProfileView.tsx with follow/unfollow button, follower/following counts, and stats card
+  - Follow notifications created via createNotification with type 'follow'
+  - Stats grid updated to 5 columns with Followers stat card
+
+Stage Summary:
+- Verified badge is now admin-only (not auto-granted on Google/email signup)
+- Desktop header shows: Home, Forums, Categories, Admin — Members and Tags only in mobile menu
+- Full user follow system: follow/unfollow, counts, notifications, API routes
+- All changes pass lint with zero errors
+- Browser verified: header correct, profile features present

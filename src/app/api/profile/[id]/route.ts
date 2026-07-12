@@ -24,10 +24,13 @@ export async function GET(
   try {
     const { id } = await params;
 
+    // Get the requesting user's ID from header (if authenticated)
+    const requesterId = request.headers.get('x-user-id');
+
     const user = await db.user.findUnique({ where: { id }, include: { rank: true } });
     if (!user) return errorResponse('User not found', 404);
 
-    const [recentThreads, postCount] = await Promise.all([
+    const [recentThreads, postCount, followerCount, followingCount, isFollowing] = await Promise.all([
       db.thread.findMany({
         where: { authorId: id },
         include: {
@@ -37,12 +40,25 @@ export async function GET(
         take: 10,
       }),
       db.post.count({ where: { authorId: id } }),
+      db.follow.count({ where: { followingId: id } }),
+      db.follow.count({ where: { followerId: id } }),
+      // Check if the requesting user follows this profile user
+      requesterId
+        ? db.follow
+            .findUnique({
+              where: { followerId_followingId: { followerId: requesterId, followingId: id } },
+            })
+            .then((f) => !!f)
+        : Promise.resolve(false),
     ]);
 
     return successResponse({
       user: serializeUser(user),
       recentThreads,
       postCount,
+      followerCount,
+      followingCount,
+      isFollowing,
     });
   } catch (e: any) {
     return serverErrorResponse(e.message || 'Failed to fetch profile');
