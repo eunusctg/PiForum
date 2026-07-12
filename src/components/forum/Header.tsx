@@ -251,11 +251,8 @@ export default function Header() {
     { label: "Categories", view: "home", icon: FolderOpen },
   ];
 
-  // Mobile bottom nav — Home, Forums, Categories, Search
+  // Mobile bottom nav — Search only (Home/Forums/Categories removed)
   const mobileNavLinks: { label: string; view: AppView; icon: typeof Home; action?: () => void }[] = [
-    { label: "Home", view: "home", icon: Home },
-    { label: "Forums", view: "home", icon: MessageSquare },
-    { label: "Categories", view: "home", icon: FolderOpen },
     {
       label: "Search",
       view: "search",
@@ -370,6 +367,16 @@ export default function Header() {
                   <Bookmark className="size-4" />
                 </button>
               )}
+
+              {/* Search icon (mobile only, before notifications) */}
+              <button
+                onClick={() => setSearchOpen(!searchOpen)}
+                className="neu-btn md:hidden flex items-center justify-center w-9 h-9 p-0"
+                aria-label="Search"
+                title="Search"
+              >
+                <Search className="size-4" />
+              </button>
 
               {/* Notifications (logged-in only) */}
               {currentUser && (
