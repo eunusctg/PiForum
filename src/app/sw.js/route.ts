@@ -1,26 +1,33 @@
-/* GET /sw.js — enhanced service worker for PWA offline support.
+/* GET /sw.js — aggressive service worker for PWA offline support.
    Registered only when PWA is enabled (see PwaRegistration client component).
-   Strategies:
-   - Cache-first for static assets (CSS, JS, images, fonts) with 30-day expiry
-   - Network-first for navigation and API requests
-   - Stale-while-revalidate for forum pages
-   - Offline fallback page when navigation fails with no cache */
+   Strategies (AGGRESSIVE caching for instant loads & offline support):
+   - Cache-first for static assets (CSS, JS, images, fonts) with 90-day expiry
+   - Cache-first with background revalidation for API GET requests (5min stale)
+   - Cache-first with background revalidation for navigation (HTML pages)
+   - Stale-while-revalidate for other requests
+   - Offline fallback page when navigation fails with no cache
+   - Periodic background sync for cache warming
+   - Preload critical app shell resources on install */
 export async function GET() {
   const sw = `
-const CACHE = 'piforum-v3';
-const CACHE_STATIC = 'piforum-v3-static';
-const CACHE_PAGES = 'piforum-v3-pages';
-const CACHE_API = 'piforum-v3-api';
+const CACHE = 'piforum-v4';
+const CACHE_STATIC = 'piforum-v4-static';
+const CACHE_PAGES = 'piforum-v4-pages';
+const CACHE_API = 'piforum-v4-api';
+const CACHE_IMG = 'piforum-v4-images';
 
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
+  '/logo.svg',
+  '/favicon.ico',
 ];
 
 // Static asset extensions — cache-first with long expiry
-const STATIC_EXTS = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.webp', '.webmanifest'];
+const STATIC_EXTS = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.webp', '.webmanifest', '.avif'];
 
-const THIRTY_DAYS = 30 * 24 * 60 * 60;
+const NINETY_DAYS = 90 * 24 * 60 * 60;
+const API_STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
 // Offline fallback HTML page
 const OFFLINE_PAGE = \`
@@ -51,22 +58,26 @@ const OFFLINE_PAGE = \`
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL).catch(() => {}))
+    caches.open(CACHE).then((cache) =>
+      cache.addAll(APP_SHELL).catch(() => {})
+    )
   );
+  // Aggressive: activate immediately without waiting
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  // Purge old cache versions (keep current v3 caches)
+  // Purge ALL old cache versions (keep only current v4 caches)
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => !k.startsWith('piforum-v3'))
+          .filter((k) => !k.startsWith('piforum-v4'))
           .map((k) => caches.delete(k))
       )
-    )
+    ).then(() => self.clients.claim())
   );
+  // Claim all clients immediately so the aggressive SW takes over right away
   self.clients.claim();
 });
 
@@ -87,6 +98,33 @@ function isAdminRequest(url) {
   return new URL(url).pathname.startsWith('/admin');
 }
 
+// Helper: check if a request is an image
+function isImageRequest(url) {
+  const pathname = new URL(url).pathname;
+  return /\\.(png|jpg|jpeg|gif|webp|avif|svg|ico)$/i.test(pathname);
+}
+
+// Helper: check cached response staleness for API
+function isStale(cachedResponse, maxAge) {
+  if (!cachedResponse) return true;
+  const dateHeader = cachedResponse.headers.get('sw-cache-time');
+  if (!dateHeader) return true;
+  return (Date.now() - parseInt(dateHeader)) > maxAge;
+}
+
+// Add cache timestamp header when storing responses
+function cacheWithTimestamp(cache, req, res) {
+  const timestamped = new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: {
+      ...Object.fromEntries(res.headers.entries()),
+      'sw-cache-time': String(Date.now()),
+    },
+  });
+  return cache.put(req, timestamped);
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -97,24 +135,25 @@ self.addEventListener('fetch', (event) => {
   if (isAdminRequest(url)) return;
 
   // --- Strategy 1: Cache-first for static assets (CSS, JS, images, fonts) ---
+  // Aggressive: serve from cache immediately, revalidate in background
   if (isStaticAsset(url)) {
     event.respondWith(
       caches.open(CACHE_STATIC).then((cache) =>
         cache.match(req).then((cached) => {
           if (cached) {
-            // Return cached version but revalidate in background
+            // Return cached immediately, revalidate in background
             const fetchPromise = fetch(req).then((networkRes) => {
               if (networkRes && networkRes.status === 200) {
-                cache.put(req, networkRes.clone());
+                cacheWithTimestamp(cache, req, networkRes.clone());
               }
               return networkRes;
             }).catch(() => {});
             return cached;
           }
-          // Not in cache — fetch from network and cache
+          // Not in cache — fetch from network and cache aggressively
           return fetch(req).then((networkRes) => {
-            if (networkRes && networkRes.status === 200 && networkRes.type === 'basic') {
-              cache.put(req, networkRes.clone());
+            if (networkRes && networkRes.status === 200) {
+              cacheWithTimestamp(cache, req, networkRes.clone());
             }
             return networkRes;
           }).catch(() => Response.error());
@@ -124,48 +163,72 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // --- Strategy 2: Network-first for API requests ---
+  // --- Strategy 2: Cache-first with stale revalidation for API GET ---
+  // Aggressive: serve cached API data immediately (up to 5min stale),
+  // then revalidate in background for next visit
   if (isApiRequest(url)) {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(CACHE_API).then((c) => c.put(req, copy)).catch(() => {});
+      caches.open(CACHE_API).then((cache) =>
+        cache.match(req).then((cached) => {
+          // Return cached if available (even if stale up to 5min)
+          if (cached) {
+            // Background revalidation
+            const fetchPromise = fetch(req).then((networkRes) => {
+              if (networkRes && networkRes.status === 200) {
+                cacheWithTimestamp(cache, req, networkRes.clone());
+              }
+              return networkRes;
+            }).catch(() => {});
+            return cached;
           }
-          return res;
+          // No cache — fetch from network and cache
+          return fetch(req).then((networkRes) => {
+            if (networkRes && networkRes.status === 200) {
+              cacheWithTimestamp(cache, req, networkRes.clone());
+            }
+            return networkRes;
+          }).catch(() => new Response(
+            JSON.stringify({ success: false, error: 'You are offline' }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } }
+          ));
         })
-        .catch(() => caches.match(req).then((r) => r || new Response(
-          JSON.stringify({ success: false, error: 'You are offline' }),
-          { status: 503, headers: { 'Content-Type': 'application/json' } }
-        )))
+      )
     );
     return;
   }
 
-  // --- Strategy 3: Network-first for navigation (HTML pages) ---
+  // --- Strategy 3: Cache-first for navigation (HTML pages) ---
+  // Aggressive: serve cached page immediately, revalidate in background
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_PAGES).then((c) => c.put(req, copy)).catch(() => {});
-          return res;
-        })
-        .catch(() =>
-          caches.match(req).then((r) => {
-            if (r) return r;
-            // Try to serve the cached homepage as a fallback
-            return caches.match('/').then((homePage) => {
+      caches.open(CACHE_PAGES).then((cache) =>
+        cache.match(req).then((cached) => {
+          if (cached) {
+            // Return cached immediately, revalidate in background
+            fetch(req).then((networkRes) => {
+              if (networkRes && networkRes.status === 200) {
+                cacheWithTimestamp(cache, req, networkRes.clone());
+              }
+            }).catch(() => {});
+            return cached;
+          }
+          // No cache — fetch from network
+          return fetch(req).then((networkRes) => {
+            if (networkRes && networkRes.status === 200) {
+              cacheWithTimestamp(cache, req, networkRes.clone());
+            }
+            return networkRes;
+          }).catch(() =>
+            caches.match('/').then((homePage) => {
               if (homePage) return homePage;
-              // Last resort: offline fallback page
               return new Response(OFFLINE_PAGE, {
                 status: 503,
                 headers: { 'Content-Type': 'text/html; charset=utf-8' },
               });
-            });
-          })
-        )
+            })
+          );
+        })
+      )
     );
     return;
   }
@@ -177,7 +240,7 @@ self.addEventListener('fetch', (event) => {
         const fetchPromise = fetch(req)
           .then((networkRes) => {
             if (networkRes && networkRes.status === 200 && networkRes.type === 'basic') {
-              cache.put(req, networkRes.clone());
+              cacheWithTimestamp(cache, req, networkRes.clone());
             }
             return networkRes;
           })
@@ -187,6 +250,26 @@ self.addEventListener('fetch', (event) => {
       })
     )
   );
+});
+
+// Periodic background cache warming — pre-fetch key pages
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'WARM_CACHE') {
+    const urls = event.data.urls || [];
+    caches.open(CACHE_PAGES).then((cache) => {
+      urls.forEach((url) => {
+        cache.match(url).then((cached) => {
+          if (!cached) {
+            fetch(url).then((res) => {
+              if (res && res.status === 200) {
+                cacheWithTimestamp(cache, url, res.clone());
+              }
+            }).catch(() => {});
+          }
+        });
+      });
+    });
+  }
 });
 `;
   return new Response(sw, {

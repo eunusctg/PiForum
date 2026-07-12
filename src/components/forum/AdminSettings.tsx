@@ -830,7 +830,7 @@ export default function AdminSettings() {
             value={seoMetaDescription}
             onChange={(e) => setSeoMetaDescription(e.target.value.slice(0, SEO_META_MAX))}
             maxLength={SEO_META_MAX}
-            placeholder="PiForum — a modern neumorphic forum CMS. Join the conversation today."
+            placeholder="PiForum — Where tech minds connect. Join the community today."
             className="neu-input px-3 py-2.5 min-h-[80px] resize-none"
           />
           <p className="text-xs text-muted-foreground">

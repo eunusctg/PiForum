@@ -101,14 +101,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport: Viewport = {
-  // Provide theme-color for both light & dark color-scheme preferences so the
+  // Provide theme-color for light, dark, and gold color-scheme preferences so the
   // browser chrome (mobile address bar, PWA toolbar, iOS status bar) matches
   // the page before JS hydrates. ThemeManager syncs this live when the user
   // explicitly picks Day / Night / Golden.
-  // Golden (#D4AF37) is used as the default light-scheme color because the
-  // PiForum brand is gold-themed; the dark-scheme uses the dark bronze bg.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#00897b" },
+    { media: "(prefers-color-scheme: light)", color: "#e6e6e8" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
   width: "device-width",
@@ -126,6 +124,10 @@ export default function RootLayout({
       <head>
         {/* JSON-LD structured data + analytics injected client-side from settings */}
         <SiteHeadInjector />
+        {/* iOS status bar style — updated dynamically by ThemeManager */}
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        {/* MS application nav button color — updated dynamically by ThemeManager */}
+        <meta name="msapplication-navbutton-color" content="#e6e6e8" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

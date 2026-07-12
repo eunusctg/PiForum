@@ -60,7 +60,7 @@
 
   /* Core Neumorphism tokens — soft off-white highlights (no pure white) */
   --neu-bg: #e6e6e8;
-  --neu-hi: #f5f5f7;
+  --neu-hi: #efeff1;
   --neu-lo: #c2c2c5;
   --neu-shadow: 9px 9px 18px var(--neu-lo), -9px -9px 18px var(--neu-hi);
   --neu-shadow-inset: inset 9px 9px 18px var(--neu-lo), inset -9px -9px 18px var(--neu-hi);
@@ -116,13 +116,13 @@
 .dark {
   /* Core Neumorphism tokens — pure black base with very subtle grays */
   --neu-bg: #000000;
-  --neu-hi: rgba(255,255,255,0.06);
+  --neu-hi: rgba(255,255,255,0.03);
   --neu-lo: rgba(0,0,0,0.8);
-  --neu-shadow: 9px 9px 18px rgba(0,0,0,0.8), -9px -9px 18px rgba(255,255,255,0.06);
-  --neu-shadow-inset: inset 9px 9px 18px rgba(0,0,0,0.8), inset -9px -9px 18px rgba(255,255,255,0.06);
-  --neu-shadow-sm: 5px 5px 10px rgba(0,0,0,0.8), -5px -5px 10px rgba(255,255,255,0.06);
-  --neu-shadow-inset-sm: inset 5px 5px 10px rgba(0,0,0,0.8), inset -5px -5px 10px rgba(255,255,255,0.06);
-  --neu-shadow-lg: 14px 14px 28px rgba(0,0,0,0.9), -14px -14px 28px rgba(255,255,255,0.08);
+  --neu-shadow: 9px 9px 18px rgba(0,0,0,0.8), -9px -9px 18px rgba(255,255,255,0.03);
+  --neu-shadow-inset: inset 9px 9px 18px rgba(0,0,0,0.8), inset -9px -9px 18px rgba(255,255,255,0.03);
+  --neu-shadow-sm: 5px 5px 10px rgba(0,0,0,0.8), -5px -5px 10px rgba(255,255,255,0.03);
+  --neu-shadow-inset-sm: inset 5px 5px 10px rgba(0,0,0,0.8), inset -5px -5px 10px rgba(255,255,255,0.03);
+  --neu-shadow-lg: 14px 14px 28px rgba(0,0,0,0.9), -14px -14px 28px rgba(255,255,255,0.04);
 
   /* Primary RGB for pulse-glow animation */
   --primary-rgb: 0, 188, 212;
@@ -164,7 +164,7 @@
 
 /* ============================================================
    GOLDEN THEME — Luxe Metallic Gold Neumorphism (selectable)
-   Base: #D4AF37 | Highlight: #FFEFB8 | Shadow: #9C760A
+   Base: #D4AF37 | Highlight: #E5C158 | Shadow: #9C760A
    Accent: #FFFDF3 (champagne) | Text: #3D2D00 (deep espresso)
    Polished: richer two-tone metallic sheen, deep bronze drop shadow,
    champagne top-gloss, elegant pressed states, gradient lift on hover.
@@ -173,13 +173,13 @@
 .gold {
   /* Core Golden Neumorphism tokens — refined luxe shadows */
   --neu-bg: #D4AF37;
-  --neu-hi: #FFEFB8;
+  --neu-hi: #E5C158;
   --neu-lo: #9C760A;
-  --neu-shadow: 10px 10px 22px #8B6A08, -10px -10px 22px #FFF1BD;
-  --neu-shadow-inset: inset 10px 10px 22px #8B6A08, inset -10px -10px 22px #FFF1BD;
-  --neu-shadow-sm: 5px 5px 12px #8B6A08, -5px -5px 12px #FFF1BD;
-  --neu-shadow-inset-sm: inset 5px 5px 12px #8B6A08, inset -5px -5px 12px #FFF1BD;
-  --neu-shadow-lg: 18px 18px 36px #6E5206, -18px -18px 36px #FFF7D8;
+  --neu-shadow: 10px 10px 22px #8B6A08, -10px -10px 22px #E5C158;
+  --neu-shadow-inset: inset 10px 10px 22px #8B6A08, inset -10px -10px 22px #E5C158;
+  --neu-shadow-sm: 5px 5px 12px #8B6A08, -5px -5px 12px #E5C158;
+  --neu-shadow-inset-sm: inset 5px 5px 12px #8B6A08, inset -5px -5px 12px #E5C158;
+  --neu-shadow-lg: 18px 18px 36px #6E5206, -18px -18px 36px #E5C158;
 
   /* Primary RGB for pulse-glow animation */
   --primary-rgb: 74, 53, 0;
@@ -187,13 +187,13 @@
   /* Golden palette constants for reuse */
   --gold-base: #D4AF37;
   --gold-soft: #E5C158;
-  --gold-highlight: #FFEAA7;
+  --gold-highlight: #E5C158;
   --gold-shadow: #AA820A;
   --gold-champagne: #FFFDF3;
   --gold-text: #3D2D00;
   --gold-text-muted: #6E5206;
   --gold-deep: #8B6A08;
-  --gold-bright: #FFF1BD;
+  --gold-bright: #E5C158;
 
   /* shadcn/ui tokens adapted for golden base — refined contrast */
   --background: #D4AF37;
@@ -346,7 +346,7 @@
   inset: 0;
   border-radius: inherit;
   background:
-    radial-gradient(120% 80% at 0% 0%, rgba(255, 241, 189, 0.28), transparent 55%),
+    radial-gradient(120% 80% at 0% 0%, rgba(229, 193, 88, 0.28), transparent 55%),
     radial-gradient(120% 80% at 100% 100%, rgba(139, 106, 8, 0.18), transparent 55%);
   pointer-events: none;
   opacity: 0.9;
@@ -364,7 +364,7 @@
   inset: 0;
   border-radius: inherit;
   background:
-    radial-gradient(120% 80% at 0% 0%, rgba(255, 241, 189, 0.28), transparent 55%),
+    radial-gradient(120% 80% at 0% 0%, rgba(229, 193, 88, 0.28), transparent 55%),
     radial-gradient(120% 80% at 100% 100%, rgba(139, 106, 8, 0.18), transparent 55%);
   pointer-events: none;
   opacity: 0.9;
@@ -373,13 +373,13 @@
 /* Golden FAB — chic gold dome */
 .gold .neu-fab {
   background-image:
-    radial-gradient(120% 80% at 30% 25%, rgba(255, 241, 189, 0.45), transparent 60%);
+    radial-gradient(120% 80% at 30% 25%, rgba(229, 193, 88, 0.45), transparent 60%);
 }
 
 /* Golden buttons — subtle inner sheen */
 .gold .neu-btn {
   background-image:
-    linear-gradient(180deg, rgba(255, 241, 189, 0.18), transparent 60%);
+    linear-gradient(180deg, rgba(229, 193, 88, 0.18), transparent 60%);
 }
 
 /* Pressed / inset card — sunken surface */
@@ -690,15 +690,15 @@
   height: 2px;
   background: var(--neu-bg);
   border-radius: 1px;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.14), inset 0 -1px 2px rgba(245, 245, 247, 0.45);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.14), inset 0 -1px 2px rgba(239, 239, 241, 0.4);
 }
 
 .dark .neu-divider {
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), inset 0 -1px 2px rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), inset 0 -1px 2px rgba(255, 255, 255, 0.02);
 }
 
 .gold .neu-divider {
-  box-shadow: inset 0 1px 3px rgba(74, 53, 0, 0.32), inset 0 -1px 2px rgba(255, 241, 189, 0.55);
+  box-shadow: inset 0 1px 3px rgba(74, 53, 0, 0.32), inset 0 -1px 2px rgba(229, 193, 88, 0.5);
 }
 
 /* Toggle switch neumorphic track */
@@ -753,7 +753,7 @@
 }
 
 :root .neu-etched-text {
-  text-shadow: 1px 1px 1px rgba(245, 245, 247, 0.55), -1px -1px 1px rgba(0, 0, 0, 0.18);
+  text-shadow: 1px 1px 1px rgba(239, 239, 241, 0.5), -1px -1px 1px rgba(0, 0, 0, 0.18);
 }
 
 .dark .neu-etched-text {
@@ -761,13 +761,13 @@
 }
 
 .gold .neu-etched-text {
-  text-shadow: 1px 1px 1px rgba(255, 241, 189, 0.65), -1px -1px 1px rgba(74, 53, 0, 0.38);
+  text-shadow: 1px 1px 1px rgba(229, 193, 88, 0.65), -1px -1px 1px rgba(74, 53, 0, 0.38);
 }
 
 /* Inverse etching for primary/light fill backgrounds */
 .neu-etched-text-light {
   color: var(--primary-foreground);
-  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.18), -1px -1px 1px rgba(245, 245, 247, 0.5);
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.18), -1px -1px 1px rgba(239, 239, 241, 0.45);
 }
 
 /* Concave pill badge — tiny sunken well for tags & category labels.
@@ -798,7 +798,7 @@
 /* Etched text effect per theme — soft off-white highlight on day */
 :root .neu-badge,
 :root .neu-thread-title {
-  text-shadow: 0 1px 0 rgba(245, 245, 247, 0.55), 0 -1px 0 rgba(0, 0, 0, 0.08);
+  text-shadow: 0 1px 0 rgba(239, 239, 241, 0.5), 0 -1px 0 rgba(0, 0, 0, 0.08);
 }
 
 .dark .neu-badge,
@@ -808,7 +808,7 @@
 
 .gold .neu-badge,
 .gold .neu-thread-title {
-  text-shadow: 0 1px 0 rgba(255, 241, 189, 0.7), 0 -1px 0 rgba(74, 53, 0, 0.28);
+  text-shadow: 0 1px 0 rgba(229, 193, 88, 0.7), 0 -1px 0 rgba(74, 53, 0, 0.28);
 }
 
 /* Thread title — crisp engraved heading */
@@ -894,27 +894,27 @@
 @media (max-width: 640px) {
   /* Reduce shadow intensity on small screens for cleaner look */
   :root {
-    --neu-shadow: 6px 6px 12px #c2c2c5, -6px -6px 12px #f5f5f7;
-    --neu-shadow-inset: inset 6px 6px 12px #c2c2c5, inset -6px -6px 12px #f5f5f7;
-    --neu-shadow-sm: 3px 3px 6px #c2c2c5, -3px -3px 6px #f5f5f7;
-    --neu-shadow-inset-sm: inset 3px 3px 6px #c2c2c5, inset -3px -3px 6px #f5f5f7;
-    --neu-shadow-lg: 9px 9px 18px #b8b8bc, -9px -9px 18px #f5f5f7;
+    --neu-shadow: 6px 6px 12px #c2c2c5, -6px -6px 12px #efeff1;
+    --neu-shadow-inset: inset 6px 6px 12px #c2c2c5, inset -6px -6px 12px #efeff1;
+    --neu-shadow-sm: 3px 3px 6px #c2c2c5, -3px -3px 6px #efeff1;
+    --neu-shadow-inset-sm: inset 3px 3px 6px #c2c2c5, inset -3px -3px 6px #efeff1;
+    --neu-shadow-lg: 9px 9px 18px #b8b8bc, -9px -9px 18px #efeff1;
   }
 
   .dark {
-    --neu-shadow: 6px 6px 12px rgba(0,0,0,0.8), -6px -6px 12px rgba(255,255,255,0.06);
-    --neu-shadow-inset: inset 6px 6px 12px rgba(0,0,0,0.8), inset -6px -6px 12px rgba(255,255,255,0.06);
-    --neu-shadow-sm: 3px 3px 6px rgba(0,0,0,0.8), -3px -3px 6px rgba(255,255,255,0.06);
-    --neu-shadow-inset-sm: inset 3px 3px 6px rgba(0,0,0,0.8), inset -3px -3px 6px rgba(255,255,255,0.06);
-    --neu-shadow-lg: 10px 10px 20px rgba(0,0,0,0.9), -10px -10px 20px rgba(255,255,255,0.08);
+    --neu-shadow: 6px 6px 12px rgba(0,0,0,0.8), -6px -6px 12px rgba(255,255,255,0.03);
+    --neu-shadow-inset: inset 6px 6px 12px rgba(0,0,0,0.8), inset -6px -6px 12px rgba(255,255,255,0.03);
+    --neu-shadow-sm: 3px 3px 6px rgba(0,0,0,0.8), -3px -3px 6px rgba(255,255,255,0.03);
+    --neu-shadow-inset-sm: inset 3px 3px 6px rgba(0,0,0,0.8), inset -3px -3px 6px rgba(255,255,255,0.03);
+    --neu-shadow-lg: 10px 10px 20px rgba(0,0,0,0.9), -10px -10px 20px rgba(255,255,255,0.04);
   }
 
   .gold {
-    --neu-shadow: 6px 6px 12px #8B6A08, -6px -6px 12px #FFF1BD;
-    --neu-shadow-inset: inset 6px 6px 12px #8B6A08, inset -6px -6px 12px #FFF1BD;
-    --neu-shadow-sm: 3px 3px 6px #8B6A08, -3px -3px 6px #FFF1BD;
-    --neu-shadow-inset-sm: inset 3px 3px 6px #8B6A08, inset -3px -3px 6px #FFF1BD;
-    --neu-shadow-lg: 10px 10px 22px #6E5206, -10px -10px 22px #FFF7D8;
+    --neu-shadow: 6px 6px 12px #8B6A08, -6px -6px 12px #E5C158;
+    --neu-shadow-inset: inset 6px 6px 12px #8B6A08, inset -6px -6px 12px #E5C158;
+    --neu-shadow-sm: 3px 3px 6px #8B6A08, -3px -3px 6px #E5C158;
+    --neu-shadow-inset-sm: inset 3px 3px 6px #8B6A08, inset -3px -3px 6px #E5C158;
+    --neu-shadow-lg: 10px 10px 22px #6E5206, -10px -10px 22px #E5C158;
   }
 
   .neu-card,
@@ -924,11 +924,35 @@
     border-radius: 14px;
   }
 
+  .neu-btn,
+  .neu-input {
+    border-radius: 10px;
+  }
+
+  .neu-badge {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.55rem;
+  }
+
+  .neu-circle {
+    min-width: 2rem;
+    min-height: 2rem;
+  }
+
   .neu-fab {
     width: 3rem;
     height: 3rem;
     bottom: 1rem;
     right: 1rem;
+  }
+
+  /* Gold theme — prevent pseudo-element overflow on small screens */
+  .gold .neu-card::before,
+  .gold .neu-card-static::before {
+    background:
+      radial-gradient(100% 70% at 0% 0%, rgba(229, 193, 88, 0.22), transparent 50%),
+      radial-gradient(100% 70% at 100% 100%, rgba(139, 106, 8, 0.14), transparent 50%);
+    opacity: 0.8;
   }
 }
 

@@ -15,6 +15,7 @@ import NotificationsView from '@/components/forum/NotificationsView';
 import ProfileView from '@/components/forum/ProfileView';
 import TagsView from '@/components/forum/TagsView';
 import SiteFooter from '@/components/forum/SiteFooter';
+import CookieConsent from '@/components/forum/CookieConsent';
 import AdminDashboard from '@/components/forum/AdminDashboard';
 import AdminUsers from '@/components/forum/AdminUsers';
 import AdminCategories from '@/components/forum/AdminCategories';
@@ -265,7 +266,7 @@ export default function ForumShell({
     >
       <Header />
       <AuthModal />
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full pb-16 md:pb-0">
         {/* Keyed wrapper so each view swap triggers a subtle fade-in-up
             entrance animation (defined in globals.css). */}
         <div key={currentView} className="animate-fade-in-up">
@@ -273,6 +274,7 @@ export default function ForumShell({
         </div>
       </main>
       <SiteFooter />
+      <CookieConsent />
     </div>
   );
 }

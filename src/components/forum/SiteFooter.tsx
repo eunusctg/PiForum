@@ -1,7 +1,7 @@
 'use client';
 
 /* ------------------------------------------------------------------ */
-/*  SiteFooter — polished, modern, fully-responsive neumorphic footer. */
+/*  SiteFooter — polished, modern, fully-responsive footer. */
 /*                                                                    */
 /*  Layout:                                                           */
 /*    • Mobile  ( <640px ): 1-col stack                               */
@@ -49,39 +49,19 @@ export default function SiteFooter() {
   const [showTop, setShowTop] = useState(false);
 
   const forumName = getSetting('forum_name', 'PiForum');
-  const forumTagline = getSetting('forum_tagline', 'Where tech conversations find their form.');
+  const forumTagline = getSetting('forum_tagline', 'Where tech minds connect.');
   const forumDescription =
-    getSetting('forum_description', 'PiForum — Where tech conversations find their form. A modern community for developers, engineers, and tech enthusiasts.') || forumTagline || '';
+    getSetting('forum_description', 'PiForum — Where tech minds connect. A modern community for developers, engineers, and tech enthusiasts.') || forumTagline || '';
   const logoUrl = getSetting('logo_url', '');
   const year = new Date().getFullYear();
 
-  // Social links — only render ones with a non-empty URL.
+  // Social links
   const socials = useMemo<SocialLink[]>(() => {
     const list: SocialLink[] = [
-      {
-        key: 'github',
-        href: getSetting('social_github', ''),
-        label: `${forumName} on GitHub`,
-        Icon: Github,
-      },
-      {
-        key: 'twitter',
-        href: getSetting('social_twitter', ''),
-        label: `${forumName} on Twitter / X`,
-        Icon: Twitter,
-      },
-      {
-        key: 'discord',
-        href: getSetting('social_discord', ''),
-        label: `${forumName} on Discord`,
-        Icon: MessageCircle,
-      },
-      {
-        key: 'youtube',
-        href: getSetting('social_youtube', ''),
-        label: `${forumName} on YouTube`,
-        Icon: Youtube,
-      },
+      { key: 'github', href: getSetting('social_github', ''), label: `${forumName} on GitHub`, Icon: Github },
+      { key: 'twitter', href: getSetting('social_twitter', ''), label: `${forumName} on Twitter / X`, Icon: Twitter },
+      { key: 'discord', href: getSetting('social_discord', ''), label: `${forumName} on Discord`, Icon: MessageCircle },
+      { key: 'youtube', href: getSetting('social_youtube', ''), label: `${forumName} on YouTube`, Icon: Youtube },
     ];
     return list.filter((s) => s.href && s.href.trim().length > 0);
   }, [getSetting, forumName]);
@@ -107,16 +87,14 @@ export default function SiteFooter() {
           }
         }
       } catch {
-        // Non-critical — footer renders fine without external data.
+        // Non-critical
       }
     }
     load();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
-  // Floating back-to-top visibility — appears after scrolling one viewport.
+  // Floating back-to-top visibility
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onScroll = () => {
@@ -131,32 +109,19 @@ export default function SiteFooter() {
     e.preventDefault();
     const trimmed = email.trim();
     if (!trimmed) {
-      toast({
-        title: 'Enter your email',
-        description: 'Please provide an email address to subscribe.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Enter your email', description: 'Please provide an email address to subscribe.', variant: 'destructive' });
       return;
     }
-    // Basic email sanity check — decorative, no backend persistence.
     const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
     if (!looksLikeEmail) {
-      toast({
-        title: 'Invalid email',
-        description: 'That email address does not look right.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Invalid email', description: 'That email address does not look right.', variant: 'destructive' });
       return;
     }
     setSubscribing(true);
-    // Simulated async — give the button a brief "working" state.
     window.setTimeout(() => {
       setSubscribing(false);
       setEmail('');
-      toast({
-        title: 'You’re subscribed!',
-        description: 'Thanks for subscribing to the PiForum newsletter.',
-      });
+      toast({ title: 'You\'re subscribed!', description: 'Thanks for subscribing to the PiForum newsletter.' });
     }, 600);
   }
 
@@ -176,20 +141,15 @@ export default function SiteFooter() {
 
   return (
     <footer
-      className="mt-auto pt-8 pb-6 sm:pt-10 sm:pb-8 lg:pt-12 lg:pb-10"
+      className="mt-auto pt-8 pb-6 sm:pt-10 sm:pb-8 lg:pt-12 lg:pb-10 pb-20 md:pb-6"
       role="contentinfo"
       aria-label="Site footer"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Subtle top divider — neumorphic groove */}
+        {/* Subtle top divider */}
         <div className="neu-divider mb-7 sm:mb-9 lg:mb-10" aria-hidden="true" />
 
-        {/* ---------------------------------------------------------------- */}
-        {/* Responsive grid:                                                 */}
-        {/*  • mobile → single column stack.                                 */}
-        {/*  • ≥sm   → 2 columns (Brand, Quick Links+Newsletter).           */}
-        {/*  • ≥lg   → 3 columns (Brand, Quick Links, Newsletter).          */}
-        {/* ---------------------------------------------------------------- */}
+        {/* Responsive grid */}
         <div className="grid grid-cols-1 gap-x-10 gap-y-9 sm:grid-cols-2 sm:gap-x-12 lg:grid-cols-3 lg:gap-x-16">
           {/* 1. Brand */}
           <section aria-labelledby="footer-brand-heading">
@@ -208,10 +168,7 @@ export default function SiteFooter() {
                 }}
               />
               <div className="min-w-0">
-                <h2
-                  id="footer-brand-heading"
-                  className="text-sm font-bold tracking-tight"
-                >
+                <h2 id="footer-brand-heading" className="text-sm font-bold tracking-tight">
                   {forumName}
                 </h2>
                 {forumTagline && (
@@ -228,12 +185,9 @@ export default function SiteFooter() {
               </p>
             )}
 
-            {/* Social icons row — 40px touch targets on mobile */}
+            {/* Social icons row */}
             {socials.length > 0 && (
-              <nav
-                className="mt-5 flex flex-wrap items-center gap-2 sm:gap-2.5"
-                aria-label="Social links"
-              >
+              <nav className="mt-5 flex flex-wrap items-center gap-2 sm:gap-2.5" aria-label="Social links">
                 {socials.map(({ key, href, label, Icon }) => (
                   <a
                     key={key}
@@ -252,10 +206,7 @@ export default function SiteFooter() {
 
           {/* 2. Quick Links */}
           <section aria-labelledby="footer-links-heading">
-            <h3
-              id="footer-links-heading"
-              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-            >
+            <h3 id="footer-links-heading" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Quick Links
             </h3>
             <nav className="mt-4 flex flex-col gap-2.5" aria-label="Footer quick links">
@@ -268,17 +219,17 @@ export default function SiteFooter() {
               </button>
               <button
                 type="button"
-                onClick={() => navigateTo('members')}
+                onClick={() => handleLegal('about')}
                 className="text-left text-sm text-muted-foreground hover:text-primary transition-colors"
               >
-                Members
+                About Us
               </button>
               <button
                 type="button"
-                onClick={() => navigateTo('tags')}
+                onClick={() => handleLegal('contact')}
                 className="text-left text-sm text-muted-foreground hover:text-primary transition-colors"
               >
-                Tags
+                Contact Us
               </button>
               <button
                 type="button"
@@ -304,15 +255,9 @@ export default function SiteFooter() {
             </nav>
           </section>
 
-          {/* 3. Newsletter / Stay Updated */}
-          <section
-            aria-labelledby="footer-newsletter-heading"
-            className="sm:col-span-2 lg:col-span-1"
-          >
-            <h3
-              id="footer-newsletter-heading"
-              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-            >
+          {/* 3. Newsletter */}
+          <section aria-labelledby="footer-newsletter-heading" className="sm:col-span-2 lg:col-span-1">
+            <h3 id="footer-newsletter-heading" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Stay Updated
             </h3>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -320,17 +265,12 @@ export default function SiteFooter() {
               No spam — unsubscribe anytime.
             </p>
 
-            {/* Inline form: input with attached submit button.
-                Icon-only on mobile, icon+text on ≥sm. */}
             <form onSubmit={handleSubscribe} className="mt-4" noValidate>
               <label htmlFor="footer-newsletter-email" className="sr-only">
                 Email address
               </label>
               <div className="relative flex items-center">
-                <Mail
-                  className="pointer-events-none absolute left-3 size-4 text-muted-foreground"
-                  aria-hidden="true"
-                />
+                <Mail className="pointer-events-none absolute left-3 size-4 text-muted-foreground" aria-hidden="true" />
                 <input
                   id="footer-newsletter-email"
                   type="email"
@@ -354,18 +294,10 @@ export default function SiteFooter() {
                 </button>
               </div>
             </form>
-
-            {/* Powered by PiForum badge */}
-            <p className="mt-5 text-xs text-muted-foreground">
-              © {year} {forumName}. All rights reserved.
-            </p>
           </section>
         </div>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* Bottom bar — copyright + legal + back-to-top                     */}
-        {/* Centered stack on mobile, row on ≥sm.                             */}
-        {/* ---------------------------------------------------------------- */}
+        {/* Bottom bar — copyright + legal */}
         <div className="neu-divider mt-9 sm:mt-10 mb-5" aria-hidden="true" />
 
         <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
@@ -373,10 +305,21 @@ export default function SiteFooter() {
             © {year} {forumName}. All rights reserved.
           </address>
 
-          <nav
-            className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2"
-            aria-label="Legal"
-          >
+          <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2" aria-label="Legal">
+            <button
+              type="button"
+              onClick={() => handleLegal('about')}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              About
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLegal('contact')}
+              className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              Contact
+            </button>
             <button
               type="button"
               onClick={() => handleLegal('privacy')}
@@ -402,10 +345,7 @@ export default function SiteFooter() {
         </div>
       </div>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Floating back-to-top FAB — appears after scrolling.              */}
-      {/* Great mobile UX for long pages. Fixed to viewport bottom-right.   */}
-      {/* ---------------------------------------------------------------- */}
+      {/* Floating back-to-top FAB */}
       <button
         type="button"
         onClick={scrollToTop}

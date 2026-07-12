@@ -75,7 +75,7 @@ export default function AdminPwa() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="pwa-desc">Description</Label>
-          <Input id="pwa-desc" value={v('pwa_description')} onChange={(e) => setValue('pwa_description', e.target.value)} placeholder="A modern neumorphic forum" className="neu-input px-3 py-2.5" />
+          <Input id="pwa-desc" value={v('pwa_description')} onChange={(e) => setValue('pwa_description', e.target.value)} placeholder="Where tech minds connect" className="neu-input px-3 py-2.5" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="pwa-display">Display Mode</Label>

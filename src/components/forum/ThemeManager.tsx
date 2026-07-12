@@ -50,11 +50,17 @@ function syncThemeColorMeta(mode: ThemeMode) {
     'meta[name="apple-mobile-web-app-status-bar-style"]'
   );
   if (apple) {
-    // "default" lets the bar adapt to the page; black-translucent for dark/gold
     apple.setAttribute(
       "content",
       mode === "light" ? "default" : "black-translucent"
     );
+  }
+  // Sync MS application nav button color
+  const msNav = document.querySelector<HTMLMetaElement>(
+    'meta[name="msapplication-navbutton-color"]'
+  );
+  if (msNav) {
+    msNav.setAttribute("content", color);
   }
 }
 

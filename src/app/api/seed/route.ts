@@ -323,8 +323,8 @@ export async function POST(request: Request) {
     /* ---------- Seed default settings (if missing) ---------- */
     const defaultSettings = [
       { key: 'forum_name', value: 'PiForum' },
-      { key: 'forum_description', value: 'A modern, neumorphic forum CMS with a luxurious golden theme.' },
-      { key: 'forum_tagline', value: 'Where conversations find their form.' },
+      { key: 'forum_description', value: 'PiForum — Where tech minds connect. A modern community platform for developers, engineers, and tech enthusiasts.' },
+      { key: 'forum_tagline', value: 'Where tech minds connect.' },
       { key: 'open_registration', value: 'true' },
       { key: 'maintenance_mode', value: 'false' },
       { key: 'maintenance_message', value: "We'll be right back. PiForum is undergoing scheduled maintenance." },
@@ -344,8 +344,8 @@ export async function POST(request: Request) {
       { key: 'allow_signatures', value: 'true' },
       { key: 'allow_avatars', value: 'true' },
       { key: 'require_email_verification', value: 'false' },
-      { key: 'seo_keywords', value: 'forum, community, discussion, neumorphism, piforum' },
-      { key: 'seo_meta_description', value: 'PiForum — a modern neumorphic forum CMS. Join the conversation today.' },
+      { key: 'seo_keywords', value: 'tech forum,developer community,programming forum,web development,AI discussion,coding help,tech community,PiForum,software engineering,open source,dev forum,hardware forum,gaming community' },
+      { key: 'seo_meta_description', value: 'PiForum — Where tech minds connect. Join the community for developers, engineers, and tech enthusiasts.' },
       { key: 'analytics_enabled', value: 'false' },
       { key: 'analytics_id', value: '' },
       { key: 'smtp_enabled', value: 'false' },
@@ -372,6 +372,315 @@ export async function POST(request: Request) {
       });
     }
 
+    /* ---------- Seed default static pages (if missing) ---------- */
+    const defaultPages = [
+      {
+        slug: 'about',
+        title: 'About Us',
+        content: `<h2>About PiForum</h2>
+<p>PiForum is a modern, community-driven technology forum built for enthusiasts, developers, creators, and curious minds from around the world. Our mission is to provide a welcoming, inclusive, and beautifully crafted space where people can share knowledge, ask questions, and engage in meaningful conversations.</p>
+
+<h3>Our Story</h3>
+<p>PiForum was born out of a simple frustration: existing forums often feel outdated, cluttered, and unwelcoming. We believed that online communities deserve better — a platform that combines the depth of traditional forums with the polish and usability of modern web applications. So we built one.</p>
+<p>From its inception, PiForum has been designed with three core principles in mind:</p>
+<ul>
+<li><strong>Community First</strong> — Every feature, every design decision, and every policy is guided by what's best for the community. We listen to our members and evolve together.</li>
+<li><strong>Craft & Quality</strong> — We sweat the details. From our signature design language to our carefully tuned notification system, PiForum is built with care and intention.</li>
+<li><strong>Open Dialogue</strong> — We believe the best ideas emerge from open, respectful conversation. PiForum is a place where diverse perspectives are valued and every voice matters.</li>
+</ul>
+
+<h3>What Makes PiForum Different</h3>
+<p>Unlike generic social platforms, PiForum is purpose-built for long-form discussions and knowledge sharing. Here's what sets us apart:</p>
+<ul>
+<li><strong>Organized Categories &amp; Forums</strong> — Topics are neatly categorized so you can find exactly what you're looking for, from programming tutorials to travel stories.</li>
+<li><strong>Rich Profiles &amp; Reputation</strong> — Your contributions build your reputation. Earn recognition through helpful posts, insightful replies, and community engagement.</li>
+<li><strong>Tags &amp; Bookmarks</strong> — Tag threads for easy discovery, and bookmark the ones you want to revisit.</li>
+<li><strong>Polls &amp; Surveys</strong> — Gauge community opinion with built-in polling on any thread.</li>
+<li><strong>Follow System</strong> — Follow other members and stay updated on their latest contributions.</li>
+<li><strong>Beautiful Design</strong> — Our signature multi-theme design isn't just eye candy — it's designed for readability, accessibility, and a premium user experience.</li>
+</ul>
+
+<h3>Our Community</h3>
+<p>PiForum is home to a vibrant and growing community of:</p>
+<ul>
+<li>Software developers and engineers</li>
+<li>Hardware tinkerers and makers</li>
+<li>Artists, writers, and musicians</li>
+<li>Gamers and speedrunners</li>
+<li>Chefs, travelers, and hobbyists</li>
+<li>And anyone who loves a good conversation</li>
+</ul>
+<p>Whether you're a seasoned expert or a complete beginner, there's a place for you here.</p>
+
+<h3>Join Us</h3>
+<p>Ready to become part of the PiForum community? Registration is free and takes just a minute. Come say hello in our <strong>Introductions</strong> forum — we'd love to meet you!</p>`,
+        excerpt: 'Learn about PiForum — our mission, story, and the community that makes us special.',
+        status: 'published',
+        showInFooter: true,
+        showInHeader: false,
+        sortOrder: 0,
+      },
+      {
+        slug: 'contact',
+        title: 'Contact Us',
+        content: `<h2>Get in Touch</h2>
+<p>We'd love to hear from you! Whether you have a question, suggestion, partnership inquiry, or just want to say hello, here's how you can reach the PiForum team.</p>
+
+<h3>General Inquiries</h3>
+<p>For general questions about PiForum, our features, or how things work:</p>
+<ul>
+<li><strong>Email:</strong> hello@piforum.dev</li>
+<li><strong>Response Time:</strong> We typically respond within 24–48 hours during business days.</li>
+</ul>
+
+<h3>Technical Support</h3>
+<p>Experiencing a bug, account issue, or technical difficulty? The fastest way to get help is to:</p>
+<ol>
+<li>Check our <strong>Feedback &amp; Suggestions</strong> forum — your question may already be answered there.</li>
+<li>If not, create a new thread with the <em>help</em> tag and our community or moderators will assist you.</li>
+<li>For urgent account issues (e.g., locked account, security concerns), email us directly at <strong>support@piforum.dev</strong>.</li>
+</ol>
+
+<h3>Report Abuse or Policy Violations</h3>
+<p>If you encounter content that violates our community guidelines:</p>
+<ol>
+<li>Use the built-in <strong>Report</strong> button found on every thread, post, and user profile.</li>
+<li>Our moderation team reviews every report promptly.</li>
+<li>For severe or time-sensitive issues, email <strong>abuse@piforum.dev</strong>.</li>
+</ol>
+
+<h3>Partnerships &amp; Business</h3>
+<p>Interested in partnering with PiForum, sponsoring a category, or advertising on our platform?</p>
+<ul>
+<li><strong>Email:</strong> partnerships@piforum.dev</li>
+<li>Please include details about your organization and the type of collaboration you have in mind.</li>
+</ul>
+
+<h3>Press &amp; Media</h3>
+<p>For press inquiries, interviews, or media kits:</p>
+<ul>
+<li><strong>Email:</strong> press@piforum.dev</li>
+</ul>
+
+<h3>Stay Connected</h3>
+<p>Follow PiForum on social media for the latest updates, feature announcements, and community highlights:</p>
+<ul>
+<li><strong>Twitter / X:</strong> @PiForum</li>
+<li><strong>GitHub:</strong> github.com/piforum</li>
+<li><strong>Discord:</strong> Join our community server for real-time chat</li>
+</ul>
+
+<h3>Office Location</h3>
+<p>PiForum is a distributed team. We operate remotely across multiple time zones, which helps us provide timely support to our global community.</p>
+
+<p><em>We value every message we receive and will do our best to respond as quickly as possible. Thank you for being part of PiForum!</em></p>`,
+        excerpt: 'Reach out to the PiForum team — support, partnerships, feedback, and more.',
+        status: 'published',
+        showInFooter: true,
+        showInHeader: false,
+        sortOrder: 1,
+      },
+      {
+        slug: 'privacy',
+        title: 'Privacy Policy',
+        content: `<h2>Privacy Policy</h2>
+<p><em>Last updated: March 2025</em></p>
+<p>This Privacy Policy describes how PiForum ("we," "us," or "our") collects, uses, and protects your personal information when you use our platform. By using PiForum, you agree to the practices described in this policy.</p>
+
+<h3>1. Information We Collect</h3>
+<h4>1.1 Information You Provide</h4>
+<ul>
+<li><strong>Account Information:</strong> When you register, we collect your username, email address, display name, and password (stored in hashed form). You may optionally provide a bio, location, website URL, avatar, and signature.</li>
+<li><strong>Content You Post:</strong> Threads, posts, replies, polls, tags, and any other content you create on the platform.</li>
+<li><strong>Communications:</strong> If you contact us via email or our contact forms, we retain those communications to resolve your inquiry.</li>
+</ul>
+
+<h4>1.2 Information Collected Automatically</h4>
+<ul>
+<li><strong>Usage Data:</strong> We log page views, thread views, and general navigation patterns to improve the platform.</li>
+<li><strong>Device Information:</strong> Browser type, operating system, and screen resolution for optimizing display and functionality.</li>
+<li><strong>IP Address:</strong> Collected for security purposes, including spam prevention, abuse detection, and rate limiting.</li>
+<li><strong>Cookies &amp; Local Storage:</strong> We use essential cookies for authentication, session management, and preference storage (e.g., theme selection). We do not use third-party tracking cookies by default.</li>
+</ul>
+
+<h3>2. How We Use Your Information</h3>
+<p>We use the information we collect to:</p>
+<ul>
+<li>Provide, maintain, and improve the PiForum platform</li>
+<li>Authenticate your identity and secure your account</li>
+<li>Display your profile and content to other users as intended</li>
+<li>Send notifications you've opted into (replies, mentions, system announcements)</li>
+<li>Detect, prevent, and address fraud, abuse, and policy violations</li>
+<li>Analyze aggregate usage patterns to improve user experience</li>
+<li>Comply with legal obligations</li>
+</ul>
+
+<h3>3. How We Share Your Information</h3>
+<p>We do <strong>not</strong> sell your personal information. We may share data in the following limited circumstances:</p>
+<ul>
+<li><strong>Public Content:</strong> Your posts, profile information, and threads are visible to other users and, where applicable, to guests browsing the forum.</li>
+<li><strong>Service Providers:</strong> We may use third-party services for email delivery, file storage, or analytics. These providers are contractually obligated to process data only as instructed and to maintain appropriate security measures.</li>
+<li><strong>Legal Requirements:</strong> We may disclose information when required by law, subpoena, or legal process, or when we believe disclosure is necessary to protect our rights, your safety, or the safety of others.</li>
+<li><strong>Moderation:</strong> Our moderation team may access account information and content to enforce community guidelines and handle reports.</li>
+</ul>
+
+<h3>4. Data Security</h3>
+<p>We take reasonable measures to protect your personal information, including:</p>
+<ul>
+<li>Password hashing using industry-standard algorithms</li>
+<li>Encrypted data transmission via HTTPS/TLS</li>
+<li>Access controls limiting data access to authorized personnel</li>
+<li>Regular security reviews and logging of security-related events</li>
+<li>Optional two-factor authentication (TOTP) for enhanced account security</li>
+</ul>
+<p>While we strive to protect your data, no system is completely secure. We encourage you to use strong, unique passwords and enable two-factor authentication.</p>
+
+<h3>5. Your Rights and Choices</h3>
+<ul>
+<li><strong>Account Settings:</strong> You can edit your profile, change your email, and update your preferences at any time from your account settings.</li>
+<li><strong>Content Deletion:</strong> You may request deletion of your account and associated content by contacting us. Some content may be retained in anonymized form for community continuity.</li>
+<li><strong>Notification Preferences:</strong> You can control which notifications you receive through your user settings.</li>
+<li><strong>Data Access:</strong> You may request a copy of your personal data by contacting us at privacy@piforum.dev.</li>
+</ul>
+
+<h3>6. Data Retention</h3>
+<p>We retain your account information for as long as your account is active. If you request account deletion, we will remove or anonymize your personal data within 30 days, except where retention is required by law or for legitimate purposes (e.g., resolving disputes, enforcing agreements). Content you've posted in public forums may be retained for community continuity but disassociated from your identity.</p>
+
+<h3>7. Children's Privacy</h3>
+<p>PiForum is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that we have collected such information, we will take steps to delete it promptly.</p>
+
+<h3>8. International Users</h3>
+<p>PiForum is accessible globally. If you are using PiForum from outside our primary jurisdiction, please be aware that your data may be transferred to and processed in servers located in different countries. By using PiForum, you consent to such transfers.</p>
+
+<h3>9. Changes to This Policy</h3>
+<p>We may update this Privacy Policy from time to time. We will notify registered users of material changes via email or a prominent notice on the platform. Your continued use of PiForum after any changes constitutes acceptance of the updated policy.</p>
+
+<h3>10. Contact Us</h3>
+<p>If you have questions or concerns about this Privacy Policy, please contact us at:</p>
+<ul>
+<li><strong>Email:</strong> privacy@piforum.dev</li>
+<li><strong>Address:</strong> Available upon request</li>
+</ul>`,
+        excerpt: 'How PiForum collects, uses, and protects your personal information.',
+        status: 'published',
+        showInFooter: true,
+        showInHeader: false,
+        sortOrder: 2,
+      },
+      {
+        slug: 'terms',
+        title: 'Terms and Conditions',
+        content: `<h2>Terms and Conditions</h2>
+<p><em>Last updated: March 2025</em></p>
+<p>These Terms and Conditions ("Terms") govern your use of PiForum ("the Platform," "the Service"). By accessing or using PiForum, you agree to be bound by these Terms. If you do not agree, please do not use the Platform.</p>
+
+<h3>1. Account Registration</h3>
+<ol>
+<li><strong>Eligibility:</strong> You must be at least 13 years of age to create an account on PiForum. By registering, you represent that you meet this requirement.</li>
+<li><strong>Account Accuracy:</strong> You agree to provide accurate, current, and complete information during registration and to keep your profile information updated.</li>
+<li><strong>Account Security:</strong> You are responsible for safeguarding your account credentials. You must not share your password with anyone. You agree to notify us immediately of any unauthorized use of your account.</li>
+<li><strong>One Account Per Person:</strong> Each individual may maintain only one account. Duplicate accounts may be merged or removed at our discretion.</li>
+<li><strong>Username Policy:</strong> Usernames must not impersonate others, contain offensive language, or violate intellectual property rights. We reserve the right to require a username change if it violates these guidelines.</li>
+</ol>
+
+<h3>2. Acceptable Use</h3>
+<p>When using PiForum, you agree <strong>not</strong> to:</p>
+<ul>
+<li>Post content that is illegal, harmful, threatening, abusive, harassing, defamatory, or otherwise objectionable</li>
+<li>Post spam, chain letters, pyramid schemes, or unsolicited commercial content</li>
+<li>Impersonate any person or entity, or falsely represent your affiliation with any person or entity</li>
+<li>Distribute malware, viruses, or any code designed to disrupt the Platform</li>
+<li>Attempt to gain unauthorized access to any part of the Platform, other users' accounts, or our systems</li>
+<li>Use automated scripts (bots, scrapers) to access the Platform without our express permission</li>
+<li>Circumvent any security measures, rate limits, or access restrictions</li>
+<li>Post content that infringes on the intellectual property rights of others</li>
+<li>Share another user's personal information without their consent (doxxing)</li>
+<li>Manipulate reputation, votes, or engagement metrics through artificial means</li>
+<li>Create posts or threads intended to disrupt the community (trolling, flame wars)</li>
+</ul>
+
+<h3>3. Content Ownership &amp; Licensing</h3>
+<ol>
+<li><strong>Your Content:</strong> You retain ownership of the content you post on PiForum. By posting, you grant us a non-exclusive, worldwide, royalty-free license to display, distribute, and reproduce your content on the Platform for the purpose of operating and promoting the service.</li>
+<li><strong>Community Content:</strong> Content posted by other users is subject to the same license. You may not reproduce, distribute, or create derivative works from others' content without their permission.</li>
+<li><strong>Platform Content:</strong> The PiForum platform itself — including its design, code, logos, and branding — is our intellectual property and may not be copied or imitated without written permission.</li>
+</ol>
+
+<h3>4. Moderation &amp; Enforcement</h3>
+<ol>
+<li><strong>Content Review:</strong> Our moderation team may review, edit, move, or remove any content that violates these Terms or our Community Guidelines, without prior notice.</li>
+<li><strong>Warnings &amp; Bans:</strong> Violations may result in warnings, temporary suspension, or permanent banning of your account. The severity of the action will correspond to the nature and frequency of the violation.</li>
+<li><strong>Appeals:</strong> If you believe a moderation action was taken in error, you may appeal by contacting us at support@piforum.dev. We will review appeals in good faith.</li>
+<li><strong>Reports:</strong> We encourage users to report content that violates these Terms. Abuse of the reporting system (e.g., false or retaliatory reports) may result in action against the reporter.</li>
+</ol>
+
+<h3>5. Privacy</h3>
+<p>Your use of PiForum is also governed by our <a href="/pages/privacy">Privacy Policy</a>, which is incorporated into these Terms by reference. Please review it to understand how we collect and handle your personal information.</p>
+
+<h3>6. Disclaimers</h3>
+<ol>
+<li><strong>As-Is Service:</strong> PiForum is provided on an "as is" and "as available" basis. We make no warranties, express or implied, regarding the reliability, availability, or fitness of the Platform for any particular purpose.</li>
+<li><strong>User Content:</strong> We do not endorse, verify, or guarantee the accuracy, quality, or legality of content posted by users. You access and rely on user content at your own risk.</li>
+<li><strong>No Liability for Third Parties:</strong> We are not responsible for the actions, content, or policies of third-party websites or services linked from PiForum.</li>
+</ol>
+
+<h3>7. Limitation of Liability</h3>
+<p>To the maximum extent permitted by law, PiForum and its operators shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of (or inability to use) the Platform, including but not limited to loss of data, reputation, or profits. Our total liability shall not exceed the amount you have paid to use the Platform, if any.</p>
+
+<h3>8. Termination</h3>
+<ol>
+<li><strong>By You:</strong> You may deactivate your account at any time by contacting us. Upon deactivation, your profile will be hidden, but your posted content will remain for community continuity unless you request its removal.</li>
+<li><strong>By Us:</strong> We may suspend or terminate your account if you violate these Terms, with or without notice. We may also terminate accounts that are inactive for an extended period, with reasonable notice.</li>
+<li><strong>Survival:</strong> Provisions regarding content licensing, disclaimers, limitation of liability, and general provisions shall survive termination.</li>
+</ol>
+
+<h3>9. Changes to These Terms</h3>
+<p>We may revise these Terms from time to time. Material changes will be communicated via email or a prominent notice on the Platform. Your continued use of PiForum after changes become effective constitutes acceptance of the revised Terms.</p>
+
+<h3>10. General Provisions</h3>
+<ul>
+<li><strong>Entire Agreement:</strong> These Terms, together with our Privacy Policy, constitute the entire agreement between you and PiForum regarding the use of the Platform.</li>
+<li><strong>Severability:</strong> If any provision of these Terms is found unenforceable, the remaining provisions will remain in full effect.</li>
+<li><strong>Waiver:</strong> Our failure to enforce any right under these Terms does not constitute a waiver of that right.</li>
+<li><strong>Governing Law:</strong> These Terms shall be governed by and construed in accordance with applicable law, without regard to conflict-of-law principles.</li>
+</ul>
+
+<h3>11. Contact</h3>
+<p>If you have questions about these Terms, please contact us at:</p>
+<ul>
+<li><strong>Email:</strong> legal@piforum.dev</li>
+</ul>
+
+<p><em>Thank you for being a valued member of the PiForum community. We're committed to providing a safe, respectful, and engaging space for everyone.</em></p>`,
+        excerpt: 'Terms and conditions governing your use of PiForum.',
+        status: 'published',
+        showInFooter: true,
+        showInHeader: false,
+        sortOrder: 3,
+      },
+    ];
+
+    let pagesCreated = 0;
+    for (const p of defaultPages) {
+      const result = await db.page.upsert({
+        where: { slug: p.slug },
+        update: {},
+        create: {
+          slug: p.slug,
+          title: p.title,
+          content: p.content,
+          excerpt: p.excerpt,
+          status: p.status,
+          showInFooter: p.showInFooter,
+          showInHeader: p.showInHeader,
+          sortOrder: p.sortOrder,
+          authorId: adminUserId,
+          publishedAt: new Date(),
+        },
+      });
+      if (result) pagesCreated++;
+    }
+
     /* ---------- Return summary ---------- */
     const stats = {
       usersCreated: createdUsers.length,
@@ -382,6 +691,7 @@ export async function POST(request: Request) {
       postsCreated: postCounter,
       notificationsCreated: notifTypes.length,
       settingsSeeded: defaultSettings.length,
+      pagesSeeded: pagesCreated,
     };
 
     return successResponse(stats, 201);

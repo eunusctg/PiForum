@@ -13,7 +13,7 @@ import { useAppStore } from '@/lib/store';
    - SW registered with updateViaCache: 'none' for immediate updates
    - FCM push notification integration */
 
-const CURRENT_CACHE_PREFIX = 'piforum-v3';
+const CURRENT_CACHE_PREFIX = 'piforum-v4';
 
 /* ---------- Offline indicator banner — declared outside render ---------- */
 function OfflineBanner() {
@@ -122,6 +122,22 @@ export default function PwaRegistration() {
         setInterval(() => {
           registration.update().catch(() => {});
         }, 30 * 60 * 1000);
+
+        // Aggressive cache warming: pre-fetch key pages after SW activates
+        if (registration.active) {
+          registration.active.postMessage({
+            type: 'WARM_CACHE',
+            urls: ['/', '/api/settings', '/api/categories', '/api/threads?limit=25'],
+          });
+        }
+        registration.addEventListener('activate', () => {
+          if (registration.active) {
+            registration.active.postMessage({
+              type: 'WARM_CACHE',
+              urls: ['/', '/api/settings', '/api/categories', '/api/threads?limit=25'],
+            });
+          }
+        });
       } catch {
         // Registration failure is non-critical; the site still works online.
       }

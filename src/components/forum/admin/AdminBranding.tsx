@@ -84,7 +84,7 @@ export default function AdminBranding() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="forum-tagline">Tagline</Label>
-            <Input id="forum-tagline" value={v('forum_tagline')} onChange={(e) => setValue('forum_tagline', e.target.value)} placeholder="Where conversations find their form." className="neu-input px-3 py-2.5" />
+            <Input id="forum-tagline" value={v('forum_tagline')} onChange={(e) => setValue('forum_tagline', e.target.value)} placeholder="Where tech minds connect." className="neu-input px-3 py-2.5" />
           </div>
         </div>
         <div className="space-y-2">
