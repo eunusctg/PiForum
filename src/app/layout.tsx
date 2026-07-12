@@ -41,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonical = settingStr(s, "seo_canonical_url", "https://piforum.eu.org");
   const indexable = settingBool(s, "seo_indexable", true);
   const logoUrl = settingStr(s, "logo_url", "/logo.svg");
-  const favicon = settingStr(s, "favicon_url", logoUrl || "/logo.svg");
+  const favicon = settingStr(s, "favicon_url", "/favicon.ico");
 
   return {
     title: {

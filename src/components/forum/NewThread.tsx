@@ -16,6 +16,8 @@ import {
   Hash,
   Plus,
   FolderOpen,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -29,21 +31,37 @@ import {
 /* ------------------------------------------------------------------ */
 /*  NewThread — Create a new discussion (Flarum/Discourse style)       */
 /*                                                                    */
-/*  No category/forum picker required. Users just enter a title,       */
-/*  content, optional tags, and optional attachments. If no forumId    */
-/*  is provided, the thread is created as "uncategorized" — it will    */
-/*  still appear in the global flat thread list on the home page.      */
+/*  Category picker lets users choose a forum within a category.       */
+/*  If no forum is selected, the thread is created as "uncategorized"  */
+/*  and appears in the global flat thread list on the home page.       */
 /* ------------------------------------------------------------------ */
 
 const MAX_TITLE_LENGTH = 200;
 const MAX_TAGS = 5;
 const MAX_TAG_LENGTH = 30;
 
+interface Category {
+  id: string;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  forums: Forum[];
+}
+
+interface Forum {
+  id: string;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  categoryId: string;
+}
+
 interface NewThreadProps {
   forumId?: string;
 }
 
-export default function NewThread({ forumId }: NewThreadProps) {
+export default function NewThread({ forumId: propForumId }: NewThreadProps) {
   const { currentUser, navigateTo } = useAppStore();
 
   const [title, setTitle] = useState('');
@@ -55,9 +73,51 @@ export default function NewThread({ forumId }: NewThreadProps) {
   const [error, setError] = useState<string | null>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
 
+  // Category picker state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [selectedForumId, setSelectedForumId] = useState<string | null>(propForumId || null);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const categoryPickerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch categories with forums on mount
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        setCategoriesLoading(true);
+        const res = await fetch('/api/categories');
+        const data = await res.json();
+        if (data.success && data.data) {
+          setCategories(data.data);
+        }
+      } catch {
+        // Non-critical — category picker will just be empty
+      } finally {
+        setCategoriesLoading(false);
+      }
+    }
+    fetchCategories();
+  }, []);
+
+  // Close category picker on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (categoryPickerRef.current && !categoryPickerRef.current.contains(e.target as Node)) {
+        setCategoryPickerOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Find the selected forum and category for display
+  const selectedForum = categories
+    .flatMap((c) => c.forums.map((f) => ({ ...f, categoryName: c.name, categoryId: c.id })))
+    .find((f) => f.id === selectedForumId);
+  const effectiveForumId = selectedForumId || propForumId;
+
   // ---------- handlers ----------
   const handleHomeClick = () => navigateTo('home');
-
   const handleCancel = () => navigateTo('home');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,8 +200,7 @@ export default function NewThread({ forumId }: NewThreadProps) {
           'x-user-id': currentUser.id,
         },
         body: JSON.stringify({
-          // forumId is optional — thread will be uncategorized if omitted
-          ...(forumId ? { forumId } : {}),
+          ...(effectiveForumId ? { forumId: effectiveForumId } : {}),
           title: title.trim(),
           content: content.trim(),
           tags,
@@ -172,6 +231,9 @@ export default function NewThread({ forumId }: NewThreadProps) {
     content.trim().length > 0 &&
     !isTitleOverLimit &&
     !submitting;
+
+  // All forums flat list for counting
+  const totalForums = categories.reduce((sum, c) => sum + c.forums.length, 0);
 
   // ================================================================
   //  RENDER
@@ -233,8 +295,8 @@ export default function NewThread({ forumId }: NewThreadProps) {
               Start a Discussion
             </h1>
             <p className="text-sm text-muted-foreground">
-              {!forumId
-                ? 'This discussion will be uncategorized — visible on the home page'
+              {selectedForum
+                ? `Posting in ${selectedForum.categoryName} → ${selectedForum.name}`
                 : 'Share your thoughts with the community'}
             </p>
           </div>
@@ -242,15 +304,152 @@ export default function NewThread({ forumId }: NewThreadProps) {
 
         <div className="neu-divider" />
 
-        {/* Uncategorized info banner (when no forum selected) */}
-        {!forumId && (
-          <div className="neu-card-inset rounded-lg p-3 flex items-center gap-3">
-            <FolderOpen className="size-4 text-muted-foreground shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              No category selected. Your discussion will appear in the global thread list and can be found via tags.
-            </p>
+        {/* Category / Forum Picker */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center gap-2">
+            <FolderOpen className="size-4 text-primary" />
+            Category
+            <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+
+          <div className="relative" ref={categoryPickerRef}>
+            {/* Trigger button */}
+            <button
+              type="button"
+              onClick={() => setCategoryPickerOpen(!categoryPickerOpen)}
+              className="w-full neu-input p-0 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2 p-3 flex-1 min-w-0 text-left">
+                {selectedForum ? (
+                  <>
+                    <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">
+                      {selectedForum.categoryName}
+                    </span>
+                    <span className="text-muted-foreground text-xs">→</span>
+                    <span className="text-sm truncate">{selectedForum.name}</span>
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    Select a category (optional)
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 px-3 shrink-0">
+                {selectedForumId && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedForumId(null);
+                    }}
+                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                    aria-label="Clear category"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+                <ChevronDown className={`size-4 text-muted-foreground transition-transform ${categoryPickerOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </button>
+
+            {/* Dropdown */}
+            {categoryPickerOpen && (
+              <div className="absolute z-30 top-full mt-1 left-0 right-0 neu-card p-2 max-h-72 overflow-y-auto animate-stagger-in custom-scrollbar">
+                {/* Uncategorized option */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedForumId(null);
+                    setCategoryPickerOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2 transition-colors ${
+                    !selectedForumId
+                      ? 'bg-primary/10 text-primary'
+                      : 'hover:bg-muted/50 text-muted-foreground'
+                  }`}
+                >
+                  <FolderOpen className="size-4 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">No Category</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Your discussion will appear in the global thread list and can be found via tags.
+                    </div>
+                  </div>
+                  {!selectedForumId && <Check className="size-4 shrink-0 text-primary" />}
+                </button>
+
+                {categoriesLoading ? (
+                  <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin inline mr-2" />
+                    Loading categories...
+                  </div>
+                ) : categories.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                    No categories available yet.
+                  </div>
+                ) : (
+                  categories.map((category) => (
+                    <div key={category.id} className="mt-1">
+                      {/* Category header */}
+                      <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                        {category.icon && <span>{category.icon}</span>}
+                        {category.name}
+                        <span className="text-[0.65rem] font-normal">
+                          ({category.forums.length})
+                        </span>
+                      </div>
+                      {/* Forums within category */}
+                      {category.forums.length > 0 ? (
+                        category.forums.map((forum) => (
+                          <button
+                            key={forum.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedForumId(forum.id);
+                              setCategoryPickerOpen(false);
+                            }}
+                            className={`w-full text-left pl-7 pr-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${
+                              selectedForumId === forum.id
+                                ? 'bg-primary/10 text-primary'
+                                : 'hover:bg-muted/50'
+                            }`}
+                          >
+                            {forum.icon && <span className="shrink-0">{forum.icon}</span>}
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium truncate">{forum.name}</div>
+                              {forum.description && (
+                                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                  {forum.description}
+                                </div>
+                              )}
+                            </div>
+                            {selectedForumId === forum.id && (
+                              <Check className="size-4 shrink-0 text-primary" />
+                            )}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="pl-7 pr-3 py-1.5 text-xs text-muted-foreground italic">
+                          No forums in this category
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Info text when no category selected */}
+          {!selectedForumId && (
+            <div className="neu-card-inset rounded-lg p-3 flex items-center gap-3">
+              <FolderOpen className="size-4 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                No category selected. Your discussion will appear in the global thread list and can be found via tags.
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Error message */}
         {error && (

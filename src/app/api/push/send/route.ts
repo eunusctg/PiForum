@@ -102,8 +102,8 @@ export async function POST(request: Request) {
             notification: {
               title,
               body: notifBody || '',
-              icon: '/icons/icon-192x192.png',
-              badge: '/icons/icon-72x72.png',
+              icon: '/icon-192.png',
+              badge: '/icon-72.png',
               ...(link && { click_action: link }),
             },
             fcm_options: {

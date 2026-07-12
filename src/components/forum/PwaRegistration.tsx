@@ -230,6 +230,30 @@ export default function PwaRegistration() {
         return;
       }
 
+      // Ensure the FCM service worker is registered FIRST
+      // Firebase requires the messaging SW to be active before getToken()
+      let swRegistration: ServiceWorkerRegistration | null = null;
+      if ('serviceWorker' in navigator) {
+        try {
+          swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+            scope: '/',
+          });
+          // Wait for the SW to be active
+          if (swRegistration.installing) {
+            await new Promise<void>((resolve) => {
+              swRegistration!.installing!.addEventListener('statechange', () => {
+                if (swRegistration!.active) resolve();
+              });
+            });
+          }
+        } catch (swErr) {
+          console.warn('FCM SW registration failed, trying existing:', swErr);
+          // Fall back to any existing registration
+          swRegistration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')
+            || await navigator.serviceWorker.ready;
+        }
+      }
+
       // Get FCM token using Firebase Messaging
       const { getFirebaseMessaging, VAPID_PUBLIC_KEY } = await import('@/lib/firebase-client');
       const messaging = await getFirebaseMessaging();
@@ -247,7 +271,11 @@ export default function PwaRegistration() {
       // Dynamically import getToken
       const { getToken } = await import('firebase/messaging');
 
-      const token = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY });
+      // Pass the service worker registration to getToken — this is critical!
+      const token = await getToken(messaging, {
+        vapidKey: VAPID_PUBLIC_KEY,
+        serviceWorkerRegistration: swRegistration || undefined,
+      });
 
       if (token) {
         // Send token to server
@@ -268,6 +296,13 @@ export default function PwaRegistration() {
             duration: 3000,
           });
         }
+      } else {
+        toast({
+          title: 'Push Token Unavailable',
+          description: 'Could not obtain a push token. Please try again.',
+          variant: 'destructive',
+          duration: 4000,
+        });
       }
 
       // Set up foreground message handler
@@ -296,7 +331,7 @@ export default function PwaRegistration() {
       console.error('FCM registration failed:', err);
       toast({
         title: 'Push Setup Failed',
-        description: 'Could not set up push notifications. Try again later.',
+        description: 'Could not set up push notifications. Please try again later.',
         variant: 'destructive',
         duration: 4000,
       });

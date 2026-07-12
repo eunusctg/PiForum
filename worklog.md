@@ -1712,3 +1712,34 @@ Stage Summary:
 - Email sending supporting multiple providers (Resend, SendGrid, Mailgun)
 - Notification triggers for replies, mentions, and likes
 - Zero ESLint errors (11 pre-existing warnings only)
+
+---
+Task ID: push-fix-favicon-category
+Agent: Main
+Task: Fix FCM push notifications, add Pi favicon, add category picker to New Discussion
+
+Work Log:
+- Created /src/app/firebase-messaging-sw.js/route.ts — dedicated FCM service worker that handles background push messages via Firebase compat SDK from CDN
+- Fixed PwaRegistration.tsx registerFCMToken() — now registers the FCM service worker first, waits for it to activate, then passes serviceWorkerRegistration to getToken() (the missing piece that caused "push setup failed")
+- Updated push notification icon paths in /src/app/api/push/send/route.ts from non-existent /icons/icon-192x192.png to /icon-192.png and /icon-72.png
+- Created Pi symbol SVG favicon (/public/pi-icon.svg) with teal gradient background
+- Generated PNG icons at multiple sizes using sharp: icon-192.png, icon-512.png, icon-72.png, favicon.png
+- Created proper multi-size favicon.ico (16x16, 32x32, 48x48) using sharp + manual ICO format construction
+- Made logo.png background transparent (was JPEG with white background, now PNG with alpha channel)
+- Updated layout.tsx favicon default to /favicon.ico
+- Completely rewrote NewThread.tsx with full category picker:
+  - Fetches categories from /api/categories on mount
+  - Dropdown shows categories with their forums nested underneath
+  - "No Category" option with text "Your discussion will appear in the global thread list and can be found via tags"
+  - Selected forum shows as "CategoryName → ForumName" in the picker
+  - X button to clear selection
+  - Subtitle updates dynamically based on selection
+  - Passes effectiveForumId to thread creation API
+- All changes verified via agent browser: category picker works, FCM SW returns JS, favicon present
+
+Stage Summary:
+- FCM push notifications fixed: added dedicated service worker + proper SW registration in getToken()
+- Pi favicon created and served as /favicon.ico with Pi symbol
+- PWA icons (192, 512, 72) all created in /public/
+- Logo.png now has transparent background
+- New Discussion form has full category picker with 41 category options loaded from API
