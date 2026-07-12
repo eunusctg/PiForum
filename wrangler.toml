@@ -71,10 +71,10 @@ NEXTAUTH_URL = "https://piforum.eu.org"
 # Observability
 # ============================================================
 [observability]
-enabled = true
+enabled = false
 
 # ============================================================
-# Routes (custom domains) — uncomment after first deploy
+# Routes (custom domains)
 # ============================================================
 # [[routes]]
 # pattern = "piforum.eu.org"

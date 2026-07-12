@@ -1,15 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
 import type { Category, Thread } from '@/lib/types';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
-} from '@/components/ui/carousel';
 import {
   MessageSquare,
   Eye,
@@ -17,6 +10,8 @@ import {
   Pin,
   ImageIcon,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FolderOpen,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -26,8 +21,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import VerifiedBadge from '@/components/forum/VerifiedBadge';
 
 /* ------------------------------------------------------------------ */
-/*  Featured Posts Slider — Horizontal sliding grid of posts with      */
-/*  thumbnails, filterable by category. Shows 10 posts.               */
+/*  Featured Posts Slider — Lightweight horizontal scroll with CSS     */
+/*  snap. No external carousel library to keep bundle small.          */
+/*  Shows 10 posts, filterable by category.                           */
 /* ------------------------------------------------------------------ */
 
 interface FeaturedThread extends Thread {
@@ -41,6 +37,7 @@ export default function FeaturedPostsSlider() {
   const [loading, setLoading] = useState(true);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchFeatured = useCallback(async (categoryId?: string) => {
     try {
@@ -76,17 +73,16 @@ export default function FeaturedPostsSlider() {
     fetchFeatured();
   };
 
+  const scroll = (direction: 'left' | 'right') => {
+    if (!scrollRef.current) return;
+    const scrollAmount = scrollRef.current.clientWidth * 0.7;
+    scrollRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
+
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
-
-  // Determine grid: show multiple items per slide on larger screens
-  // Each CarouselItem will contain a grid of cards
-  const ITEMS_PER_SLIDE_MOBILE = 1;
-  const ITEMS_PER_SLIDE_TABLET = 2;
-  const ITEMS_PER_SLIDE_DESKTOP = 3;
-
-  // We'll use individual carousel items, each being one card,
-  // and let CSS control the visible count via snap + overflow
-  // Actually, better to use the embla-carousel with slidesToShow behavior
 
   return (
     <section className="w-full">
@@ -159,41 +155,51 @@ export default function FeaturedPostsSlider() {
         </div>
       </div>
 
-      {/* Sliding Grid Carousel */}
+      {/* Sliding Grid — Pure CSS scroll-snap */}
       {loading ? (
         <FeaturedSkeletons />
       ) : threads.length === 0 ? (
         <EmptyFeatured />
       ) : (
         <div className="relative group/slider">
-          <Carousel
-            opts={{
-              align: 'start',
-              loop: false,
-              dragFree: true,
-              slidesToScroll: 1,
+          {/* Scroll container */}
+          <div
+            ref={scrollRef}
+            className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 scrollbar-hide"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch',
             }}
-            className="w-full"
           >
-            <CarouselContent className="-ml-4">
-              {threads.map((thread) => (
-                <CarouselItem
-                  key={thread.id}
-                  className="pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-[30%]"
-                >
-                  <FeaturedCard
-                    thread={thread}
-                    onClick={() => navigateTo('thread', { threadId: thread.id })}
-                  />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            {/* Navigation buttons - visible on hover */}
-            <div className="hidden sm:block">
-              <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 opacity-0 group-hover/slider:opacity-100 transition-opacity neu-circle size-9 p-0" />
-              <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 opacity-0 group-hover/slider:opacity-100 transition-opacity neu-circle size-9 p-0" />
-            </div>
-          </Carousel>
+            {threads.map((thread) => (
+              <div
+                key={thread.id}
+                className="snap-start shrink-0 w-[85%] sm:w-[45%] lg:w-[30%] xl:w-[28%]"
+              >
+                <FeaturedCard
+                  thread={thread}
+                  onClick={() => navigateTo('thread', { threadId: thread.id })}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Navigation arrows — appear on hover */}
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 neu-circle size-9 p-0 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            onClick={() => scroll('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 neu-circle size-9 p-0 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="size-4" />
+          </button>
         </div>
       )}
     </section>
@@ -216,7 +222,6 @@ function FeaturedCard({
   const authorInitial = authorName.charAt(0).toUpperCase();
   const replies = Math.max(0, (thread.postCount ?? 0) - 1);
 
-  // Generate a placeholder color based on thread title for visual variety
   const placeholderColors = [
     'from-teal-500/20 to-cyan-500/20',
     'from-emerald-500/20 to-green-500/20',
@@ -242,7 +247,6 @@ function FeaturedCard({
             alt={thread.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             onError={(e) => {
-              // On error, replace with placeholder
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
               if (target.nextElementSibling) {
@@ -251,7 +255,6 @@ function FeaturedCard({
             }}
           />
         ) : null}
-        {/* Placeholder when no thumbnail */}
         <div
           className={`w-full h-full bg-gradient-to-br ${placeholderColors[colorIndex]} flex items-center justify-center ${thread.thumbnail ? 'hidden' : 'flex'}`}
         >
@@ -289,7 +292,6 @@ function FeaturedCard({
 
       {/* Content */}
       <div className="p-3 sm:p-4 flex flex-col flex-1">
-        {/* Category tag */}
         {thread.forum && (
           <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1 truncate">
             {thread.forum.category ? (
@@ -312,12 +314,10 @@ function FeaturedCard({
           </div>
         )}
 
-        {/* Title */}
         <h3 className="font-semibold text-sm leading-snug line-clamp-2 group-hover:text-primary transition-colors mb-2">
           {thread.title}
         </h3>
 
-        {/* Author & Meta */}
         <div className="mt-auto flex items-center gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5 min-w-0">
             <Avatar className="size-5 shrink-0">
@@ -353,7 +353,7 @@ function FeaturedSkeletons() {
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="shrink-0 w-full sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)] neu-card overflow-hidden"
+          className="shrink-0 w-[85%] sm:w-[45%] lg:w-[30%] neu-card overflow-hidden"
         >
           <Skeleton className="w-full aspect-video" />
           <div className="p-4 space-y-3">
