@@ -1,27 +1,97 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Pi symbol icon - teal on transparent background -->
-  <!-- Rounded square background with teal gradient -->
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#00897b;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#00695c;stop-opacity:1" />
+    <!-- Main teal gradient background -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00897b"/>
+      <stop offset="100%" stop-color="#00695c"/>
     </linearGradient>
-    <linearGradient id="piGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#e0f2f1;stop-opacity:1" />
+    
+    <!-- Subtle light overlay gradient for depth -->
+    <linearGradient id="sheen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.12)"/>
+      <stop offset="50%" stop-color="rgba(255,255,255,0)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.08)"/>
     </linearGradient>
+    
+    <!-- Circuit pattern -->
+    <pattern id="circuitGrid" x="0" y="0" width="64" height="64" patternUnits="userSpaceOnUse">
+      <!-- Grid lines -->
+      <line x1="0" y1="32" x2="64" y2="32" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+      <line x1="32" y1="0" x2="32" y2="64" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+      <!-- Circuit nodes -->
+      <circle cx="32" cy="32" r="2" fill="rgba(255,255,255,0.07)"/>
+      <!-- Small trace lines from nodes -->
+      <line x1="32" y1="32" x2="48" y2="32" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+      <line x1="32" y1="32" x2="32" y2="48" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+      <!-- Corner pads -->
+      <rect x="46" y="30" width="4" height="4" rx="1" fill="rgba(255,255,255,0.05)"/>
+      <rect x="30" y="46" width="4" height="4" rx="1" fill="rgba(255,255,255,0.05)"/>
+    </pattern>
+
+    <!-- Clip path for rounded square -->
+    <clipPath id="roundedClip">
+      <rect x="0" y="0" width="512" height="512" rx="96" ry="96"/>
+    </clipPath>
+    
+    <!-- Drop shadow filter -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#00352e" flood-opacity="0.3"/>
+    </filter>
+    
+    <!-- Text shadow -->
+    <filter id="textGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00352e" flood-opacity="0.4"/>
+    </filter>
   </defs>
-  <!-- Rounded square background -->
-  <rect x="16" y="16" width="480" height="480" rx="96" ry="96" fill="url(#bg)"/>
-  <!-- Pi (π) symbol - clean geometric design -->
-  <!-- Top horizontal bar of Pi -->
-  <rect x="120" y="120" width="272" height="36" rx="18" fill="url(#piGrad)"/>
-  <!-- Left vertical leg -->
-  <path d="M 156 156 L 156 380 Q 156 400 136 400 Q 116 400 116 380 L 116 156 Z" fill="url(#piGrad)"/>
-  <!-- Right vertical leg -->
-  <path d="M 356 156 L 356 380 Q 356 400 336 400 Q 316 400 316 380 L 316 156 Z" fill="url(#piGrad)"/>
-  <!-- Middle serif/connector left -->
-  <rect x="120" y="120" width="36" height="48" rx="4" fill="url(#piGrad)"/>
-  <!-- Middle serif/connector right -->
-  <rect x="356" y="120" width="36" height="48" rx="4" fill="url(#piGrad)"/>
+
+  <!-- Rounded square background with shadow -->
+  <g clip-path="url(#roundedClip)" filter="url(#shadow)">
+    <!-- Main gradient background -->
+    <rect x="0" y="0" width="512" height="512" rx="96" ry="96" fill="url(#bgGrad)"/>
+    
+    <!-- Circuit grid overlay -->
+    <rect x="0" y="0" width="512" height="512" fill="url(#circuitGrid)"/>
+    
+    <!-- Subtle diagonal tech lines -->
+    <line x1="0" y1="420" x2="180" y2="512" stroke="rgba(255,255,255,0.04)" stroke-width="2"/>
+    <line x1="0" y1="380" x2="220" y2="512" stroke="rgba(255,255,255,0.03)" stroke-width="1.5"/>
+    <line x1="340" y1="0" x2="512" y2="130" stroke="rgba(255,255,255,0.04)" stroke-width="2"/>
+    <line x1="300" y1="0" x2="512" y2="170" stroke="rgba(255,255,255,0.03)" stroke-width="1.5"/>
+    
+    <!-- Corner accent dots (circuit nodes) -->
+    <circle cx="80" cy="80" r="4" fill="rgba(255,255,255,0.12)"/>
+    <circle cx="80" cy="80" r="8" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+    <line x1="80" y1="80" x2="140" y2="80" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+    <line x1="80" y1="80" x2="80" y2="140" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+    
+    <circle cx="432" cy="432" r="4" fill="rgba(255,255,255,0.12)"/>
+    <circle cx="432" cy="432" r="8" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+    <line x1="432" y1="432" x2="372" y2="432" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+    <line x1="432" y1="432" x2="432" y2="372" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+    
+    <!-- Sheen overlay for depth -->
+    <rect x="0" y="0" width="512" height="512" fill="url(#sheen)"/>
+  </g>
+
+  <!-- "Pi" text - bold, clean, modern sans-serif -->
+  <g filter="url(#textGlow)">
+    <!-- P letter -->
+    <text x="160" y="310" 
+          font-family="'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" 
+          font-size="220" 
+          font-weight="700" 
+          fill="white" 
+          letter-spacing="-4"
+          dominant-baseline="central"
+          text-anchor="middle">Pi</text>
+  </g>
+  
+  <!-- Subtle underline accent bar -->
+  <rect x="148" y="340" width="216" height="5" rx="2.5" fill="rgba(255,255,255,0.25)"/>
+  
+  <!-- Small digital accent dots near the text -->
+  <circle cx="130" cy="340" r="3" fill="rgba(255,255,255,0.15)"/>
+  <circle cx="382" cy="340" r="3" fill="rgba(255,255,255,0.15)"/>
+  <circle cx="130" cy="340" r="6" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.8"/>
+  <circle cx="382" cy="340" r="6" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.8"/>
 </svg>

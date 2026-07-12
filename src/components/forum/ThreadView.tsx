@@ -249,6 +249,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
     categories,
     currentUser,
     navigateTo,
+    setAuthModalOpen,
     posts,
     setPosts,
   } = useAppStore();
@@ -1070,7 +1071,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
           <User className="size-6 text-muted-foreground mx-auto" />
           <p className="text-sm text-muted-foreground">Please log in to reply to this thread.</p>
           <button
-            onClick={() => navigateTo('login')}
+            onClick={() => setAuthModalOpen(true)}
             className="neu-btn px-5 py-2.5 text-sm font-medium text-primary"
           >
             Log In

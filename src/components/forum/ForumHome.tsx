@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import VerifiedBadge from '@/components/forum/VerifiedBadge';
+import FeaturedPostsSlider from '@/components/forum/FeaturedPostsSlider';
 
 /* ------------------------------------------------------------------ */
 /*  Forum Home — Flat "All Discussions" view (Flarum/Discourse style)  */
@@ -118,21 +119,6 @@ export default function ForumHome() {
 
   return (
     <div className="relative w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* ---- Hero Section ---- */}
-      <section className="neu-card p-6 sm:p-8 text-center space-y-2">
-        <div className="flex items-center justify-center gap-3">
-          <div className="neu-circle p-3">
-            <MessageSquare className="size-7 text-primary" />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            {forumName}
-          </h1>
-        </div>
-        <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-          {forumDescription}
-        </p>
-      </section>
-
       {/* ---- Toolbar: sort tabs + New Thread button ---- */}
       <section className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-1.5">
@@ -166,6 +152,9 @@ export default function ForumHome() {
           </button>
         )}
       </section>
+
+      {/* ---- Featured Posts Slider ---- */}
+      <FeaturedPostsSlider />
 
       {/* ---- Flat Thread List ---- */}
       {loading ? (

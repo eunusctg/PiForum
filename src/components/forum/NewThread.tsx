@@ -62,7 +62,7 @@ interface NewThreadProps {
 }
 
 export default function NewThread({ forumId: propForumId }: NewThreadProps) {
-  const { currentUser, navigateTo } = useAppStore();
+  const { currentUser, navigateTo, setAuthModalOpen } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -250,7 +250,7 @@ export default function NewThread({ forumId: propForumId }: NewThreadProps) {
             You must be logged in to start a discussion.
           </p>
           <button
-            onClick={() => navigateTo('login')}
+            onClick={() => setAuthModalOpen(true)}
             className="neu-btn px-5 py-2.5 text-sm font-medium text-primary"
           >
             Log In

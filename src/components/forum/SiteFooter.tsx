@@ -28,7 +28,6 @@ import {
   ChevronUp,
   Mail,
   Send,
-  Heart,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -357,22 +356,8 @@ export default function SiteFooter() {
             </form>
 
             {/* Powered by PiForum badge */}
-            <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              <span
-                className="neu-circle-inset flex items-center justify-center size-5 text-[10px] font-bold text-primary"
-                aria-hidden="true"
-              >
-                π
-              </span>
-              <span>
-                Powered by <span className="font-semibold">PiForum</span>
-              </span>
-              <span
-                className="inline-flex items-center gap-1 text-muted-foreground/70"
-                aria-hidden="true"
-              >
-                · crafted with <Heart className="size-3 fill-current" />
-              </span>
+            <p className="mt-5 text-xs text-muted-foreground">
+              © {year} {forumName}. All rights reserved.
             </p>
           </section>
         </div>

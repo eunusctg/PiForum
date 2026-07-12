@@ -4,7 +4,6 @@ import {
   errorResponse,
   serverErrorResponse,
   requireAuth,
-  createNotification,
 } from '@/lib/api-helpers';
 
 /* POST /api/users/[id]/follow — Follow a user
@@ -47,13 +46,15 @@ export async function POST(
     });
 
     // Create a notification for the followed user
-    await createNotification({
-      userId: targetUserId,
-      actorId: currentUser.id,
-      type: 'follow',
-      title: 'New follower',
-      body: `${currentUser.displayName || currentUser.username} started following you`,
-      link: `/profile/${currentUser.id}`,
+    await db.notification.create({
+      data: {
+        userId: targetUserId,
+        actorId: currentUser.id,
+        type: 'follow',
+        title: 'New follower',
+        body: `${currentUser.displayName || currentUser.username} started following you`,
+        link: `/profile/${currentUser.id}`,
+      },
     });
 
     // Get updated counts
