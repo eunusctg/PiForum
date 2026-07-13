@@ -9,7 +9,7 @@ export async function GET() {
 
   const name = settingStr(s, 'pwa_name', settingStr(s, 'forum_name', 'PiForum'));
   const shortName = settingStr(s, 'pwa_short_name', 'PiForum');
-  const description = settingStr(s, 'pwa_description', settingStr(s, 'forum_description', 'A modern forum'));
+  const description = settingStr(s, 'pwa_description', settingStr(s, 'forum_description', 'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge.'));
   const themeColor = settingStr(s, 'pwa_theme_color', '#D4AF37');
   const backgroundColor = settingStr(s, 'pwa_background_color', '#e0e0e0');
   const display = settingStr(s, 'pwa_display', 'standalone') as any;

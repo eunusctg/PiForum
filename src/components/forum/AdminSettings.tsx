@@ -440,7 +440,7 @@ export default function AdminSettings() {
             id="forum-tagline"
             value={forumTagline}
             onChange={(e) => setForumTagline(e.target.value)}
-            placeholder="Where conversations find their form."
+            placeholder="Dominate Tech: Elite Tutorials & Expert Intel"
             className="neu-input px-3 py-2.5"
           />
           <p className="text-xs text-muted-foreground">
@@ -830,7 +830,7 @@ export default function AdminSettings() {
             value={seoMetaDescription}
             onChange={(e) => setSeoMetaDescription(e.target.value.slice(0, SEO_META_MAX))}
             maxLength={SEO_META_MAX}
-            placeholder="PiForum — Where tech minds connect. Join the community today."
+            placeholder="Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation."
             className="neu-input px-3 py-2.5 min-h-[80px] resize-none"
           />
           <p className="text-xs text-muted-foreground">

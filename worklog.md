@@ -251,3 +251,34 @@ Stage Summary:
 - Deployed: https://piforum.piforum.workers.dev
 - Version: 5d5a1711-1d24-416f-879c-03afba1ea13a
 - Compressed size: 3059.89 KiB (12.11 KiB under limit)
+
+---
+Task ID: 15
+Agent: Main Agent
+Task: Replace all old taglines with new branding; remove "A modern neumorphic forum" and "Where conversations find their form"
+
+Work Log:
+- Updated layout.tsx: site title → "Piforum – Dominate Tech: Elite Tutorials & Expert Intel", meta description → new text, OG title/description, Twitter title/description
+- Updated seed/route.ts: forum_description, forum_tagline ("Dominate Tech: Elite Tutorials & Expert Intel"), seo_meta_description, about page content
+- Updated ForumHome.tsx: forumDescription default
+- Updated SiteFooter.tsx: forumTagline default, forumDescription default
+- Updated Preloader.tsx: DEFAULT_TAGLINE
+- Updated AdminSettings.tsx: tagline placeholder, SEO meta description placeholder
+- Updated AdminBranding.tsx: tagline placeholder
+- Updated AdminPwa.tsx: description placeholder
+- Updated manifest.webmanifest/route.ts: description default
+- Updated UserAvatar.tsx: removed "neumorphic" from code comments
+- Updated globals.css: removed "neumorphic" from all CSS comments and section headers
+- Updated prisma/schema.prisma: InstallConfig forumDescription default
+- Updated database directly: forum_tagline, forum_description, seo_meta_description settings
+- Pushed schema changes with prisma db push
+
+Stage Summary:
+- Site title: "Piforum – Dominate Tech: Elite Tutorials & Expert Intel" ✅
+- Meta description: "Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation." ✅
+- Tagline: "Dominate Tech: Elite Tutorials & Expert Intel" ✅
+- "A modern neumorphic forum" — REMOVED from all code, schema, CSS, database ✅
+- "Where conversations find their form" — REMOVED from all code and database ✅
+- "Where tech minds connect" — REMOVED from all code and database ✅
+- "neumorphic" removed from all user-facing text and code comments ✅
+- Verified in browser: title shows "Piforum – Dominate Tech: Elite Tutorials & Expert Intel" ✅

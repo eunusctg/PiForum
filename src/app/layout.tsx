@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const description = settingStr(
     s,
     "forum_description",
-    "PiForum is a modern tech community forum for developers, engineers, and tech enthusiasts. Discuss programming, web development, AI, hardware, gaming, and more.",
+    "Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.",
   );
   const suffix = settingStr(s, "seo_title_suffix", `— ${forumName}`);
   const keywords = settingStr(
@@ -45,8 +45,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: {
-      default: `PiForum — Tech Community & Developer Forum`,
-      template: `%s — PiForum`,
+      default: `Piforum – Dominate Tech: Elite Tutorials & Expert Intel`,
+      template: `%s – Piforum`,
     },
     description,
     keywords: keywords
@@ -63,23 +63,23 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: "en_US",
       url: canonical,
       siteName: forumName,
-      title: "PiForum — Tech Community & Developer Forum",
+      title: "Piforum – Dominate Tech: Elite Tutorials & Expert Intel",
       description:
-        "Join PiForum — the modern tech community for developers, engineers, and enthusiasts. Discuss programming, AI, hardware, gaming and more.",
+        "Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.",
       images: [
         {
           url: ogImage,
           width: 1344,
           height: 768,
-          alt: "PiForum — Tech Community Forum",
+          alt: "Piforum – Dominate Tech: Elite Tutorials & Expert Intel",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "PiForum — Tech Community & Developer Forum",
+      title: "Piforum – Dominate Tech: Elite Tutorials & Expert Intel",
       description:
-        "Join PiForum — the modern tech community for developers and tech enthusiasts.",
+        "Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge.",
       images: [ogImage],
       ...(twitter ? { creator: twitter, site: twitter } : {}),
     },

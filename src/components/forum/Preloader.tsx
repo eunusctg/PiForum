@@ -33,7 +33,7 @@ const LOADING_MESSAGES = [
   'Almost there…',
 ] as const;
 
-const DEFAULT_TAGLINE = 'Where tech minds connect';
+const DEFAULT_TAGLINE = 'Dominate Tech: Elite Tutorials & Expert Intel';
 
 /**
  * Try to read `forum_tagline` from the localStorage settings cache that the

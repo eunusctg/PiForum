@@ -91,7 +91,7 @@ export default function ForumHome() {
   const forumName = getSetting('forum_name', 'PiForum');
   const forumDescription = getSetting(
     'forum_description',
-    'PiForum — Where tech minds connect. A modern community for developers, engineers, and tech enthusiasts.',
+    'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.',
   );
 
   const sortedThreads = useMemo(() => {

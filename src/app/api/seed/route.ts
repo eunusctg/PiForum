@@ -323,8 +323,8 @@ export async function POST(request: Request) {
     /* ---------- Seed default settings (if missing) ---------- */
     const defaultSettings = [
       { key: 'forum_name', value: 'PiForum' },
-      { key: 'forum_description', value: 'PiForum — Where tech minds connect. A modern community platform for developers, engineers, and tech enthusiasts.' },
-      { key: 'forum_tagline', value: 'Where tech minds connect.' },
+      { key: 'forum_description', value: 'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.' },
+      { key: 'forum_tagline', value: 'Dominate Tech: Elite Tutorials & Expert Intel' },
       { key: 'open_registration', value: 'true' },
       { key: 'maintenance_mode', value: 'false' },
       { key: 'maintenance_message', value: "We'll be right back. PiForum is undergoing scheduled maintenance." },
@@ -345,7 +345,7 @@ export async function POST(request: Request) {
       { key: 'allow_avatars', value: 'true' },
       { key: 'require_email_verification', value: 'false' },
       { key: 'seo_keywords', value: 'tech forum,developer community,programming forum,web development,AI discussion,coding help,tech community,PiForum,software engineering,open source,dev forum,hardware forum,gaming community' },
-      { key: 'seo_meta_description', value: 'PiForum — Where tech minds connect. Join the community for developers, engineers, and tech enthusiasts.' },
+      { key: 'seo_meta_description', value: 'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.' },
       { key: 'analytics_enabled', value: 'false' },
       { key: 'analytics_id', value: '' },
       { key: 'smtp_enabled', value: 'false' },
@@ -378,7 +378,7 @@ export async function POST(request: Request) {
         slug: 'about',
         title: 'About Us',
         content: `<h2>About PiForum</h2>
-<p>PiForum is a modern, community-driven technology forum built for enthusiasts, developers, creators, and curious minds from around the world. Our mission is to provide a welcoming, inclusive, and beautifully crafted space where people can share knowledge, ask questions, and engage in meaningful conversations.</p>
+<p>PiForum is a battle-tested, community-driven technology forum built for enthusiasts, developers, creators, and curious minds from around the world. Our mission is to deliver elite tutorials and raw expert knowledge — a space where you can post your guides, crush doubts, and own the conversation.</p>
 
 <h3>Our Story</h3>
 <p>PiForum was born out of a simple frustration: existing forums often feel outdated, cluttered, and unwelcoming. We believed that online communities deserve better — a platform that combines the depth of traditional forums with the polish and usability of modern web applications. So we built one.</p>

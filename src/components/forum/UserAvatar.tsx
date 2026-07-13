@@ -11,7 +11,7 @@ import { UserRole } from "@/lib/types";
  * A reusable avatar that shows an ornate gold "admin frame" (red gems,
  * silver spikes, curved gold accents) around the profile picture — but
  * ONLY when the user is an Admin (role >= 2). Regular users / moderators
- * render with the standard neumorphic ring styling.
+ * render with the standard raised ring styling.
  *
  * The frame is implemented as an absolutely-positioned SVG that scales
  * with the avatar, so it works at every size.
@@ -336,7 +336,7 @@ export function UserAvatar({
   );
 
   if (!showFrame) {
-    // Standard neumorphic ring styling for non-admins (matches existing pattern).
+    // Standard raised ring styling for non-admins (matches existing pattern).
     return (
       <div className={cn("neu-circle p-0.5 shrink-0", wrapperClassName)}>
         {avatarEl}

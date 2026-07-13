@@ -234,7 +234,7 @@ model InstallConfig {
   firebaseAppId     String?
   adminFirebaseUid  String?
   forumName         String  @default("PiForum")
-  forumDescription  String  @default("A modern neumorphic forum")
+  forumDescription  String  @default("Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge.")
   // Database selection (persisted for documentation/deployment purposes)
   // NOTE: The actual Prisma datasource provider is determined at build time by
   // the `datasource db` block at the top of this file. Switching to MySQL at

@@ -49,9 +49,9 @@ export default function SiteFooter() {
   const [showTop, setShowTop] = useState(false);
 
   const forumName = getSetting('forum_name', 'PiForum');
-  const forumTagline = getSetting('forum_tagline', 'Where tech minds connect.');
+  const forumTagline = getSetting('forum_tagline', 'Dominate Tech: Elite Tutorials & Expert Intel');
   const forumDescription =
-    getSetting('forum_description', 'PiForum — Where tech minds connect. A modern community for developers, engineers, and tech enthusiasts.') || forumTagline || '';
+    getSetting('forum_description', 'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.') || forumTagline || '';
   const logoUrl = getSetting('logo_url', '');
   const year = new Date().getFullYear();
 

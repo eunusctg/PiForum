@@ -51,8 +51,8 @@
 }
 
 /* ============================================================
-   DAY THEME (Light) — Soft Grey Neumorphism, base: #e0e0e0
-   Repolished: teal accent (#00897b), warm grey neumorphic bg,
+   DAY THEME (Light) — Soft Grey UI, base: #e0e0e0
+   Repolished: teal accent (#00897b), warm grey raised bg,
    crisper text contrast, refined hover lifts.
    ============================================================ */
 :root {
@@ -320,7 +320,7 @@
   border-color: rgba(0, 188, 212, 0.15);
 }
 
-/* Static neumorphic card — same raised look, but no hover lift.
+/* Static raised card — same raised look, but no hover lift.
    Use for modals/dialogs/popovers where a transform on hover would
    fight the centering transform and cause the dialog to jump.
    NOTE: position is intentionally NOT set here so the element's own
@@ -651,7 +651,7 @@
   border: 1px solid var(--border);
 }
 
-/* Circular neumorphic element (avatars, icons) */
+/* Circular raised element (avatars, icons) */
 .neu-circle {
   background-color: var(--neu-bg);
   border-radius: 50%;
@@ -685,7 +685,7 @@
   border: 1px solid var(--border);
 }
 
-/* Divider with subtle neumorphic groove — no harsh white highlight */
+/* Divider with subtle groove — no harsh white highlight */
 .neu-divider {
   height: 2px;
   background: var(--neu-bg);
@@ -701,7 +701,7 @@
   box-shadow: inset 0 1px 3px rgba(74, 53, 0, 0.32), inset 0 -1px 2px rgba(229, 193, 88, 0.5);
 }
 
-/* Toggle switch neumorphic track */
+/* Toggle switch track */
 .neu-toggle-track {
   background-color: var(--neu-bg);
   border-radius: 9999px;
@@ -717,10 +717,10 @@
 }
 
 /* ============================================================
-   NEUMORPHISM-ENHANCED FORM CONTROLS
+   FORM CONTROLS
    ============================================================ */
 
-/* Checkbox / radio neumorphic style */
+/* Checkbox / radio style */
 .neu-checkbox {
   appearance: none;
   width: 22px;
