@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "pm2 start \"node --max-old-space-size=2048 node_modules/next/dist/bin/next dev -p 3000\" --name next-dev --output dev.log --error dev.log --merge-logs || pm2 restart next-dev",
     "build": "prisma generate && node scripts/cleanup-prisma-engines.mjs && next build",
     "build:cf": "npx opennextjs-cloudflare build && node scripts/postbuild-cf.mjs",
     "postinstall": "prisma generate || true && node scripts/patch-unenv-fs.mjs || true",
