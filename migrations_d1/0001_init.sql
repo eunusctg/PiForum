@@ -165,7 +165,7 @@ CREATE TABLE "InstallConfig" (
     "firebaseAppId" TEXT,
     "adminFirebaseUid" TEXT,
     "forumName" TEXT NOT NULL DEFAULT 'PiForum',
-    "forumDescription" TEXT NOT NULL DEFAULT 'A modern neumorphic forum',
+    "forumDescription" TEXT NOT NULL DEFAULT 'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.',
     "dbType" TEXT NOT NULL DEFAULT 'sqlite',
     "mysqlHost" TEXT,
     "mysqlPort" TEXT,

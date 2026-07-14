@@ -268,7 +268,7 @@ INSERT INTO "EmailVerification" ("id", "userId", "token", "email", "expiresAt", 
 INSERT INTO "EmailVerification" ("id", "userId", "token", "email", "expiresAt", "consumedAt", "createdAt") VALUES ('cmqkar5g200026jqjuuzfp24v', 'cmqkar5fu00006jqjnnv5i04c', '3ebaebfa8ed51e90a92bae3c7f4e90eba111ca054f34893b05ba6a96296a5c33', 'test1@example.com', '2026-06-20T02:15:37.283+00:00', NULL, '2026-06-19T02:15:37.298+00:00');
 
 -- InstallConfig: 1 rows
-INSERT INTO "InstallConfig" ("id", "installed", "cloudflareAccountId", "cloudflareD1Id", "cloudflareApiToken", "cloudflareR2Bucket", "cloudflareR2AccessKey", "cloudflareR2SecretKey", "firebaseApiKey", "firebaseAuthDomain", "firebaseProjectId", "firebaseStorageBucket", "firebaseMessagingSenderId", "firebaseAppId", "adminFirebaseUid", "forumName", "forumDescription", "dbType", "mysqlHost", "mysqlPort", "mysqlDatabase", "mysqlUsername", "mysqlPassword", "logoUrl") VALUES ('cmqfhze870000q4xg0s6og74e', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ebfff3b4-35a4-4207-bbdb-373ebe2fb30f', 'PiForum', 'A modern neumorphic forum', 'sqlite', NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO "InstallConfig" ("id", "installed", "cloudflareAccountId", "cloudflareD1Id", "cloudflareApiToken", "cloudflareR2Bucket", "cloudflareR2AccessKey", "cloudflareR2SecretKey", "firebaseApiKey", "firebaseAuthDomain", "firebaseProjectId", "firebaseStorageBucket", "firebaseMessagingSenderId", "firebaseAppId", "adminFirebaseUid", "forumName", "forumDescription", "dbType", "mysqlHost", "mysqlPort", "mysqlDatabase", "mysqlUsername", "mysqlPassword", "logoUrl") VALUES ('cmqfhze870000q4xg0s6og74e', 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ebfff3b4-35a4-4207-bbdb-373ebe2fb30f', 'PiForum', 'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.', 'sqlite', NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- Notification: 3 rows
 INSERT INTO "Notification" ("id", "userId", "actorId", "type", "title", "body", "link", "read", "createdAt") VALUES ('cmqj4h8p00077pypqy1cn8q0b', 'cmqfhze880001q4xgdyhvct5f', NULL, 'system', 'Welcome to PiForum!', 'Your forum is ready. Check out the admin dashboard to configure settings.', '/?view=admin-dashboard', 0, 1781764331076);
@@ -303,7 +303,7 @@ INSERT INTO "SecurityLog" ("id", "userId", "eventType", "details", "ipAddress", 
 -- Setting: 88 rows
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqfhze8a0002q4xg9hb662et', 'password_cmqfhze880001q4xgdyhvct5f', 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqfhze8b0003q4xgopdjg8dh', 'forum_name', 'PiForum');
-INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqfhze8b0004q4xgs535ckr5', 'forum_description', 'A modern neumorphic forum');
+INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqfhze8b0004q4xgs535ckr5', 'forum_description', 'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqfhze8b0005q4xgkrpj7202', 'maintenance_mode', 'false');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqfhze8b0006q4xg5rd9aiej', 'open_registration', 'true');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqfhze8b0007q4xg5dcukdky', 'logo_url', '/logo.svg');
@@ -323,7 +323,7 @@ INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8ik000dpypqfccev891'
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8ip000fpypqekyllb7a', 'password_cmqj4h8il000epypqho2s1hob', 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8ir000hpypqh6s6hp0o', 'password_cmqj4h8iq000gpypqs0n0q15o', 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8iu000jpypqbusd42g1', 'password_cmqj4h8it000ipypqk0id25f4', 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f');
-INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8p8007epypq16e2liw7', 'forum_tagline', 'Where conversations find their form.');
+INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8p8007epypq16e2liw7', 'forum_tagline', 'Dominate Tech: Elite Tutorials & Expert Intel');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8pb007hpypqos3440wh', 'maintenance_message', 'We''ll be right back. PiForum is undergoing scheduled maintenance.');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8pf007mpypqj8yj0wx4', 'min_username_length', '3');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8pg007npypqcvblvj0u', 'max_username_length', '30');
@@ -337,8 +337,8 @@ INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8q6007upypqooiny04k'
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8q8007vpypqo3hz0ib4', 'allow_signatures', 'true');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8q9007wpypq1cc0bojs', 'allow_avatars', 'true');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8qa007xpypqf9nhfpje', 'require_email_verification', 'true');
-INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8qc007ypypqir5h25rh', 'seo_keywords', 'forum, community, discussion, neumorphism, piforum');
-INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8qd007zpypq5lsy3rad', 'seo_meta_description', 'PiForum — a modern neumorphic forum CMS. Join the conversation today.');
+INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8qc007ypypqir5h25rh', 'seo_keywords', 'forum, community, discussion, tech, tutorials, expert knowledge, piforum');
+INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8qd007zpypq5lsy3rad', 'seo_meta_description', 'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8qe0080pypqd8nd5zqb', 'analytics_enabled', 'false');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8qf0081pypqtdeo2wsq', 'analytics_id', '');
 INSERT INTO "Setting" ("id", "key", "value") VALUES ('cmqj4h8qg0082pypqvtlq0x00', 'smtp_enabled', 'false');
