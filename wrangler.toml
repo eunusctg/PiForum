@@ -59,6 +59,7 @@ NEXTAUTH_URL = "https://piforum.eu.org"
 #   WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_VERIFY_TOKEN
 #   TELEGRAM_BOT_TOKEN
 
+
 # ============================================================
 # Observability
 # ============================================================

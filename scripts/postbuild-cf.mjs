@@ -439,16 +439,112 @@ if (existsSync(handlerFile)) {
     handlerCode = stubEsmModule(handlerCode, mod)
   }
 
-  // NOTE: We do NOT patch the Prisma WASM initialization code here.
-  // The real WASM query compiler is required for SQL generation even
-  // when using the D1 adapter. Previous versions attempted to stub
-  // it out, which caused "r is not a constructor" runtime errors.
+  // === Patch Prisma WASM loading — use global from worker.js ===
+  // The esbuild-bundled code has multiple references to the WASM file using
+  // an absolute build-machine path like:
+  //   import("/home/z/my-project/.open-next/.../query_compiler_fast_bg.wasm")
+  // These fail at runtime on Cloudflare Workers. We replace ALL such references
+  // with code that reads from globalThis.PRISMA_QUERY_COMPILER_WASM (set in
+  // worker.js by loading from static assets).
+  //
+  // There are 3 types of references:
+  // 1. wasm_worker_loader_default = import("...wasm") — the main WASM loader
+  // 2. loadWasmChunk: if(chunkPath==="...wasm") return (await import("...wasm")).default
+  // 3. Same as #2 but in a different module (route handler)
+  //
+  // We use a global string replacement for the absolute path, then fix up the
+  // resulting code to return the WASM from globalThis instead.
 
-  // === Prisma WASM: Keep original import (WASM stays in bundle) ===
-  // The WASM query compiler is required for SQL generation even with D1 adapter.
-  // We keep the original import("...wasm") which wrangler resolves and includes
-  // as a separate WASM module in the Worker bundle.
-  // The WASM is loaded via the standard ES module import mechanism.
+  // Step 1: Replace the wasm_worker_loader_default assignment
+  const wasmImportPattern = /wasm_worker_loader_default\s*=\s*import\(["'][^"']*query_compiler_fast_bg\.wasm["']\)/
+  const wasmImportMatch = handlerCode.match(wasmImportPattern)
+  if (wasmImportMatch) {
+    const originalImport = wasmImportMatch[0]
+    const patchedImport = `wasm_worker_loader_default=(function(){if(globalThis.PRISMA_QUERY_COMPILER_WASM){return Promise.resolve({default:globalThis.PRISMA_QUERY_COMPILER_WASM})}return Promise.reject(new Error("PRISMA_QUERY_COMPILER_WASM not available"))})()`
+    handlerCode = handlerCode.replace(originalImport, patchedImport)
+    console.log(`  ✓ Patched wasm_worker_loader_default to use globalThis.PRISMA_QUERY_COMPILER_WASM`)
+  } else {
+    console.log(`  ⚠ Could not find wasm_worker_loader_default pattern`)
+  }
+
+  // Step 2: Patch loadWasmChunk functions that reference the WASM file
+  // Pattern: if(chunkPath==="/abs/path/to/query_compiler_fast_bg.wasm")return(await import("/abs/path/to/query_compiler_fast_bg.wasm")).default
+  // Replace with: if(chunkPath==="__prisma_wasm__")return globalThis.PRISMA_QUERY_COMPILER_WASM
+  const wasmChunkPattern = /if\(chunkPath===\"[^\"]*query_compiler_fast_bg\.wasm\"\)return\s*\(await import\(\"[^\"]*query_compiler_fast_bg\.wasm\"\)\)\.default/g
+  const wasmChunkMatches = handlerCode.match(wasmChunkPattern)
+  if (wasmChunkMatches) {
+    for (const match of wasmChunkMatches) {
+      handlerCode = handlerCode.replace(match, `if(chunkPath==="__prisma_wasm__")return globalThis.PRISMA_QUERY_COMPILER_WASM`)
+    }
+    console.log(`  ✓ Patched ${wasmChunkMatches.length} loadWasmChunk function(s) to use globalThis.PRISMA_QUERY_COMPILER_WASM`)
+  } else {
+    console.log(`  ⚠ Could not find loadWasmChunk pattern`)
+  }
+
+  // Step 3: Remove any remaining absolute-path WASM references as a safety net
+  // Replace any remaining import(".../query_compiler_fast_bg.wasm") with a safe fallback
+  const remainingWasmImports = handlerCode.match(/import\(["'][^"']*query_compiler_fast_bg\.wasm["']\)/g)
+  if (remainingWasmImports) {
+    for (const imp of remainingWasmImports) {
+      handlerCode = handlerCode.replace(imp, `Promise.resolve({default:globalThis.PRISMA_QUERY_COMPILER_WASM})`)
+    }
+    console.log(`  ✓ Patched ${remainingWasmImports.length} remaining WASM import(s)`)
+  }
+
+  // Step 4: Strip verbose console statements and Prisma error strings
+  const origLen = handlerCode.length
+  // Replace console.log/warn/debug/info with no-op arrow functions
+  handlerCode = handlerCode.replace(/console\.(log|warn|debug|info)/g, '(()=>{})')
+  // Strip long Prisma diagnostic strings (compress poorly, ~10-20 KiB savings)
+  handlerCode = handlerCode.replace(/Prisma Client could not locate a valid query engine[^"]{0,500}/g, 'Query engine not found')
+  handlerCode = handlerCode.replace(/Please make sure the database server is running at [^"]{0,200}/g, 'DB not reachable')
+  handlerCode = handlerCode.replace(/Invalid `prisma\.[a-zA-Z.]+\(\)` invocation[^"]{0,1000}/g, 'Invalid Prisma call')
+  handlerCode = handlerCode.replace(/Unique constraint failed on the fields: \([^)]+\)/g, 'Unique constraint failed')
+  handlerCode = handlerCode.replace(/Foreign key constraint failed on the field: `[^`]+`/g, 'FK constraint failed')
+  handlerCode = handlerCode.replace(/Access denied for user '[^']*'[^']{0,200}/g, 'Access denied')
+  const consoleSaved = origLen - handlerCode.length
+  if (consoleSaved > 0) {
+    console.log(`  ✓ Stripped verbose strings & console statements (saved ${(consoleSaved / 1024).toFixed(1)} KiB)`)
+  }
+
+  // Step 5: Deduplicate Prisma client modules
+  // The esbuild bundle includes multiple copies of the Prisma client:
+  //   require_client (from .prisma/client/index.js) — 164 KiB
+  //   require_edge (from .prisma/client/edge.js) — 164 KiB
+  //   require_edge2 (from @prisma/client/edge.js) — already stubbed above
+  // Since index.js was replaced with edge.js content by cleanup-prisma-engines,
+  // require_client and require_edge are IDENTICAL. We make require_client
+  // re-export from require_edge, saving ~164 KiB uncompressed (~37 KiB compressed).
+  //
+  // We can't use stubInlinedModule because the module's signature format differs
+  // ("path"(exports){} vs "path"(exports,module){}). We use a direct approach:
+  // find the var require_client = __commonJS({...}) block and replace it entirely.
+  const clientPath = '.open-next/server-functions/default/node_modules/.prisma/client/index.js'
+  const clientSig = `"${clientPath}"(exports)`
+  const clientIdx = handlerCode.indexOf(clientSig)
+  if (clientIdx !== -1) {
+    // Find the var declaration
+    const varStart = handlerCode.lastIndexOf('var ', Math.max(0, clientIdx - 10))
+    if (varStart !== -1 && varStart > clientIdx - 500) {
+      // Find the end: next ;var require_ or ;var init_
+      const searchFrom = clientIdx + 100
+      const endMatch = /;var\s+(?:require_|init_)/.exec(handlerCode.substring(searchFrom, searchFrom + 500000))
+      if (endMatch) {
+        const endPos = searchFrom + endMatch.index + 1
+        const originalChunk = handlerCode.substring(varStart, endPos)
+        const replacement = `var require_client = function() { var e=require_edge();return e; };`
+        handlerCode = handlerCode.substring(0, varStart) + replacement + handlerCode.substring(endPos)
+        const saved = originalChunk.length - replacement.length
+        console.log(`  ✓ Deduplicated require_client → re-exports require_edge (saved ${(saved / 1024).toFixed(1)} KiB)`)
+      } else {
+        console.log(`  ⚠ Could not find end of require_client module`)
+      }
+    } else {
+      console.log(`  ⚠ Could not find var declaration for require_client`)
+    }
+  } else {
+    console.log(`  ⚠ Could not find require_client path signature`)
+  }
 
   const newSize = Buffer.byteLength(handlerCode, 'utf8')
   writeFileSync(handlerFile, handlerCode, 'utf8')
@@ -458,10 +554,49 @@ if (existsSync(handlerFile)) {
   }
 }
 
-// === Step 13: WASM is loaded via wasm_modules binding ===
-// The WASM file is kept in node_modules for wrangler to find, but it's
-// loaded via the PRISMA_WASM binding (see wrangler.toml [[wasm_modules]])
-// which doesn't count against the 3 MiB script size limit.
+// === Step 13: Load Prisma WASM via static import in worker.js ===
+// The Prisma WASM query compiler is loaded via a static ES import in worker.js.
+// Wrangler detects static .wasm imports and bundles them as separate WASM modules.
+// The WASM still counts against the total size limit, but it's the ONLY way to
+// load WASM on Cloudflare Workers (WebAssembly.compile/compileStreaming are blocked,
+// and [wasm_modules] bindings are not allowed in ES module Workers).
+//
+// We also strip console statements and other verbose code from handler.mjs to
+// keep the total (JS + WASM) under the 3 MiB compressed size limit.
+const workerFile = join(OPEN_NEXT_DIR, 'worker.js')
+const wasmSourcePath = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/.prisma/client/query_compiler_fast_bg.wasm')
+
+if (existsSync(workerFile)) {
+  let workerCode = readFileSync(workerFile, 'utf8')
+
+  // Remove any existing PRISMA_QUERY_COMPILER_WASM code
+  workerCode = workerCode.replace(/\n*\/\/ @ts-expect-error:.*Prisma WASM query compiler\nimport PRISMA_QUERY_COMPILER_WASM from.*\n/, '')
+  workerCode = workerCode.replace(/\n*globalThis\.PRISMA_QUERY_COMPILER_WASM\s*=\s*PRISMA_QUERY_COMPILER_WASM;\n/, '')
+  // Remove the old __ensurePrismaWasm function and its call
+  workerCode = workerCode.replace(/\n*\/\/ Prisma WASM query compiler[\s\S]*?^}\n/m, '')
+  workerCode = workerCode.replace(/\n*await __ensurePrismaWasm\(env[^)]*\);\n/, '')
+  // Remove the binding-based loader code
+  workerCode = workerCode.replace(/\n*\/\/ Prisma WASM query compiler — loaded from env[\s\S]*?^\}\n/m, '')
+
+  // Add the static import and globalThis assignment
+  const wasmImportCode = `// @ts-expect-error: Will be resolved by wrangler build — Prisma WASM query compiler
+import PRISMA_QUERY_COMPILER_WASM from "./server-functions/default/node_modules/.prisma/client/query_compiler_fast_bg.wasm";
+globalThis.PRISMA_QUERY_COMPILER_WASM = PRISMA_QUERY_COMPILER_WASM;
+`
+
+  // Insert after the last existing import statement (before export)
+  const lastImportEnd = workerCode.lastIndexOf('";\n', workerCode.indexOf('export'))
+  if (lastImportEnd !== -1) {
+    workerCode = workerCode.slice(0, lastImportEnd + 3) + '\n' + wasmImportCode + '\n' + workerCode.slice(lastImportEnd + 3)
+  }
+
+  writeFileSync(workerFile, workerCode, 'utf8')
+  console.log(`✓ Patched worker.js with static WASM import for Prisma query compiler`)
+} else {
+  console.log(`  ⚠ Could not find worker.js for patching`)
+}
+
+// The WASM file needs to stay in node_modules for the static import to resolve
 
 // === Step 13b: Stub Next.js Pages Router runtime (not used — App Router only) ===
 // pages-turbo.runtime.prod.js is for the Pages Router, which we don't use.
@@ -611,7 +746,7 @@ console.log(`\n[postbuild-cf] Done. Saved ${(bytesSaved / 1024).toFixed(1)} KiB 
 // are redundant. Keeping them increases the bundle size because wrangler
 // includes them as additional modules.
 //
-// KEEP: .prisma/client/query_compiler_fast_bg.wasm (loaded at runtime)
+// KEEP: .prisma/client/query_compiler_fast_bg.wasm (needed by [wasm_modules] binding)
 // REMOVE: Everything else in .next/server/chunks/ and node_modules/
 console.log('\n[postbuild-cf] Removing redundant inlined files...')
 
@@ -627,9 +762,8 @@ if (existsSync(chunksDir)) {
   console.log(`✓ Removed .next/server/chunks/ (${(size / 1024).toFixed(1)} KiB)`)
 }
 
-// Remove node_modules/ but preserve the WASM file for wrangler's wasm_modules binding
+// Remove node_modules/ but preserve the WASM file for the [wasm_modules] binding
 if (existsSync(nodeModulesDir)) {
-  // First, preserve the WASM file
   const wasmPath = join(nodeModulesDir, '.prisma/client/query_compiler_fast_bg.wasm')
   let wasmContent = null
   if (existsSync(wasmPath)) {
@@ -641,12 +775,12 @@ if (existsSync(nodeModulesDir)) {
   bytesSaved += size
   console.log(`✓ Removed node_modules/ (${(size / 1024).toFixed(1)} KiB)`)
 
-  // Restore the WASM file (needed for wrangler's [[wasm_modules]] binding)
+  // Restore the WASM file (needed by wrangler's [wasm_modules] binding)
   if (wasmContent) {
     const prismaDir = join(nodeModulesDir, '.prisma/client')
     mkdirSync(prismaDir, { recursive: true })
     writeFileSync(wasmPath, wasmContent)
-    console.log(`✓ Preserved query_compiler_fast_bg.wasm for wasm_modules binding (${(wasmContent.length / 1024).toFixed(1)} KiB)`)
+    console.log(`✓ Preserved query_compiler_fast_bg.wasm for [wasm_modules] binding (${(wasmContent.length / 1024).toFixed(1)} KiB)`)
   }
 }
 
