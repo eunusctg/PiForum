@@ -46,8 +46,58 @@ function getDirSize(dir) {
 
 console.log('[postbuild-cf] Optimizing Cloudflare Worker bundle...\n')
 
+// === Step 0: Replace .prisma/client/index.js with edge.js in the .open-next bundle ===
+// The esbuild bundler picks index.js (regardless of workerd condition),
+// which requires the 4.5 MiB query_compiler_fast_bg.wasm-base64.js file.
+// edge.js uses @prisma/client/runtime/wasm-compiler-edge.js instead — no
+// base64 file needed. This saves ~4.5 MiB uncompressed / ~1 MiB compressed,
+// keeping the Worker under Cloudflare's 3 MiB free-plan limit.
+//
+// We do this ONLY in the .open-next bundle (not in node_modules root) because
+// the edge client doesn't work in Node.js local dev.
+const PRISMA_CLIENT_DIR = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/.prisma/client')
+const EDGE_JS = join(PRISMA_CLIENT_DIR, 'edge.js')
+const INDEX_JS = join(PRISMA_CLIENT_DIR, 'index.js')
+const BASE64_JS = join(PRISMA_CLIENT_DIR, 'query_compiler_fast_bg.wasm-base64.js')
+const BASE64_MJS = join(PRISMA_CLIENT_DIR, 'query_compiler_fast_bg.wasm-base64.mjs')
+
+if (existsSync(EDGE_JS) && existsSync(INDEX_JS)) {
+  const edgeSrc = readFileSync(EDGE_JS, 'utf8')
+  const indexSrc = readFileSync(INDEX_JS, 'utf8')
+  if (edgeSrc !== indexSrc) {
+    const indexSize = Buffer.byteLength(indexSrc, 'utf8')
+    const edgeSize = Buffer.byteLength(edgeSrc, 'utf8')
+    writeFileSync(INDEX_JS, edgeSrc, 'utf8')
+    bytesSaved += indexSize - edgeSize
+    console.log(`✓ Replaced .prisma/client/index.js with edge.js content (saved ${((indexSize - edgeSize) / 1024).toFixed(1)} KiB)`)
+  }
+}
+// Now safe to delete the 4.5 MiB base64 file (no longer referenced by index.js)
+if (existsSync(BASE64_JS)) {
+  const size = statSync(BASE64_JS).size
+  rmSync(BASE64_JS, { force: true })
+  bytesSaved += size
+  console.log(`✓ Deleted query_compiler_fast_bg.wasm-base64.js (${(size / 1024 / 1024).toFixed(2)} MiB)`)
+}
+if (existsSync(BASE64_MJS)) {
+  const size = statSync(BASE64_MJS).size
+  rmSync(BASE64_MJS, { force: true })
+  bytesSaved += size
+  console.log(`✓ Deleted query_compiler_fast_bg.wasm-base64.mjs (${(size / 1024 / 1024).toFixed(2)} MiB)`)
+}
+
 // === Step 1: Remove unused durable objects ===
 const buildDir = join(OPEN_NEXT_DIR, '.build/durable-objects')
+
+// Remove ISR cache files (we use incrementalCache: "dummy", so they're not needed)
+const cacheDir = join(OPEN_NEXT_DIR, 'cache')
+if (existsSync(cacheDir)) {
+  const size = getDirSize(cacheDir)
+  rmSync(cacheDir, { recursive: true, force: true })
+  bytesSaved += size
+  console.log(`✓ Removed cache/ (${(size / 1024).toFixed(1)} KiB)`)
+}
+
 if (existsSync(buildDir)) {
   const stubCode = `export class DOQueueHandler { constructor() {} async fetch() { return new Response("stub"); } }
 export class DOShardedTagCache { constructor() {} async fetch() { return new Response("stub"); } }
@@ -327,6 +377,17 @@ if (existsSync(handlerFile)) {
   handlerCode = stubInlinedModule(handlerCode,
     '.open-next/server-functions/default/.next/server/chunks/[externals]_@prisma_adapter-libsql_1g-0_cw._.js',
     'var e={};return e'
+  )
+
+  // Stub: query_compiler_fast_bg.wasm-base64.js — 4.5 MiB base64-encoded WASM!
+  // On Cloudflare Workers, the WASM is loaded via a static import in worker.js
+  // (set as globalThis.PRISMA_QUERY_COMPILER_WASM). The base64 inline version
+  // is NOT needed and accounts for ~4.5 MiB uncompressed / ~1 MiB compressed.
+  // We stub it to export an empty object — the WASM loading code in Prisma
+  // will fall through to the globalThis path.
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/node_modules/.prisma/client/query_compiler_fast_bg.wasm-base64.js',
+    'var e={wasm:undefined};return e'
   )
 
   // === Stub __esm modules (libsql/hrana — not needed on Workers) ===

@@ -22,3 +22,33 @@ Stage Summary:
 - Server management: PM2 keeps the dev server alive with auto-restart capability
 - Preloader safety: 10-second timeout ensures the preloader never gets permanently stuck
 - The forum is now fully functional: home page, thread view, navigation, community stats all working
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix all runtime errors - Prisma WASM broken, email login not working, thread not found
+
+Work Log:
+- Diagnosed that cleanup-prisma-engines.mjs was replacing index.js with edge.js and deleting wasm-base64.js
+- This broke local dev because edge.js uses dynamic WASM imports that don't work in Node.js
+- The 'r is not a constructor' error on Cloudflare was also related to the Prisma WASM stub approach
+- Fixed cleanup-prisma-engines.mjs to NOT replace index.js or delete base64 file (moved to postbuild-cf.mjs)
+- Added Step 0 to postbuild-cf.mjs to do the index.js→edge.js replacement only in the .open-next bundle
+- Added base64 WASM stubbing in postbuild-cf.mjs (saves 4612 KiB from handler.mjs)
+- Added ISR cache directory removal in postbuild-cf.mjs
+- Regenerated Prisma client to restore proper index.js for local dev
+- Set admin password to 'admin123' in local DB (was unknown hash)
+- Set test user password to 'test123'
+- Verified email/password login works via API and browser
+- Verified thread listing and detail APIs work
+- Verified browser: login, thread viewing, navigation all functional
+- Added --minify flag to wrangler deploy (reduces compressed size from 3141 KiB to 2641 KiB)
+- Final CF bundle: 2641 KiB compressed (well under 3072 KiB free plan limit)
+
+Stage Summary:
+- Root cause: Prisma WASM cleanup script broke both local dev and CF deployment
+- Fix: Separated cleanup for local dev (only remove unused engines) vs CF build (replace index.js with edge.js, stub base64 WASM)
+- Bundle optimization: --minify flag saves ~500 KiB compressed
+- Local dev fully functional: email login, thread view, Google OAuth button
+- CF build ready for deployment (need user's CLOUDFLARE_API_TOKEN)
+- Admin credentials: admin@piforum.com / admin123

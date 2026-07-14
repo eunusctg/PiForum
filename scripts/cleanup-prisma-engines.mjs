@@ -59,33 +59,15 @@ if (existsSync(PRISMA_CLIENT_DIR)) {
 // 3. NOTE: Do NOT delete .prisma/client/query_compiler_fast_bg.wasm-base64.*
 //    In Prisma 7.x, the generated index.js requires this file at runtime:
 //      const { wasm } = require('./query_compiler_fast_bg.wasm-base64.js')
-//    Deleting it breaks the esbuild bundle.
+//    Deleting it breaks both local dev and the esbuild bundle.
+//
+//    The replacement of index.js with edge.js and deletion of the base64 file
+//    is now done ONLY in the Cloudflare post-build script (postbuild-cf.mjs),
+//    because the edge client doesn't work in Node.js (local dev).
 
-// 4. Replace .prisma/client/index.js with edge.js content.
-//    The esbuild bundler picks index.js (regardless of workerd condition),
-//    which requires the 4.5 MiB query_compiler_fast_bg.wasm-base64.js file.
-//    edge.js uses @prisma/client/runtime/wasm-compiler-edge.js instead — no
-//    base64 file needed. This saves ~4.5 MiB uncompressed / ~1 MiB compressed,
-//    keeping the Worker under Cloudflare's 3 MiB free-plan limit.
-const EDGE_JS = join(PRISMA_CLIENT_DIR, 'edge.js')
-const INDEX_JS = join(PRISMA_CLIENT_DIR, 'index.js')
-if (existsSync(EDGE_JS) && existsSync(INDEX_JS)) {
-  const edgeSrc = readFileSync(EDGE_JS, 'utf8')
-  const indexSrc = readFileSync(INDEX_JS, 'utf8')
-  if (edgeSrc !== indexSrc) {
-    const indexSize = indexSrc.length
-    const edgeSize = edgeSrc.length
-    writeFileSync(INDEX_JS, edgeSrc, 'utf8')
-    bytesFreed += indexSize - edgeSize
-    console.log(
-      `  replaced ${INDEX_JS} with edge.js content (saved ${((indexSize - edgeSize) / 1024 / 1024).toFixed(2)} MiB)`,
-    )
-  }
-}
-
-// 5. Now safe to delete the 4.5 MiB base64 file (no longer referenced).
-deleteIf(join(PRISMA_CLIENT_DIR, 'query_compiler_fast_bg.wasm-base64.js'))
-deleteIf(join(PRISMA_CLIENT_DIR, 'query_compiler_fast_bg.wasm-base64.mjs'))
+// 4. (Moved to postbuild-cf.mjs) Replace .prisma/client/index.js with edge.js
+//     content and delete the 4.5 MiB base64 file. This is only safe inside the
+//     .open-next bundle where esbuild resolves all imports statically.
 
 console.log(
   `[cleanup-prisma-engines] Done. Freed ${(bytesFreed / 1024 / 1024).toFixed(2)} MiB.`,

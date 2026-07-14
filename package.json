@@ -16,6 +16,7 @@
     "pages:build": "npx @cloudflare/next-on-pages",
     "pages:preview": "npm run pages:build && npx wrangler pages dev .vercel/output/static --compatibility-flag=nodejs_compat",
     "pages:deploy": "npm run pages:build && npx wrangler pages deploy .vercel/output/static",
+    "deploy:cf": "npx wrangler deploy --minify",
     "d1:create": "npx wrangler d1 create piforum",
     "d1:migrate": "chmod +x migrate-to-d1.sh && ./migrate-to-d1.sh",
     "d1:query": "npx wrangler d1 execute piforum --remote --command",
