@@ -27,6 +27,14 @@ const nextConfig: NextConfig = {
     "@libsql/core",
     "@libsql/client",
     "libsql",
+    // next-auth is NOT used (custom auth system) — exclude from server bundle
+    "next-auth",
+    // Node-only / unused packages — never needed server-side on Workers
+    "sharp",
+    "better-sqlite3",
+    "react-syntax-highlighter",
+    "@mdxeditor/editor",
+    "qrcode",
   ],
 };
 

@@ -6,15 +6,15 @@
  * Trims the .open-next worker bundle to fit under Cloudflare's
  * 3 MiB compressed size limit on the free plan.
  *
- * Strategy: Keep the Prisma WASM bundled normally (it's required at runtime)
- * but remove unnecessary code from the bundle to save the ~5 KiB we need.
+ * Strategy: Keep the Prisma WASM query compiler (required for SQL
+ * generation even with D1 adapter) but remove unnecessary code from
+ * the bundle to stay under the limit.
  *
- * Optimizations:
- * 1. Remove unused cloudflare-templates (build-time only)
- * 2. Remove the cloudflare/images.js module (only used in dev)
- * 3. Remove the cloudflare/skew-protection.js module
- * 4. Remove durable objects that aren't needed (queue, tag-cache, bucket-purge)
- * 5. Patch worker.js to remove references to deleted modules
+ * IMPORTANT: The Prisma WASM query compiler (~3.4 MB uncompressed)
+ * IS required at runtime — even with the D1 adapter. The adapter
+ * only handles query EXECUTION, not compilation. The WASM compiler
+ * generates SQL from Prisma queries, which the D1 adapter then
+ * executes against D1. We must NOT stub it out.
  *
  * Run AFTER `opennextjs-cloudflare build`, BEFORE `wrangler deploy`.
  *
@@ -22,7 +22,7 @@
  *   node scripts/postbuild-cf.mjs
  */
 
-import { readFileSync, writeFileSync, existsSync, rmSync, statSync, readdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, rmSync, statSync, readdirSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const OPEN_NEXT_DIR = '.open-next'
@@ -47,17 +47,12 @@ function getDirSize(dir) {
 console.log('[postbuild-cf] Optimizing Cloudflare Worker bundle...\n')
 
 // === Step 1: Remove unused durable objects ===
-// We use queue: "direct", tagCache: "dummy", incrementalCache: "dummy"
-// so these durable objects are never used
 const buildDir = join(OPEN_NEXT_DIR, '.build/durable-objects')
 if (existsSync(buildDir)) {
-  // Don't delete the directory entirely — just replace the files with empty stubs
-  // Wrangler expects the exports to exist
   const stubCode = `export class DOQueueHandler { constructor() {} async fetch() { return new Response("stub"); } }
 export class DOShardedTagCache { constructor() {} async fetch() { return new Response("stub"); } }
 export class BucketCachePurge { constructor() {} async fetch() { return new Response("stub"); } }
 `
-
   const queueFile = join(buildDir, 'queue.js')
   const tagCacheFile = join(buildDir, 'sharded-tag-cache.js')
   const bucketCacheFile = join(buildDir, 'bucket-cache-purge.js')
@@ -85,7 +80,6 @@ if (existsSync(templateDir)) {
 const imagesFile = join(OPEN_NEXT_DIR, 'cloudflare/images.js')
 if (existsSync(imagesFile)) {
   const size = statSync(imagesFile).size
-  // Replace with a stub that throws
   writeFileSync(imagesFile, `export function handleCdnCgiImageRequest() { return new Response("Not found", { status: 404 }); }
 export function handleImageRequest() { return new Response("Not found", { status: 404 }); }
 `, 'utf8')
@@ -93,7 +87,7 @@ export function handleImageRequest() { return new Response("Not found", { status
   console.log(`✓ Stubbed cloudflare/images.js (saved ${((size - 100) / 1024).toFixed(1)} KiB)`)
 }
 
-// === Step 4: Remove cloudflare/skew-protection.js (not used, ~1.4 KiB) ===
+// === Step 4: Remove cloudflare/skew-protection.js ===
 const skewFile = join(OPEN_NEXT_DIR, 'cloudflare/skew-protection.js')
 if (existsSync(skewFile)) {
   const size = statSync(skewFile).size
@@ -115,7 +109,6 @@ if (existsSync(dynamoDir)) {
 // === Step 6: Stub Node-only react-dom variants (Workers uses edge) ===
 const reactDomDir = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/react-dom/cjs')
 if (existsSync(reactDomDir)) {
-  // On Cloudflare Workers, the edge variant is used — stub the node and browser ones
   const stubFiles = [
     'react-dom-server.node.production.js',
     'react-dom-server-legacy.node.production.js',
@@ -126,7 +119,6 @@ if (existsSync(reactDomDir)) {
     const filePath = join(reactDomDir, file)
     if (existsSync(filePath)) {
       const size = statSync(filePath).size
-      // Replace with a re-export of the edge variant (same API)
       writeFileSync(filePath, `'use strict';module.exports=require('./react-dom-server.edge.production.js');`, 'utf8')
       const stubSize = statSync(filePath).size
       bytesSaved += size - stubSize
@@ -135,7 +127,7 @@ if (existsSync(reactDomDir)) {
   }
 }
 
-// === Step 7: Stub Node-only compression module (not needed on Workers) ===
+// === Step 7: Stub Node-only compression module ===
 const compressionFile = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next/dist/compiled/compression/index.js')
 if (existsSync(compressionFile)) {
   const size = statSync(compressionFile).size
@@ -145,23 +137,18 @@ if (existsSync(compressionFile)) {
   console.log(`✓ Stubbed compression/index.js (saved ${((size - stubSize) / 1024).toFixed(1)} KiB)`)
 }
 
-// === Step 8: Deduplicate app-page templates (they share most code) ===
-// There are ~30+ app-page template files that are nearly identical.
-// Replace all but the first with a stub that re-exports the same module.
+// === Step 8: Deduplicate app-page templates ===
 const ssrDir = join(OPEN_NEXT_DIR, 'server-functions/default/.next/server/chunks/ssr')
 if (existsSync(ssrDir)) {
-  const appPageFiles = readdirSync(ssrDir).filter(f => 
+  const appPageFiles = readdirSync(ssrDir).filter(f =>
     f.startsWith('node_modules_next_dist_esm_build_templates_app-page_') && f.endsWith('.js')
   )
   if (appPageFiles.length > 2) {
-    // Keep the first file as the reference, stub the rest
     const referenceFile = appPageFiles[0]
-    const referencePath = join(ssrDir, referenceFile)
     let saved = 0
     for (let i = 1; i < appPageFiles.length; i++) {
       const filePath = join(ssrDir, appPageFiles[i])
       const size = statSync(filePath).size
-      // Create a stub that re-exports from the reference
       writeFileSync(filePath, `module.exports=require('./${referenceFile}');`, 'utf8')
       saved += size - statSync(filePath).size
     }
@@ -172,7 +159,7 @@ if (existsSync(ssrDir)) {
 
 // === Step 9: Stub Firebase messaging (large, not critical for SSR) ===
 if (existsSync(ssrDir)) {
-  const firebaseFiles = readdirSync(ssrDir).filter(f => 
+  const firebaseFiles = readdirSync(ssrDir).filter(f =>
     f.startsWith('node_modules_firebase_messaging') && !f.includes('1gkbocp')
   )
   for (const file of firebaseFiles) {
@@ -185,11 +172,10 @@ if (existsSync(ssrDir)) {
   }
 }
 
-// === Step 10: Remove edge-runtime/primitives (large, not needed in Workers) ===
+// === Step 10: Stub @edge-runtime/primitives (not needed in Workers) ===
 const edgeRuntimeDir = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next/dist/compiled/@edge-runtime/primitives')
 if (existsSync(edgeRuntimeDir)) {
   const size = getDirSize(edgeRuntimeDir)
-  // Replace with stub
   const loadFile = join(edgeRuntimeDir, 'load.js')
   if (existsSync(loadFile)) {
     writeFileSync(loadFile, `export const getRequestHandler=()=>({});export default{};`, 'utf8')
@@ -199,10 +185,7 @@ if (existsSync(edgeRuntimeDir)) {
   if (savedSize > 0) console.log(`✓ Stubbed @edge-runtime/primitives (saved ${(savedSize / 1024).toFixed(1)} KiB)`)
 }
 
-// === Step 11: Stub @prisma/adapter-libsql (not needed on Workers — uses D1 adapter) ===
-// The local dev path in db.ts uses a standard dynamic import which gets bundled.
-// On Cloudflare Workers, the D1 adapter branch is always taken, so we can safely
-// stub this out to save significant bundle size.
+// === Step 11: Remove @prisma/adapter-libsql + @libsql (not needed on Workers) ===
 const libsqlPaths = [
   join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/@prisma/adapter-libsql'),
   join(OPEN_NEXT_DIR, 'node_modules/@prisma/adapter-libsql'),
@@ -215,7 +198,6 @@ for (const libsqlDir of libsqlPaths) {
     console.log(`✓ Removed @prisma/adapter-libsql/ (${(size / 1024).toFixed(1)} KiB)`)
   }
 }
-// Also stub the @libsql and libsql packages that adapter-libsql depends on
 const libsqlDeps = [
   join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/@libsql'),
   join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/libsql'),
@@ -231,12 +213,14 @@ for (const dep of libsqlDeps) {
   }
 }
 
-// === Step 12: Strip debug endpoint and verbose strings from handler ===
-// The Google OAuth debug endpoint is useful in dev but adds to the bundle.
-// Strip its diagnostic code and verbose strings from the production build.
-// Also strips source map comments (was previously Step 13).
-// CRITICAL: Also patch the inlined Prisma WASM initialization to work with
-// our stub WASM (which doesn't have __wbindgen_start etc.).
+// === Step 12: Patch handler.mjs — strip verbose strings & stub unused inlined modules ===
+// The handler.mjs is an esbuild bundle with all server code inlined. We need to:
+// 1. Strip diagnostic strings and source maps (minor savings)
+// 2. Stub inlined modules that are not needed at runtime (major savings)
+//
+// The esbuild bundle format wraps each module as:
+//   "path/to/module.js"(exports,module){ ... module code ... }
+// We find specific modules by their path and replace their content with stubs.
 const handlerFile = join(OPEN_NEXT_DIR, 'server-functions/default/handler.mjs')
 if (existsSync(handlerFile)) {
   let handlerCode = readFileSync(handlerFile, 'utf8')
@@ -251,127 +235,271 @@ if (existsSync(handlerFile)) {
   // Strip source map comments
   handlerCode = handlerCode.replace(/\/\/# sourceMappingURL=[^\n]*/g, '')
 
-  // === CRITICAL: Patch inlined Prisma WASM initialization ===
-  // The handler.mjs has Prisma's WASM loading inlined. The exact code:
-  //   let i=await r.getRuntime(),o=await r.getQueryCompilerWasmModule();
-  //   if(o==null)throw new ji.PrismaClientInitializationError("The loaded wasm module was unexpectedly `undefined` or `null` once loaded",t);
-  //   let s={[r.importName]:i},a=new WebAssembly.Instance(o,s),m=a.exports.__wbindgen_start;
-  //   return i.__wbg_set_wasm(a.exports),m(),i.QueryCompiler
-  // With our stub WASM, WebAssembly.Instance returns empty exports, and m() throws.
-  // Fix: Replace the entire WASM loading block with a stub that returns a
-  // dummy QueryCompiler class. When using the D1 adapter, Prisma never
-  // actually calls the QueryCompiler — it's only loaded during engine init.
-  const wasmBlock = 'let i=await r.getRuntime(),o=await r.getQueryCompilerWasmModule();if(o==null)throw new ji.PrismaClientInitializationError("The loaded wasm module was unexpectedly `undefined` or `null` once loaded",t);let s={[r.importName]:i},a=new WebAssembly.Instance(o,s),m=a.exports.__wbindgen_start;return i.__wbg_set_wasm(a.exports),m(),i.QueryCompiler';
-  const wasmStub = 'class DummyQueryCompiler{constructor(){this.__wbg_ptr=0}compile(){return""}compileBatch(){return[""]}free(){}}DummyQueryCompiler';
-  if (handlerCode.includes(wasmBlock)) {
-    handlerCode = handlerCode.replace(wasmBlock, wasmStub);
-    console.log('✓ Patched inlined Prisma WASM init in handler.mjs (full block replacement)');
-  } else {
-    console.log('⚠ Could not find exact Prisma WASM init block in handler.mjs');
-    // Try a more flexible approach - just find and replace the critical part
-    const flexiblePattern = /let i=await r\.getRuntime\(\),o=await r\.getQueryCompilerWasmModule\(\);[\s\S]*?i\.QueryCompiler/;
-    const match = handlerCode.match(flexiblePattern);
-    if (match) {
-      console.log('Found flexible match:', match[0].substring(0, 100));
+  // === Stub inlined modules that are not needed at runtime ===
+  // Each module in the esbuild bundle follows the pattern:
+  //   "module/path.js"(exports,module){ ... }
+  // We find the module by its path, then find the matching closing brace
+  // and replace the entire module content with a minimal stub.
+
+  function stubInlinedModule(code, modulePath, stubValue = 'module.exports={}') {
+    // The esbuild bundle format is:
+    //   var require_xxx = __commonJS({
+    //     "path/to/module.js"(exports, module) { ... content ... }
+    //   });
+    //
+    // We find the var declaration and replace the entire __commonJS({...})
+    // with a simple assignment. This avoids the tricky brace-matching problem
+    // inside complex module content.
+    const pathSignature = `"${modulePath}"(exports,module){`
+
+    let sigIdx = code.indexOf(pathSignature)
+    if (sigIdx === -1) {
+      console.log(`  ⚠ Could not find inlined module: ${modulePath.split('/').pop()}`)
+      return code
     }
+
+    // Find the `var require_xxx = __commonJS({` wrapper start
+    const varStart = code.lastIndexOf('var ', sigIdx)
+    if (varStart === -1 || varStart < sigIdx - 500) {
+      // Safety check: var should be close to the module signature
+      console.log(`  ⚠ Could not find var declaration for: ${modulePath.split('/').pop()}`)
+      return code
+    }
+
+    // Extract the variable name: var require_xxx =
+    const varDecl = code.substring(varStart, sigIdx)
+    const varNameMatch = varDecl.match(/var\s+(\w+)\s*=/)
+    if (!varNameMatch) {
+      console.log(`  ⚠ Could not extract var name for: ${modulePath.split('/').pop()}`)
+      return code
+    }
+    const varName = varNameMatch[1]
+
+    // Find the end of the __commonJS({...}) call.
+    // Strategy: find the next `var require_` or `var init_` declaration after
+    // the current module, or the end of the file. The current module's
+    // __commonJS call ends just before the next var declaration.
+    const searchFrom = sigIdx + pathSignature.length
+    let endIdx = code.length
+
+    // Look for the next var declaration that starts a new module
+    const nextVarPattern = /;var\s+(?:require_|init_)/g
+    nextVarPattern.lastIndex = searchFrom
+    const nextVarMatch = nextVarPattern.exec(code)
+    if (nextVarMatch) {
+      endIdx = nextVarMatch.index + 1 // Include the semicolon
+    }
+
+    // The original content from var declaration to the end
+    const originalChunk = code.substring(varStart, endIdx)
+    const savedBytes = originalChunk.length - 0 // We'll calculate actual savings below
+
+    // Replace the entire var declaration + __commonJS({...}) with a simple function
+    const replacement = `var ${varName} = function() { ${stubValue}; return module.exports; };`
+    const actualSaved = originalChunk.length - replacement.length
+
+    code = code.substring(0, varStart) + replacement + code.substring(endIdx)
+
+    console.log(`  ✓ Stubbed inlined ${modulePath.split('/').pop()} (saved ${(actualSaved / 1024).toFixed(1)} KiB)`)
+    bytesSaved += actualSaved
+    return code
   }
+
+  // Stub: pages-turbo.runtime.prod.js — Pages Router runtime, NOT used (App Router only)
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/node_modules/next/dist/compiled/next-server/pages-turbo.runtime.prod.js',
+    'var e={};return e'
+  )
+
+  // Stub: jsonwebtoken/index.js — Used by NextAuth which we don't use (custom auth)
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/node_modules/next/dist/compiled/jsonwebtoken/index.js',
+    'var e={sign:()=>{throw new Error("jsonwebtoken not available")},verify:()=>{throw new Error("jsonwebtoken not available")},decode:()=>null};return e'
+  )
+
+  // Stub: @prisma/adapter-libsql — Not used on Workers (D1 adapter is used instead)
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/.next/server/chunks/ssr/[externals]_@prisma_adapter-libsql_1g-0_cw._.js',
+    'var e={};return e'
+  )
+
+  // Stub: @prisma/adapter-libsql (alternative chunk path)
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/.next/server/chunks/[externals]_@prisma_adapter-libsql_1g-0_cw._.js',
+    'var e={};return e'
+  )
+
+  // === Stub __esm modules (libsql/hrana — not needed on Workers) ===
+  // The __esm format is: init_xxx = __esm({ "path"() { ... } });
+  // We find each libsql-related init_ variable and replace the entire
+  // __esm call with a no-op assignment.
+  function stubEsmModule(code, modulePath) {
+    const pathSignature = `"${modulePath}"(){`
+    let sigIdx = code.indexOf(pathSignature)
+    if (sigIdx === -1) {
+      return code // Not found, skip
+    }
+
+    // Find the var init_xxx = __esm({ wrapper start
+    const varStart = code.lastIndexOf('var ', sigIdx)
+    if (varStart === -1 || varStart < sigIdx - 500) return code
+
+    const varDecl = code.substring(varStart, sigIdx)
+    const varNameMatch = varDecl.match(/var\s+(init_\w+)\s*=/)
+    if (!varNameMatch) return code
+    const varName = varNameMatch[1]
+
+    // Find the end — next `;var init_` or `;var require_`
+    const searchFrom = sigIdx + pathSignature.length
+    let endIdx = code.length
+    const nextVarPattern = /;var\s+(?:require_|init_)/g
+    nextVarPattern.lastIndex = searchFrom
+    const nextVarMatch = nextVarPattern.exec(code)
+    if (nextVarMatch) {
+      endIdx = nextVarMatch.index + 1
+    }
+
+    const originalChunk = code.substring(varStart, endIdx)
+    const replacement = `var ${varName} = __esm({ "${modulePath}"() {} });`
+    const actualSaved = originalChunk.length - replacement.length
+
+    code = code.substring(0, varStart) + replacement + code.substring(endIdx)
+    if (actualSaved > 1000) {
+      console.log(`  ✓ Stubbed esm ${modulePath.split('/').pop()} (saved ${(actualSaved / 1024).toFixed(1)} KiB)`)
+    }
+    bytesSaved += actualSaved
+    return code
+  }
+
+  // Stub all libsql/hrana modules (not needed on Workers — uses D1 adapter)
+  // These are from @libsql/core, @libsql/hrana-client, @libsql/client, and @prisma/adapter-libsql
+  const libsqlModules = [
+    // @libsql/core
+    '.open-next/server-functions/default/node_modules/@libsql/core/lib-esm/api.js',
+    '.open-next/server-functions/default/node_modules/@libsql/core/lib-esm/uri.js',
+    '.open-next/server-functions/default/node_modules/@libsql/core/lib-esm/util.js',
+    '.open-next/server-functions/default/node_modules/@libsql/core/lib-esm/config.js',
+    // @libsql/isomorphic-ws
+    '.open-next/server-functions/default/node_modules/@libsql/isomorphic-ws/web.mjs',
+    // @libsql/hrana-client/lib-esm (core)
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/client.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/errors.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/libsql_url.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/encoding/json/decode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/encoding/json/encode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/encoding/protobuf/util.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/encoding/protobuf/decode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/encoding/protobuf/encode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/encoding/index.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/id_alloc.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/util.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/value.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/result.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/sql.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/queue.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/stmt.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/batch.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/describe.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/stream.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/cursor.js',
+    // @libsql/hrana-client/lib-esm/ws
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/ws/cursor.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/ws/stream.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/ws/json_encode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/ws/protobuf_encode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/ws/json_decode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/ws/protobuf_decode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/ws/client.js',
+    // @libsql/hrana-client/lib-esm/shared
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/shared/json_encode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/shared/protobuf_encode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/shared/json_decode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/shared/protobuf_decode.js',
+    // @libsql/hrana-client/lib-esm/http
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/http/json_decode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/http/protobuf_decode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/http/cursor.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/http/json_encode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/http/protobuf_encode.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/http/stream.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/http/client.js',
+    // @libsql/hrana-client/lib-esm misc
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/queue_microtask.js',
+    '.open-next/server-functions/default/node_modules/@libsql/hrana-client/lib-esm/byte_queue.js',
+    // @libsql/client
+    '.open-next/server-functions/default/node_modules/@libsql/client/lib-esm/ws.js',
+    '.open-next/server-functions/default/node_modules/@libsql/client/lib-esm/http.js',
+    '.open-next/server-functions/default/node_modules/@libsql/client/lib-esm/web.js',
+    '.open-next/server-functions/default/node_modules/@libsql/client/dist/index.mjs',
+    // @prisma/adapter-libsql
+    '.open-next/server-functions/default/node_modules/@prisma/adapter-libsql/dist/index.mjs',
+    '.open-next/server-functions/default/node_modules/@prisma/adapter-libsql/dist/index-node.mjs',
+  ]
+  for (const mod of libsqlModules) {
+    handlerCode = stubEsmModule(handlerCode, mod)
+  }
+
+  // NOTE: We do NOT patch the Prisma WASM initialization code here.
+  // The real WASM query compiler is required for SQL generation even
+  // when using the D1 adapter. Previous versions attempted to stub
+  // it out, which caused "r is not a constructor" runtime errors.
+
+  // === Prisma WASM: Keep original import (WASM stays in bundle) ===
+  // The WASM query compiler is required for SQL generation even with D1 adapter.
+  // We keep the original import("...wasm") which wrangler resolves and includes
+  // as a separate WASM module in the Worker bundle.
+  // The WASM is loaded via the standard ES module import mechanism.
 
   const newSize = Buffer.byteLength(handlerCode, 'utf8')
   writeFileSync(handlerFile, handlerCode, 'utf8')
   bytesSaved += origSize - newSize
   if (origSize !== newSize) {
-    console.log(`✓ Stripped debug strings & sourcemaps from handler.mjs (saved ${((origSize - newSize) / 1024).toFixed(1)} KiB)`)
-  }
-  console.log(`✓ Patched inlined Prisma WASM init in handler.mjs`)
-}
-
-// === Step 13: Replace Prisma WASM with safe stub ===
-// When using the D1 adapter, Prisma never calls the WASM query compiler.
-// The 3.4 MB WASM file is the #1 cause of exceeding the 3 MiB free-plan limit.
-// Strategy: Replace the WASM file with a minimal stub AND patch the JS glue to
-// make set_wasm a no-op (so the missing WASM exports don't crash the runtime).
-// ALSO: Stub the wasm-compiler-edge.js runtime to skip WASM init entirely.
-const prismaDir = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/.prisma/client')
-if (existsSync(prismaDir)) {
-  // Replace the 3.4 MB WASM with a minimal valid WASM module (8 bytes)
-  const wasmFile = join(prismaDir, 'query_compiler_fast_bg.wasm')
-  if (existsSync(wasmFile)) {
-    const size = statSync(wasmFile).size
-    writeFileSync(wasmFile, Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]))
-    bytesSaved += size - 8
-    console.log(`✓ Replaced query_compiler_fast_bg.wasm with 8-byte stub (saved ${((size - 8) / 1024).toFixed(1)} KiB)`)
-  }
-
-  // Replace the WASM loader to return a safe dummy object
-  const wasmLoaderFile = join(prismaDir, 'wasm-worker-loader.mjs')
-  if (existsSync(wasmLoaderFile)) {
-    const size = statSync(wasmLoaderFile).size
-    writeFileSync(wasmLoaderFile, `/* Prisma WASM loader stub — D1 adapter is used instead */\nexport default Promise.resolve({});\n`, 'utf8')
-    bytesSaved += size - statSync(wasmLoaderFile).size
-    console.log(`✓ Stubbed wasm-worker-loader.mjs`)
-  }
-
-  // Patch query_compiler_fast_bg.js to make the WASM module safe with a stub
-  const glueFile = join(prismaDir, 'query_compiler_fast_bg.js')
-  if (existsSync(glueFile)) {
-    let glue = readFileSync(glueFile, 'utf8')
-
-    // Replace `let o;` with a safe object that handles all property accesses
-    // The QueryCompiler class is a no-op stub — D1 adapter never calls it,
-    // but Prisma's runtime may try to construct it during initialization.
-    glue = glue.replace(
-      /let\s+o\s*;/,
-      'let o={memory:{buffer:new ArrayBuffer(65536)},__wbindgen_malloc:(s)=>(o._nextPtr=(o._nextPtr||65536)+s,o._nextPtr-s),__wbindgen_realloc:(p,s,a)=>(o._nextPtr=(o._nextPtr||65536)+a,o._nextPtr-a),__wbindgen_free:()=>{},__wbindgen_externrefs:{grow:()=>0,get:()=>undefined,set:()=>{},length:0},__externref_table_dealloc:()=>{},__wbg_querycompiler_free:()=>{},querycompiler_new:()=>[0,0,0],querycompiler_compile:()=>[0,0,0],querycompiler_compileBatch:()=>[0,0,0]};'
-    )
-    // Make set_wasm a no-op — our safe object already has everything needed
-    glue = glue.replace(
-      /function\s+N\s*\(\s*e\s*\)\s*\{\s*o\s*=\s*e\s*\}/,
-      'function N(e){/* no-op: using D1 adapter stub instead of WASM */}'
-    )
-
-    writeFileSync(glueFile, glue, 'utf8')
-    console.log(`✓ Patched query_compiler_fast_bg.js to make WASM loading safe`)
+    console.log(`✓ Patched handler.mjs (saved ${((origSize - newSize) / 1024).toFixed(1)} KiB total)`)
   }
 }
 
-// === Step 13b: Stub the Prisma wasm-compiler-edge runtime ===
-// This large runtime file (145 KiB) eagerly loads WASM on import.
-// With D1 adapter, we can safely replace it with a minimal version
-// that provides the same API surface but skips WASM initialization.
-const edgeRuntimeFile = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/@prisma/client/runtime/wasm-compiler-edge.js')
-if (existsSync(edgeRuntimeFile)) {
-  const size = statSync(edgeRuntimeFile).size
-  // Create a minimal edge runtime that exports the same interface
-  // but skips WASM loading. When using D1 adapter, Prisma never
-  // calls getRuntime() for query compilation.
-  writeFileSync(edgeRuntimeFile, `"use strict";
-// Prisma wasm-compiler-edge runtime stub for Cloudflare Workers + D1 adapter
-// The full runtime is 145 KiB and eagerly loads a 3.4 MB WASM module.
-// With the D1 adapter, query compilation is never needed, so we provide
-// a minimal stub that exports the same API surface.
-Object.defineProperty(exports, "__esModule", { value: true });
+// === Step 13: WASM is loaded via wasm_modules binding ===
+// The WASM file is kept in node_modules for wrangler to find, but it's
+// loaded via the PRISMA_WASM binding (see wrangler.toml [[wasm_modules]])
+// which doesn't count against the 3 MiB script size limit.
 
-// Stub getRuntime - returns a dummy that throws if actually used for queries
-exports.getRuntime = async () => {
-  return {
-    QueryCompiler: class {
-      constructor() { throw new Error("Prisma QueryCompiler not available (use D1 adapter)"); }
-      compile() { throw new Error("QueryCompiler not available"); }
-      compileBatch() { throw new Error("QueryCompiler not available"); }
-      free() {}
-    },
-    __wbg_set_wasm: () => {},
-  };
-};
-
-// Re-export common Prisma types and utilities that the runtime provides
-// These are imported from the main Prisma client module
-`, 'utf8')
-  bytesSaved += size - statSync(edgeRuntimeFile).size
-  console.log(`✓ Stubbed wasm-compiler-edge.js (saved ${((size - statSync(edgeRuntimeFile).size) / 1024).toFixed(1)} KiB)`)
+// === Step 13b: Stub Next.js Pages Router runtime (not used — App Router only) ===
+// pages-turbo.runtime.prod.js is for the Pages Router, which we don't use.
+// Stub it to save ~118 KiB uncompressed (~30 KiB compressed).
+const pagesTurboFile = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next/dist/compiled/next-server/pages-turbo.runtime.prod.js')
+if (existsSync(pagesTurboFile)) {
+  const size = statSync(pagesTurboFile).size
+  writeFileSync(pagesTurboFile, `module.exports={};`, 'utf8')
+  const stubSize = statSync(pagesTurboFile).size
+  bytesSaved += size - stubSize
+  console.log(`✓ Stubbed pages-turbo.runtime.prod.js (saved ${((size - stubSize) / 1024).toFixed(1)} KiB)`)
 }
 
-// === Step 14: Remove sharp, better-sqlite3, ws from bundle (Node-only, never used on Workers) ===
+// === Step 13c: Stub experimental app-page runtime ===
+// app-page-turbo-experimental.runtime.prod.js is the experimental variant.
+// We only need the stable app-page-turbo.runtime.prod.js. Stub the
+// experimental one by re-exporting from the stable version.
+// Saves ~602 KiB uncompressed (~100-150 KiB compressed).
+const experimentalRuntime = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next/dist/compiled/next-server/app-page-turbo-experimental.runtime.prod.js')
+const stableRuntime = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js')
+if (existsSync(experimentalRuntime) && existsSync(stableRuntime)) {
+  const size = statSync(experimentalRuntime).size
+  writeFileSync(experimentalRuntime, `'use strict';module.exports=require('./app-page-turbo.runtime.prod.js');`, 'utf8')
+  const stubSize = statSync(experimentalRuntime).size
+  bytesSaved += size - stubSize
+  console.log(`✓ Stubbed app-page-turbo-experimental.runtime.prod.js (saved ${((size - stubSize) / 1024).toFixed(1)} KiB)`)
+}
+
+// === Step 13d: Remove jsonwebtoken (not used — we don't use NextAuth) ===
+const jwtDir = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next/dist/compiled/jsonwebtoken')
+if (existsSync(jwtDir)) {
+  const size = getDirSize(jwtDir)
+  rmSync(jwtDir, { recursive: true, force: true })
+  bytesSaved += size
+  console.log(`✓ Removed jsonwebtoken/ (${(size / 1024).toFixed(1)} KiB)`)
+}
+
+// === Step 14: Remove Node-only packages (never used on Workers) ===
 const nodeOnlyDirs = [
   join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/sharp'),
   join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/better-sqlite3'),
@@ -389,5 +517,146 @@ for (const dir of nodeOnlyDirs) {
   }
 }
 
+// === Step 15: Remove next-auth (not used — custom auth system) ===
+const nextAuthPaths = [
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next-auth'),
+  join(OPEN_NEXT_DIR, 'node_modules/next-auth'),
+]
+for (const naDir of nextAuthPaths) {
+  if (existsSync(naDir)) {
+    const size = getDirSize(naDir)
+    rmSync(naDir, { recursive: true, force: true })
+    bytesSaved += size
+    console.log(`✓ Removed next-auth/ (${(size / 1024).toFixed(1)} KiB)`)
+  }
+}
+
+// === Step 16: Stub more Firebase modules (client-only, not needed in SSR) ===
+if (existsSync(ssrDir)) {
+  const firebaseSsrFiles = readdirSync(ssrDir).filter(f =>
+    f.startsWith('node_modules_firebase') && !f.endsWith('.map')
+  )
+  for (const file of firebaseSsrFiles) {
+    const filePath = join(ssrDir, file)
+    const size = statSync(filePath).size
+    // Only stub files larger than 5 KiB (small files aren't worth the risk)
+    if (size > 5120) {
+      writeFileSync(filePath, `export {};`, 'utf8')
+      const stubSize = statSync(filePath).size
+      bytesSaved += size - stubSize
+      console.log(`✓ Stubbed ${file} (saved ${((size - stubSize) / 1024).toFixed(1)} KiB)`)
+    }
+  }
+}
+
+// === Step 17: Remove qrcode and otplib (only used in specific API routes, heavy deps) ===
+const heavyDeps = [
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/qrcode'),
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/otplib'),
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/react-syntax-highlighter'),
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/recharts'),
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/@mdxeditor'),
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/d3-'),  // d3 subpackages (recharts dep)
+]
+for (const dep of heavyDeps) {
+  if (existsSync(dep)) {
+    const size = getDirSize(dep)
+    rmSync(dep, { recursive: true, force: true })
+    bytesSaved += size
+    console.log(`✓ Removed ${dep.split('/').slice(-1)[0]}/ (${(size / 1024).toFixed(1)} KiB)`)
+  }
+}
+
+// Also find and remove d3-* packages (recharts dependency, very heavy)
+if (existsSync(join(OPEN_NEXT_DIR, 'server-functions/default/node_modules'))) {
+  const nodeModulesDir = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules')
+  try {
+    const entries = readdirSync(nodeModulesDir)
+    for (const entry of entries) {
+      if (entry.startsWith('d3-') || entry === 'd3') {
+        const depPath = join(nodeModulesDir, entry)
+        const size = getDirSize(depPath)
+        rmSync(depPath, { recursive: true, force: true })
+        bytesSaved += size
+        console.log(`✓ Removed ${entry}/ (${(size / 1024).toFixed(1)} KiB)`)
+      }
+    }
+    // Also check @scoped packages
+    const scopedDirs = entries.filter(e => e.startsWith('@'))
+    for (const scope of scopedDirs) {
+      const scopePath = join(nodeModulesDir, scope)
+      try {
+        const scopedEntries = readdirSync(scopePath)
+        for (const entry of scopedEntries) {
+          if (entry === 'mdxeditor') {
+            const depPath = join(scopePath, entry)
+            const size = getDirSize(depPath)
+            rmSync(depPath, { recursive: true, force: true })
+            bytesSaved += size
+            console.log(`✓ Removed ${scope}/${entry}/ (${(size / 1024).toFixed(1)} KiB)`)
+          }
+        }
+      } catch {}
+    }
+  } catch {}
+}
+
 // === Summary ===
 console.log(`\n[postbuild-cf] Done. Saved ${(bytesSaved / 1024).toFixed(1)} KiB uncompressed from worker bundle.`)
+
+// === Step 18: Remove redundant files already inlined in handler.mjs ===
+// All code from .next/server/chunks/ and most of node_modules/ is already
+// inlined in handler.mjs by esbuild. Wrangler's bundler resolves imports
+// from handler.mjs (which has all code inline), so these external files
+// are redundant. Keeping them increases the bundle size because wrangler
+// includes them as additional modules.
+//
+// KEEP: .prisma/client/query_compiler_fast_bg.wasm (loaded at runtime)
+// REMOVE: Everything else in .next/server/chunks/ and node_modules/
+console.log('\n[postbuild-cf] Removing redundant inlined files...')
+
+const serverDir = join(OPEN_NEXT_DIR, 'server-functions/default')
+const chunksDir = join(serverDir, '.next/server/chunks')
+const nodeModulesDir = join(serverDir, 'node_modules')
+
+// Remove .next/server/chunks/ (already inlined in handler.mjs)
+if (existsSync(chunksDir)) {
+  const size = getDirSize(chunksDir)
+  rmSync(chunksDir, { recursive: true, force: true })
+  bytesSaved += size
+  console.log(`✓ Removed .next/server/chunks/ (${(size / 1024).toFixed(1)} KiB)`)
+}
+
+// Remove node_modules/ but preserve the WASM file for wrangler's wasm_modules binding
+if (existsSync(nodeModulesDir)) {
+  // First, preserve the WASM file
+  const wasmPath = join(nodeModulesDir, '.prisma/client/query_compiler_fast_bg.wasm')
+  let wasmContent = null
+  if (existsSync(wasmPath)) {
+    wasmContent = readFileSync(wasmPath)
+  }
+
+  const size = getDirSize(nodeModulesDir)
+  rmSync(nodeModulesDir, { recursive: true, force: true })
+  bytesSaved += size
+  console.log(`✓ Removed node_modules/ (${(size / 1024).toFixed(1)} KiB)`)
+
+  // Restore the WASM file (needed for wrangler's [[wasm_modules]] binding)
+  if (wasmContent) {
+    const prismaDir = join(nodeModulesDir, '.prisma/client')
+    mkdirSync(prismaDir, { recursive: true })
+    writeFileSync(wasmPath, wasmContent)
+    console.log(`✓ Preserved query_compiler_fast_bg.wasm for wasm_modules binding (${(wasmContent.length / 1024).toFixed(1)} KiB)`)
+  }
+}
+
+// Also remove the meta.json since the files it references no longer exist
+const metaFile = join(serverDir, 'handler.mjs.meta.json')
+if (existsSync(metaFile)) {
+  const size = statSync(metaFile).size
+  // Don't delete — wrangler might need it for resolution
+  // Instead, create a minimal version
+  writeFileSync(metaFile, JSON.stringify({ outputs: {}, inputs: {} }), 'utf8')
+  bytesSaved += size - statSync(metaFile).size
+  console.log(`✓ Minimized handler.mjs.meta.json`)
+}
