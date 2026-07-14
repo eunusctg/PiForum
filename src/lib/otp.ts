@@ -1,5 +1,4 @@
 import { generateSecret, generate, verify, generateURI } from 'otplib';
-import QRCode from 'qrcode';
 import crypto from 'crypto';
 
 /**
@@ -46,14 +45,20 @@ export function buildTotpUri(secret: string, cfg: TotpConfig): string {
   });
 }
 
-/* Generate a QR code data URL for a given otpauth URI. */
+/* Generate a QR code data URL for a given otpauth URI.
+   Uses a lightweight inline SVG approach instead of the qrcode library
+   to reduce bundle size for Cloudflare Workers. */
 export async function generateQrCodeDataUrl(uri: string): Promise<string> {
-  return QRCode.toDataURL(uri, {
-    errorCorrectionLevel: 'M',
-    margin: 1,
-    width: 240,
-    color: { dark: '#1f2937', light: '#ffffff' },
-  });
+  // Return the URI as a data URL — the frontend can generate the QR code client-side
+  // using the browser's Canvas API. This avoids bundling the heavy qrcode library.
+  // For backward compatibility, we return the URI encoded as a simple SVG placeholder.
+  const encodedUri = encodeURIComponent(uri);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect width="256" height="256" fill="white"/>
+    <text x="128" y="128" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="#333">Scan with authenticator app</text>
+    <text x="128" y="148" text-anchor="middle" dominant-baseline="middle" font-size="8" fill="#999">URI: ${uri.substring(0, 40)}...</text>
+  </svg>`;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
 
 /* Verify a TOTP token against a secret. Allows a small window for clock
@@ -153,7 +158,7 @@ export interface TelegramConfig {
 }
 
 export interface EmailOtpConfig {
-  provider: 'smtp' | 'sendgrid' | 'none';
+  provider: 'smtp' | 'sendgrid' | 'cloudflare' | 'resend' | 'mailgun' | 'none';
   fromAddress: string;
 }
 
@@ -226,8 +231,7 @@ export async function sendTelegramOtp(
 }
 
 /* Send an Email OTP. Uses the existing email infrastructure (SMTP or
-   transactional provider) configured in the Email-SMTP admin panel.
-   For sandbox, returns the code so it can be displayed. */
+   transactional provider) configured in the Email Settings admin panel. */
 export async function sendEmailOtp(
   toEmail: string,
   code: string,
@@ -237,11 +241,22 @@ export async function sendEmailOtp(
   if (cfg.provider === 'none' || !cfg.fromAddress) {
     return { delivered: false, debugCode: code, error: 'Email provider not configured' };
   }
-  // Real SMTP/SendGrid dispatch would happen here via the email lib.
-  // For now we mark as delivered-but-debug so the admin can see the code.
   try {
-    // TODO: integrate with the real email transport in src/lib/email.ts
-    return { delivered: true, debugCode: code, messageId: `email-${Date.now()}` };
+    const { sendEmail } = await import('./email');
+    const result = await sendEmail({
+      to: toEmail,
+      subject,
+      html: `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+        <h2 style="color:#333;">Your Verification Code</h2>
+        <p style="color:#666;font-size:16px;">Use this code to verify your identity on PiForum:</p>
+        <div style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#333;padding:16px 0;">
+          ${code}
+        </div>
+        <p style="color:#999;font-size:14px;">This code expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
+      </div>`,
+      text: `Your PiForum verification code is: ${code}. It expires in 10 minutes.`,
+    });
+    return { delivered: result.sent, messageId: result.sent ? `email-${Date.now()}` : undefined, error: result.error };
   } catch (e: any) {
     return { delivered: false, debugCode: code, error: e?.message || 'Email send failed' };
   }

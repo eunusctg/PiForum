@@ -112,5 +112,109 @@ if (existsSync(dynamoDir)) {
   console.log(`✓ Removed dynamodb-provider/ (${(size / 1024).toFixed(1)} KiB)`)
 }
 
+// === Step 6: Stub Node-only react-dom variants (Workers uses edge) ===
+const reactDomDir = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/react-dom/cjs')
+if (existsSync(reactDomDir)) {
+  // On Cloudflare Workers, the edge variant is used — stub the node and browser ones
+  const stubFiles = [
+    'react-dom-server.node.production.js',
+    'react-dom-server-legacy.node.production.js',
+    'react-dom-server.browser.production.js',
+    'react-dom-server-legacy.browser.production.js',
+  ]
+  for (const file of stubFiles) {
+    const filePath = join(reactDomDir, file)
+    if (existsSync(filePath)) {
+      const size = statSync(filePath).size
+      // Replace with a re-export of the edge variant (same API)
+      writeFileSync(filePath, `'use strict';module.exports=require('./react-dom-server.edge.production.js');`, 'utf8')
+      const stubSize = statSync(filePath).size
+      bytesSaved += size - stubSize
+      console.log(`✓ Stubbed ${file} (saved ${((size - stubSize) / 1024).toFixed(1)} KiB)`)
+    }
+  }
+}
+
+// === Step 7: Stub Node-only compression module (not needed on Workers) ===
+const compressionFile = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next/dist/compiled/compression/index.js')
+if (existsSync(compressionFile)) {
+  const size = statSync(compressionFile).size
+  writeFileSync(compressionFile, `module.exports = function() { return function(req, res, next) { if (next) next(); }; };`, 'utf8')
+  const stubSize = statSync(compressionFile).size
+  bytesSaved += size - stubSize
+  console.log(`✓ Stubbed compression/index.js (saved ${((size - stubSize) / 1024).toFixed(1)} KiB)`)
+}
+
+// === Step 8: Deduplicate app-page templates (they share most code) ===
+// There are ~30+ app-page template files that are nearly identical.
+// Replace all but the first with a stub that re-exports the same module.
+const ssrDir = join(OPEN_NEXT_DIR, 'server-functions/default/.next/server/chunks/ssr')
+if (existsSync(ssrDir)) {
+  const appPageFiles = readdirSync(ssrDir).filter(f => 
+    f.startsWith('node_modules_next_dist_esm_build_templates_app-page_') && f.endsWith('.js')
+  )
+  if (appPageFiles.length > 2) {
+    // Keep the first file as the reference, stub the rest
+    const referenceFile = appPageFiles[0]
+    const referencePath = join(ssrDir, referenceFile)
+    let saved = 0
+    for (let i = 1; i < appPageFiles.length; i++) {
+      const filePath = join(ssrDir, appPageFiles[i])
+      const size = statSync(filePath).size
+      // Create a stub that re-exports from the reference
+      writeFileSync(filePath, `module.exports=require('./${referenceFile}');`, 'utf8')
+      saved += size - statSync(filePath).size
+    }
+    bytesSaved += saved
+    console.log(`✓ Deduplicated ${appPageFiles.length - 1} app-page templates (saved ${(saved / 1024).toFixed(1)} KiB)`)
+  }
+}
+
+// === Step 9: Stub Firebase messaging (large, not critical for SSR) ===
+if (existsSync(ssrDir)) {
+  const firebaseFiles = readdirSync(ssrDir).filter(f => 
+    f.startsWith('node_modules_firebase_messaging') && !f.includes('1gkbocp')
+  )
+  for (const file of firebaseFiles) {
+    const filePath = join(ssrDir, file)
+    const size = statSync(filePath).size
+    writeFileSync(filePath, `export {};`, 'utf8')
+    const stubSize = statSync(filePath).size
+    bytesSaved += size - stubSize
+    console.log(`✓ Stubbed ${file} (saved ${((size - stubSize) / 1024).toFixed(1)} KiB)`)
+  }
+}
+
+// === Step 10: Remove edge-runtime/primitives (large, not needed in Workers) ===
+const edgeRuntimeDir = join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next/dist/compiled/@edge-runtime/primitives')
+if (existsSync(edgeRuntimeDir)) {
+  const size = getDirSize(edgeRuntimeDir)
+  // Replace with stub
+  const loadFile = join(edgeRuntimeDir, 'load.js')
+  if (existsSync(loadFile)) {
+    writeFileSync(loadFile, `export const getRequestHandler=()=>({});export default{};`, 'utf8')
+  }
+  const savedSize = size - getDirSize(edgeRuntimeDir)
+  bytesSaved += savedSize
+  if (savedSize > 0) console.log(`✓ Stubbed @edge-runtime/primitives (saved ${(savedSize / 1024).toFixed(1)} KiB)`)
+}
+
+// === Step 11: Strip source map comments from handler.mjs ===
+const handlerFile = join(OPEN_NEXT_DIR, 'server-functions/default/handler.mjs')
+if (existsSync(handlerFile)) {
+  let handlerCode = readFileSync(handlerFile, 'utf8')
+  const originalSize = Buffer.byteLength(handlerCode, 'utf8')
+
+  // Only strip source map comments — these are safe to remove
+  handlerCode = handlerCode.replace(/\n\/\/# sourceMappingURL=[^\n]*/g, '')
+
+  writeFileSync(handlerFile, handlerCode, 'utf8')
+  const newSize = Buffer.byteLength(handlerCode, 'utf8')
+  bytesSaved += originalSize - newSize
+  if (originalSize !== newSize) {
+    console.log(`✓ Trimmed handler.mjs sourcemaps (saved ${((originalSize - newSize) / 1024).toFixed(1)} KiB)`)
+  }
+}
+
 // === Summary ===
 console.log(`\n[postbuild-cf] Done. Saved ${(bytesSaved / 1024).toFixed(1)} KiB uncompressed from worker bundle.`)

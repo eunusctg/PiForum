@@ -8,9 +8,10 @@ import { db } from '@/lib/db';
  * APIs instead.
  *
  * Supported providers (configured via admin settings):
- * 1. SMTP → Resend API (https://resend.com) — recommended, free tier available
- * 2. SendGrid API — popular transactional email service
- * 3. Mailgun API — another popular option
+ * 1. Cloudflare MailChannels — recommended, free for Cloudflare Workers domains
+ * 2. Resend API (https://resend.com) — free tier available
+ * 3. SendGrid API — popular transactional email service
+ * 4. Mailgun API — another popular option
  *
  * The `smtp_*` settings in the database determine the provider and credentials.
  * When SMTP is not enabled or not configured, emails are not sent (silent fallback).
@@ -29,10 +30,10 @@ interface EmailPayload {
  *
  * On Cloudflare Workers we can't use nodemailer, so we use HTTP-based APIs.
  * The `smtp_host` setting is repurposed to indicate the provider:
+ *   - "cloudflare" → Use Cloudflare MailChannels API (free, no API key needed)
  *   - "resend" → Use Resend API
  *   - "sendgrid" → Use SendGrid API
  *   - "mailgun" → Use Mailgun API
- *   - anything else → Try as an SMTP relay via the Resend API passthrough
  *
  * When smtp_enabled is false, this function is a no-op that returns true.
  */
@@ -54,7 +55,8 @@ export async function sendEmail(payload: EmailPayload): Promise<{ sent: boolean;
   const fromEmail = fromEmailSetting?.value || 'noreply@piforum.org';
   const fromName = fromNameSetting?.value || 'PiForum';
 
-  if (!apiKey) {
+  // Cloudflare MailChannels doesn't need an API key — it authenticates via domain ownership
+  if (host.toLowerCase().trim() !== 'cloudflare' && !apiKey) {
     return { sent: false, error: 'No API key configured' };
   }
 
@@ -63,6 +65,10 @@ export async function sendEmail(payload: EmailPayload): Promise<{ sent: boolean;
 
   // Route to the appropriate provider
   const provider = host.toLowerCase().trim();
+
+  if (provider === 'cloudflare') {
+    return sendViaCloudflare({ ...payload, to, from });
+  }
 
   if (provider === 'resend' || provider.includes('resend')) {
     return sendViaResend(apiKey, { ...payload, to, from });
@@ -80,6 +86,47 @@ export async function sendEmail(payload: EmailPayload): Promise<{ sent: boolean;
 
   // Default: try Resend API (most common for modern setups)
   return sendViaResend(apiKey, { ...payload, to, from });
+}
+
+/* ---------- Cloudflare MailChannels API ---------- */
+async function sendViaCloudflare(
+  payload: { to: string[]; from: string; subject: string; html: string; text?: string },
+): Promise<{ sent: boolean; error?: string }> {
+  try {
+    // Extract the email address from "Name <email>" format
+    const fromEmail = payload.from.includes('<')
+      ? payload.from.match(/<(.+)>/)?.[1] || payload.from
+      : payload.from;
+    const fromName = payload.from.includes('<')
+      ? payload.from.replace(/\s*<.+>/, '').trim()
+      : undefined;
+
+    const response = await fetch('https://api.mailchannels.net/tx/v1/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        personalizations: payload.to.map((email) => ({ to: [{ email }] })),
+        from: {
+          email: fromEmail,
+          ...(fromName && { name: fromName }),
+        },
+        subject: payload.subject,
+        content: [
+          { type: 'text/html', value: payload.html },
+          ...(payload.text ? [{ type: 'text/plain', value: payload.text }] : []),
+        ],
+      }),
+    });
+
+    if (response.ok || response.status === 202) {
+      return { sent: true };
+    }
+
+    const errText = await response.text();
+    return { sent: false, error: `Cloudflare MailChannels error: ${errText.substring(0, 200)}` };
+  } catch (err: any) {
+    return { sent: false, error: `Cloudflare MailChannels fetch error: ${err.message?.substring(0, 200) || 'Unknown'}` };
+  }
 }
 
 /* ---------- Resend API ---------- */
