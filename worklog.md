@@ -306,3 +306,26 @@ Stage Summary:
 - Cloudflare build SUCCESS ✅
 - Worker bundle: 3,060 KiB gzip (just under 3 MiB free plan limit) ✅
 - Deploy requires: set CLOUDFLARE_API_TOKEN env var then run `npx wrangler deploy`
+
+---
+Task ID: 17
+Agent: Main Agent
+Task: Deploy PiForum to Cloudflare Workers with full configuration
+
+Work Log:
+- Verified API token access: D1, R2, KV all accessible
+- Deployed Worker via `npx wrangler deploy` — Version ID: 77e39a58-f98b-456b-af3c-9193b541b17a
+- Updated D1 InstallConfig: forumDescription from "A modern neumorphic forum" to new description
+- Set secrets: NEXTAUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, FIREBASE_API_KEY
+- Added custom domains to wrangler.toml: piforum.eu.org, piforum.eu.cc
+- Re-deployed with custom domains — Version ID: 5bc224a0-3c3c-4c25-b221-dc728b86521f
+- piforum.eu.cc: ✅ Fully working (HTTP 200, API serving data)
+- piforum.eu.org: 403 due to Cloudflare WAF/Bot Fight Mode on zone (needs dashboard fix)
+- Verified live site: title, branding, D1 data all correct
+
+Stage Summary:
+- Worker deployed to Cloudflare ✅
+- Custom domains configured: piforum.eu.cc ✅, piforum.eu.org (needs WAF fix in dashboard)
+- D1 database connected with 21 users, 28 threads, 66 posts ✅
+- All secrets configured (NEXTAUTH, Google OAuth, Firebase) ✅
+- Bundle size: 3,060 KiB gzip (under free plan 3 MiB limit) ✅

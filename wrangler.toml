@@ -1,18 +1,12 @@
 # ============================================================
 # PiForum — Cloudflare Workers (OpenNext) Configuration
 # ============================================================
-# ✅ Pre-configured with real Cloudflare resource IDs from your account:
-#    - Pages project:  piforum (piforum.pages.dev)
+# ✅ All resources configured:
+#    - D1 database:    piforum (25923490-eba7-4e98-b9f0-34c9c183c0b9)
 #    - R2 bucket:      piforum-uploads
 #    - KV namespace:   piforum-sessions (c36268abac2d4fe3bd426a92a060e2fb)
 #    - Account:        Techctg24 Inc (704489378006d2bed6a45de180f6679f)
-#
-# ⚠️ D1 database: NOT yet created — your API token lacks "D1 Edit" permission.
-#    To fix: create a new token at https://dash.cloudflare.com/profile/api-tokens
-#    with these permissions: Account → D1 → Edit, Account → Workers Scripts → Edit,
-#    Account → Workers KV Storage → Edit, Account → Workers R2 Storage → Edit,
-#    Zone → Workers Routes → Edit. Then run: npx wrangler d1 create piforum
-#    and paste the database_id below.
+#    - Custom domains: piforum.eu.org, piforum.eu.cc
 # ============================================================
 
 name = "piforum"
@@ -29,10 +23,8 @@ assets = { directory = ".open-next/assets", binding = "ASSETS" }
 account_id = "704489378006d2bed6a45de180f6679f"
 
 # ============================================================
-# D1 Database binding
+# D1 Database binding (✅ 'piforum' database created)
 # ============================================================
-# ⚠️ Create the DB first, then paste the UUID below.
-#    Command: npx wrangler d1 create piforum
 [[d1_databases]]
 binding = "DB"
 database_name = "piforum"
@@ -76,10 +68,10 @@ enabled = false
 # ============================================================
 # Routes (custom domains)
 # ============================================================
-# [[routes]]
-# pattern = "piforum.eu.org"
-# custom_domain = true
-#
-# [[routes]]
-# pattern = "piforum.eu.cc"
-# custom_domain = true
+[[routes]]
+pattern = "piforum.eu.org"
+custom_domain = true
+
+[[routes]]
+pattern = "piforum.eu.cc"
+custom_domain = true
