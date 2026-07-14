@@ -2,6 +2,42 @@ import { db } from '@/lib/db';
 import { serverErrorResponse, serializeUser, generateUUID } from '@/lib/api-helpers';
 
 /**
+ * Decode a JWT payload (base64url segment) into a JSON object.
+ * Works in both Node.js and Cloudflare Workers (no Buffer dependency).
+ */
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  let base64 = token.split('.')[1];
+  // Convert base64url → standard base64
+  base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+  // Add padding if needed
+  while (base64.length % 4 !== 0) {
+    base64 += '=';
+  }
+  const jsonStr = atob(base64);
+  return JSON.parse(jsonStr);
+}
+
+/**
+ * Build a redirect response that includes an auth_error (and optional detail)
+ * in the URL hash so the frontend AuthModal can display it.
+ */
+function authErrorRedirect(
+  siteUrl: string,
+  error: string,
+  detail?: string,
+): Response {
+  const fragment = detail
+    ? `auth_error=${error}&auth_error_detail=${encodeURIComponent(detail)}`
+    : `auth_error=${error}`;
+  // Use hash (#) instead of query (?) so the error detail isn't sent to
+  // server logs or analytics.  The AuthModal reads both hash and query.
+  return new Response(null, {
+    status: 302,
+    headers: { Location: `${siteUrl}#${fragment}` },
+  });
+}
+
+/**
  * GET /api/auth/google/callback
  *
  * Handles the OAuth 2.0 callback from Google. Exchanges the authorization
@@ -9,11 +45,9 @@ import { serverErrorResponse, serializeUser, generateUUID } from '@/lib/api-help
  *   1. Logs in an existing user (matched by email), or
  *   2. Creates a new account automatically (auto-provision).
  *
- * Credentials are read from DB settings first, falling back to env vars
- * (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET set via wrangler secret).
- *
- * On success, redirects to the frontend with the auth token in a secure
- * cookie and URL fragment so the client-side store can pick it up.
+ * The state record stores the redirect_uri and client_id that were used
+ * during initiation, ensuring the token exchange uses the exact same values
+ * (prevents redirect_uri_mismatch errors).
  */
 export async function GET(request: Request) {
   try {
@@ -22,16 +56,17 @@ export async function GET(request: Request) {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
+    // Resolve siteUrl for error redirects (before we have the state record)
     const siteUrlSetting = await db.setting.findUnique({ where: { key: 'seo_canonical_url' } });
     const siteUrl = siteUrlSetting?.value || process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org';
 
     // User denied access
     if (error) {
-      return Response.redirect(`${siteUrl}?auth_error=access_denied`, 302);
+      return authErrorRedirect(siteUrl, 'access_denied', searchParams.get('error_subtype') || error);
     }
 
     if (!code || !state) {
-      return Response.redirect(`${siteUrl}?auth_error=missing_params`, 302);
+      return authErrorRedirect(siteUrl, 'missing_params');
     }
 
     // Verify state (CSRF protection) — also clean up expired states
@@ -46,29 +81,42 @@ export async function GET(request: Request) {
 
     const stateRecord = await db.setting.findUnique({ where: { key: `oauth_state_${state}` } });
     if (!stateRecord) {
-      return Response.redirect(`${siteUrl}?auth_error=invalid_state`, 302);
+      return authErrorRedirect(siteUrl, 'invalid_state');
     }
+
+    // Parse the state value: "timestamp|redirectUri|clientId"
+    // This guarantees the callback uses the exact same redirect_uri and
+    // client_id that were used during initiation, preventing mismatches.
+    const stateParts = stateRecord.value.split('|');
+    const stateTimestamp = parseInt(stateParts[0], 10);
+    const storedRedirectUri = stateParts[1] || `${siteUrl}/api/auth/google/callback`;
+    const storedClientId = stateParts[2] || undefined;
 
     // Clean up the used state
     await db.setting.delete({ where: { key: `oauth_state_${state}` } }).catch(() => {});
 
     // Check state hasn't expired (10 min)
-    const stateAge = Date.now() - parseInt(stateRecord.value, 10);
-    if (stateAge > 10 * 60 * 1000) {
-      return Response.redirect(`${siteUrl}?auth_error=expired_state`, 302);
+    if (Date.now() - stateTimestamp > 10 * 60 * 1000) {
+      return authErrorRedirect(siteUrl, 'expired_state');
     }
 
     // Get Google OAuth credentials: DB settings first, then env vars
     const clientIdSetting = await db.setting.findUnique({ where: { key: 'oauth_google_client_id' } });
     const clientSecretSetting = await db.setting.findUnique({ where: { key: 'oauth_google_client_secret' } });
-    const clientId = clientIdSetting?.value || process.env.GOOGLE_CLIENT_ID;
+    const clientId = storedClientId || clientIdSetting?.value || process.env.GOOGLE_CLIENT_ID;
     const clientSecret = clientSecretSetting?.value || process.env.GOOGLE_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      return Response.redirect(`${siteUrl}?auth_error=oauth_not_configured`, 302);
+      return authErrorRedirect(
+        siteUrl,
+        'oauth_not_configured',
+        !clientId ? 'Missing GOOGLE_CLIENT_ID' : 'Missing GOOGLE_CLIENT_SECRET',
+      );
     }
 
-    const redirectUri = `${siteUrl}/api/auth/google/callback`;
+    // Use the redirect URI stored in the state record (guaranteed to match
+    // what was sent to Google during initiation)
+    const redirectUri = storedRedirectUri;
 
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -86,26 +134,36 @@ export async function GET(request: Request) {
     if (!tokenResponse.ok) {
       const errText = await tokenResponse.text();
       console.error('[google-callback] Token exchange failed:', errText);
-      return Response.redirect(`${siteUrl}?auth_error=token_exchange_failed`, 302);
+      console.error('[google-callback] redirect_uri used:', redirectUri);
+      console.error('[google-callback] client_id used:', clientId.slice(0, 8) + '...');
+
+      // Try to extract a human-readable reason from the Google error JSON
+      let detail = 'Unknown error';
+      try {
+        const errJson = JSON.parse(errText);
+        detail = errJson.error_description || errJson.error || errText.slice(0, 200);
+      } catch {
+        detail = errText.slice(0, 200);
+      }
+
+      return authErrorRedirect(siteUrl, 'token_exchange_failed', detail);
     }
 
     const tokenData = await tokenResponse.json();
     const { id_token } = tokenData;
 
     if (!id_token) {
-      return Response.redirect(`${siteUrl}?auth_error=no_id_token`, 302);
+      return authErrorRedirect(siteUrl, 'no_id_token');
     }
 
     // Decode the ID token to get user info (JWT decode without full verification
     // since we trust the token came directly from Google's token endpoint)
-    const payload = JSON.parse(
-      Buffer.from(id_token.split('.')[1], 'base64').toString('utf-8'),
-    );
+    const payload = decodeJwtPayload(id_token);
 
     // Verify the audience claim matches our client ID (security check)
     if (payload.aud !== clientId) {
       console.error('[google-callback] Audience mismatch:', payload.aud, '!==', clientId);
-      return Response.redirect(`${siteUrl}?auth_error=invalid_audience`, 302);
+      return authErrorRedirect(siteUrl, 'invalid_audience', `Expected aud=${clientId}, got ${String(payload.aud)}`);
     }
 
     const googleEmail = payload.email as string;
@@ -113,7 +171,7 @@ export async function GET(request: Request) {
     const googlePicture = payload.picture as string;
 
     if (!googleEmail) {
-      return Response.redirect(`${siteUrl}?auth_error=no_email`, 302);
+      return authErrorRedirect(siteUrl, 'no_email');
     }
 
     // Try to find existing user by email
@@ -143,7 +201,7 @@ export async function GET(request: Request) {
 
       // Check if banned
       if (user.banned) {
-        return Response.redirect(`${siteUrl}?auth_error=account_banned`, 302);
+        return authErrorRedirect(siteUrl, 'account_banned');
       }
 
       // Super-admin auto-promotion — ensure the forum owner keeps role 3
@@ -159,7 +217,7 @@ export async function GET(request: Request) {
       // New user — auto-provision account
       const openRegSetting = await db.setting.findUnique({ where: { key: 'open_registration' } });
       if (openRegSetting && openRegSetting.value === 'false') {
-        return Response.redirect(`${siteUrl}?auth_error=registration_closed`, 302);
+        return authErrorRedirect(siteUrl, 'registration_closed');
       }
 
       // Generate a unique username from the Google name

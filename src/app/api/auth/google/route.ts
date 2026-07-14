@@ -9,7 +9,7 @@ import { errorResponse, serverErrorResponse } from '@/lib/api-helpers';
  *   1. DB Setting table (configured via admin panel)
  *   2. Environment variables (GOOGLE_CLIENT_ID set via wrangler secret)
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Check if Google OAuth is enabled — check DB setting first, then
     // assume enabled if GOOGLE_CLIENT_ID env var exists
@@ -38,18 +38,22 @@ export async function GET() {
     }
 
     // Build the redirect URI — must match what's registered in Google Cloud Console
+    // Use the canonical URL from DB, then env, then the request's origin, then default
     const siteUrlSetting = await db.setting.findUnique({ where: { key: 'seo_canonical_url' } });
-    const siteUrl = siteUrlSetting?.value || process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org';
+    const requestOrigin = new URL(request.url).origin;
+    const siteUrl = siteUrlSetting?.value || process.env.NEXT_PUBLIC_SITE_URL || requestOrigin || 'https://piforum.eu.org';
     const redirectUri = `${siteUrl}/api/auth/google/callback`;
 
     // Generate a random state parameter for CSRF protection
     const state = crypto.randomUUID().replace(/-/g, '');
 
-    // Store state in the Setting table temporarily (expires in 10 min via cleanup)
+    // Store state + redirect URI + client ID in the Setting table temporarily
+    // Value format: "timestamp|redirectUri|clientId" so the callback can use
+    // the exact same redirect_uri that was sent to Google (prevents mismatch)
     await db.setting.upsert({
       where: { key: `oauth_state_${state}` },
-      update: { value: Date.now().toString() },
-      create: { key: `oauth_state_${state}`, value: Date.now().toString() },
+      update: { value: `${Date.now()}|${redirectUri}|${clientId}` },
+      create: { key: `oauth_state_${state}`, value: `${Date.now()}|${redirectUri}|${clientId}` },
     });
 
     const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');

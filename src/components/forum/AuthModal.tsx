@@ -99,6 +99,7 @@ export default function AuthModal() {
     // Also check for auth_error in hash or query
     const authError = hashParams.get('auth_error') || queryParams.get('auth_error');
     if (authError) {
+      const errorDetail = hashParams.get('auth_error_detail') || queryParams.get('auth_error_detail');
       const errorMessages: Record<string, string> = {
         access_denied: 'Google sign-in was cancelled.',
         missing_params: 'Invalid OAuth response.',
@@ -111,8 +112,17 @@ export default function AuthModal() {
         account_banned: 'Your account has been banned.',
         registration_closed: 'Registration is currently closed.',
       };
-      const msg = errorMessages[authError] || `Authentication error: ${authError}`;
-      queueMicrotask(() => setLoginError(msg));
+      let msg = errorMessages[authError] || `Authentication error: ${authError}`;
+      // Append the detailed error from Google if available (helps debugging)
+      if (errorDetail) {
+        msg += ` (${errorDetail})`;
+      }
+      queueMicrotask(() => {
+        setLoginError(msg);
+        // Auto-open the modal so the user sees the error immediately
+        setAuthModalOpen(true);
+        setAuthModalTab('login');
+      });
       // Clean up
       window.history.replaceState(null, '', window.location.pathname);
     }

@@ -199,7 +199,39 @@ if (existsSync(edgeRuntimeDir)) {
   if (savedSize > 0) console.log(`✓ Stubbed @edge-runtime/primitives (saved ${(savedSize / 1024).toFixed(1)} KiB)`)
 }
 
-// === Step 11: Strip source map comments from handler.mjs ===
+// === Step 11: Stub @prisma/adapter-libsql (not needed on Workers — uses D1 adapter) ===
+// The local dev path in db.ts uses a standard dynamic import which gets bundled.
+// On Cloudflare Workers, the D1 adapter branch is always taken, so we can safely
+// stub this out to save significant bundle size.
+const libsqlPaths = [
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/@prisma/adapter-libsql'),
+  join(OPEN_NEXT_DIR, 'node_modules/@prisma/adapter-libsql'),
+]
+for (const libsqlDir of libsqlPaths) {
+  if (existsSync(libsqlDir)) {
+    const size = getDirSize(libsqlDir)
+    rmSync(libsqlDir, { recursive: true, force: true })
+    bytesSaved += size
+    console.log(`✓ Removed @prisma/adapter-libsql/ (${(size / 1024).toFixed(1)} KiB)`)
+  }
+}
+// Also stub the @libsql and libsql packages that adapter-libsql depends on
+const libsqlDeps = [
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/@libsql'),
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/libsql'),
+  join(OPEN_NEXT_DIR, 'node_modules/@libsql'),
+  join(OPEN_NEXT_DIR, 'node_modules/libsql'),
+]
+for (const dep of libsqlDeps) {
+  if (existsSync(dep)) {
+    const size = getDirSize(dep)
+    rmSync(dep, { recursive: true, force: true })
+    bytesSaved += size
+    console.log(`✓ Removed ${dep.split('/').slice(-2).join('/')} (${(size / 1024).toFixed(1)} KiB)`)
+  }
+}
+
+// === Step 12: Strip source map comments from handler.mjs ===
 const handlerFile = join(OPEN_NEXT_DIR, 'server-functions/default/handler.mjs')
 if (existsSync(handlerFile)) {
   let handlerCode = readFileSync(handlerFile, 'utf8')

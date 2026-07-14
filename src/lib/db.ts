@@ -3,12 +3,10 @@
  * =================================================================
  *
  * Production (Cloudflare Workers via OpenNext):
- *   Dynamic-imports `@prisma/client/edge` (WASM query engine, no fs.readdir)
- *   and wraps the `DB` D1 binding with `@prisma/adapter-d1`'s `PrismaD1`.
+ *   Uses `@prisma/adapter-d1` with the `DB` D1 binding for database access.
  *
- * Local dev (`bun run dev`):
- *   Dynamic-imports `@prisma/client` (native Node.js engine) and opens the
- *   local SQLite file via DATABASE_URL.
+ * Local dev (`bun run dev` / `npx next dev`):
+ *   Uses `@prisma/adapter-libsql` with the local SQLite file.
  *
  * `db` is a recursive Proxy that bridges sync→async transparently so call
  * sites stay unchanged:
@@ -53,11 +51,9 @@ async function buildClient(): Promise<PrismaClient> {
   installFsStub()
 
   // Always import from the default entry (`@prisma/client`). With an adapter,
-  // Prisma 6.x skips the Rust query engine entirely and uses the driver
-  // adapter to talk to D1 — no fs.readdir needed.
-  const [{ PrismaClient: BasePrismaClient }] = await Promise.all([
-    import('@prisma/client'),
-  ])
+  // Prisma 6.x/7.x skips the native query engine entirely and uses the driver
+  // adapter to talk to the database.
+  const { PrismaClient: BasePrismaClient } = await import('@prisma/client')
 
   if (isWorkersRuntime()) {
     try {
@@ -82,23 +78,17 @@ async function buildClient(): Promise<PrismaClient> {
   // must provide a driver adapter. Use the libsql adapter against the local
   // SQLite file (DATABASE_URL=file:.../custom.db).
   //
-  // IMPORTANT: the module specifier is built via string concatenation so
-  // esbuild/wrangler cannot statically resolve it at build time. This
-  // prevents the 20 MiB @prisma/adapter-libsql dependency tree from being
-  // bundled into the Cloudflare Worker — which only ever uses the D1
-  // adapter branch above and never reaches this code. Without this trick
-  // the worker's compressed size exceeds the 3 MiB free-plan limit.
+  // We use a standard dynamic import. To prevent the Cloudflare Worker bundle
+  // from including this heavy dependency (which is never used on Workers),
+  // the postbuild script (scripts/postbuild-cf.mjs) stubs it out at build
+  // time. This is more reliable than the previous new Function() trick which
+  // caused WASM loading issues in the Next.js dev server.
   try {
-    const spec = '@prisma/' + 'adapter-libsql'
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const dynImport = new Function('s', 'return import(s)') as (
-      s: string,
-    ) => Promise<{ PrismaLibSql: new (opts: { url: string }) => unknown }>
-    const mod = await dynImport(spec)
+    const { PrismaLibSql } = await import('@prisma/adapter-libsql')
     const url =
       process.env.DATABASE_URL || 'file:./db/custom.db'
     return new BasePrismaClient({
-      adapter: new mod.PrismaLibSql({ url }) as never,
+      adapter: new PrismaLibSql({ url }) as never,
       log:
         process.env.NODE_ENV !== 'production'
           ? ['error', 'warn']
