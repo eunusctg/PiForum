@@ -67,11 +67,17 @@ enabled = false
 
 # ============================================================
 # Routes (custom domains)
+# NOTE: Custom domains are configured via Cloudflare dashboard instead of
+# wrangler.toml because the API token lacks Zone → Workers Routes → Edit
+# permission. To add custom domains:
+#   1. Go to https://dash.cloudflare.com → Workers & Pages → piforum
+#   2. Settings → Domains & Routes → Add Custom Domain
+#   3. Add "piforum.eu.org" and "piforum.eu.cc"
 # ============================================================
-[[routes]]
-pattern = "piforum.eu.org"
-custom_domain = true
-
-[[routes]]
-pattern = "piforum.eu.cc"
-custom_domain = true
+# [[routes]]
+# pattern = "piforum.eu.org"
+# custom_domain = true
+#
+# [[routes]]
+# pattern = "piforum.eu.cc"
+# custom_domain = true

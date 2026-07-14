@@ -50,14 +50,14 @@ async function buildClient(): Promise<PrismaClient> {
   // instead of throwing on Cloudflare Workers.
   installFsStub()
 
-  // Always import from the default entry (`@prisma/client`). With an adapter,
-  // Prisma 6.x/7.x skips the native query engine entirely and uses the driver
-  // adapter to talk to the database.
-  const { PrismaClient: BasePrismaClient } = await import('@prisma/client')
-
   if (isWorkersRuntime()) {
     try {
-      const [{ getCloudflareContext }, { PrismaD1 }] = await Promise.all([
+      // On Cloudflare Workers, use the edge-compatible Prisma client entry.
+      // The default `@prisma/client` entry loads the WASM query compiler
+      // which adds 3.4 MB to the bundle and causes runtime errors on the
+      // free plan (3 MiB limit). The edge entry + D1 adapter bypasses WASM.
+      const [{ PrismaClient: BasePrismaClient }, { getCloudflareContext }, { PrismaD1 }] = await Promise.all([
+        import('@prisma/client/edge'),
         import('@opennextjs/cloudflare'),
         import('@prisma/adapter-d1'),
       ])
@@ -77,12 +77,7 @@ async function buildClient(): Promise<PrismaClient> {
   // Local Node.js dev path — Prisma 7 removed the native Rust engine, so we
   // must provide a driver adapter. Use the libsql adapter against the local
   // SQLite file (DATABASE_URL=file:.../custom.db).
-  //
-  // We use a standard dynamic import. To prevent the Cloudflare Worker bundle
-  // from including this heavy dependency (which is never used on Workers),
-  // the postbuild script (scripts/postbuild-cf.mjs) stubs it out at build
-  // time. This is more reliable than the previous new Function() trick which
-  // caused WASM loading issues in the Next.js dev server.
+  const { PrismaClient: BasePrismaClient } = await import('@prisma/client')
   try {
     const { PrismaLibSql } = await import('@prisma/adapter-libsql')
     const url =

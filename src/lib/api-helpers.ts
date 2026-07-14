@@ -20,7 +20,7 @@ export function errorResponse(message: string, status = 400) {
 
 export function serverErrorResponse(message: string) {
   return NextResponse.json(
-    { success: false, error: message },
+    { success: false, error: message, stack: process.env.NODE_ENV === 'development' ? undefined : undefined },
     { status: 500, headers: { 'Cache-Control': 'no-store, max-age=0' } },
   );
 }
