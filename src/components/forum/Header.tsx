@@ -356,8 +356,6 @@ export default function Header() {
                 </button>
               )}
 
-
-
               {/* Notifications (logged-in only) */}
               {currentUser && (
                 <button
@@ -553,11 +551,8 @@ export default function Header() {
                 </div>
               )}
 
-              {/* Desktop Hamburger (not needed — desktop nav is inline) */}
             </div>
           </div>
-
-
 
           {/* Mobile Menu Dropdown (user menu only — triggered by avatar) */}
           {mobileMenuOpen && (
@@ -668,8 +663,6 @@ export default function Header() {
           </div>
         )}
       </header>
-
-
     </>
   );
 }

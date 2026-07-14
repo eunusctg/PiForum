@@ -75,7 +75,7 @@ export default function CookieConsent() {
         isBottom ? 'bottom-0' : 'top-0'
       }`}
       style={{
-        // On mobile with bottom nav, offset above the mobile nav bar (~60px + safe area)
+        // Safe area inset for notched devices
         ...(isBottom
           ? { paddingBottom: 'env(safe-area-inset-bottom, 0px)' }
           : { paddingTop: 'env(safe-area-inset-top, 0px)' }),
@@ -91,7 +91,7 @@ export default function CookieConsent() {
             ? 'translate-y-0 opacity-100'
             : '-translate-y-full opacity-0'
         } ${
-          // On mobile bottom position, add extra bottom margin to clear the mobile nav
+          // Extra margin to avoid overlap with device UI
           isBottom ? 'mb-4' : 'mt-2'
         }`}
       >
