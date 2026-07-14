@@ -92,7 +92,7 @@ export default function CookieConsent() {
             : '-translate-y-full opacity-0'
         } ${
           // On mobile bottom position, add extra bottom margin to clear the mobile nav
-          isBottom ? 'mb-[calc(60px+env(safe-area-inset-bottom,0px))] md:mb-4' : 'mt-2'
+          isBottom ? 'mb-4' : 'mt-2'
         }`}
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">

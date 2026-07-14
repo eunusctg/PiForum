@@ -141,7 +141,7 @@ export default function SiteFooter() {
 
   return (
     <footer
-      className="mt-auto pt-8 pb-6 sm:pt-10 sm:pb-8 lg:pt-12 lg:pb-10 pb-20 md:pb-6"
+      className="mt-auto pt-8 pb-6 sm:pt-10 sm:pb-8 lg:pt-12 lg:pb-10"
       role="contentinfo"
       aria-label="Site footer"
     >

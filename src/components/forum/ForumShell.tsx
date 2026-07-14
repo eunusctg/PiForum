@@ -266,7 +266,7 @@ export default function ForumShell({
     >
       <Header />
       <AuthModal />
-      <main className="flex-1 w-full pb-16 md:pb-0">
+      <main className="flex-1 w-full">
         {/* Keyed wrapper so each view swap triggers a subtle fade-in-up
             entrance animation (defined in globals.css). */}
         <div key={currentView} className="animate-fade-in-up">

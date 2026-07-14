@@ -145,7 +145,6 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
 
   // Hydration-safe mounted detection without calling setState in an effect
   const mounted = useSyncExternalStore(
@@ -198,7 +197,6 @@ export default function Header() {
         navigateTo(view, params);
       }
       setMobileMenuOpen(false);
-      setSearchOpen(false);
     },
     [router, navigateTo, currentUser]
   );
@@ -249,16 +247,6 @@ export default function Header() {
     { label: "Home", view: "home", icon: Home },
     { label: "Forums", view: "home", icon: MessageSquare },
     { label: "Categories", view: "home", icon: FolderOpen },
-  ];
-
-  // Mobile bottom nav — Search only (Home/Forums/Categories removed)
-  const mobileNavLinks: { label: string; view: AppView; icon: typeof Home; action?: () => void }[] = [
-    {
-      label: "Search",
-      view: "search",
-      icon: Search,
-      action: () => setSearchOpen(!searchOpen),
-    },
   ];
 
   return (
@@ -368,15 +356,7 @@ export default function Header() {
                 </button>
               )}
 
-              {/* Search icon (mobile only, before notifications) */}
-              <button
-                onClick={() => setSearchOpen(!searchOpen)}
-                className="neu-btn md:hidden flex items-center justify-center w-9 h-9 p-0"
-                aria-label="Search"
-                title="Search"
-              >
-                <Search className="size-4" />
-              </button>
+
 
               {/* Notifications (logged-in only) */}
               {currentUser && (
@@ -577,26 +557,7 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Mobile Search Bar (collapsible) — triggered from bottom nav */}
-          {searchOpen && (
-            <form
-              onSubmit={handleSearchSubmit}
-              className="md:hidden mt-3 pt-3 border-t border-border/30"
-            >
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  autoFocus
-                  placeholder="Search threads, members, tags..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="neu-input w-full h-11 pl-10 pr-4 text-sm placeholder:text-muted-foreground"
-                  aria-label="Search"
-                />
-              </div>
-            </form>
-          )}
+
 
           {/* Mobile Menu Dropdown (user menu only — triggered by avatar) */}
           {mobileMenuOpen && (
@@ -708,38 +669,7 @@ export default function Header() {
         )}
       </header>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 neu-card rounded-none border-t border-border/30"
-        aria-label="Mobile navigation"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-      >
-        <div className="flex items-center justify-around py-1.5 px-1">
-          {mobileNavLinks.map((link, idx) => {
-            const Icon = link.icon;
-            return (
-              <button
-                key={`bnav-${idx}`}
-                onClick={() => {
-                  if (link.action) {
-                    link.action();
-                  } else if (link.view === "home" && link.label === "Categories") {
-                    navigateTo("home", { showCategories: "true" });
-                    router.push("/?categories=true");
-                  } else {
-                    handleNavigate(link.view);
-                  }
-                }}
-                className="flex flex-col items-center justify-center gap-0.5 py-1 px-3 rounded-lg text-muted-foreground hover:text-primary transition-colors min-w-[56px]"
-                aria-label={link.label}
-              >
-                <Icon className="size-5" />
-                <span className="text-[10px] font-medium leading-tight">{link.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+
     </>
   );
 }
