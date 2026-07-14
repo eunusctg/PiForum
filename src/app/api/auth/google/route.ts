@@ -8,6 +8,14 @@ import { errorResponse, serverErrorResponse } from '@/lib/api-helpers';
  * authorization endpoint. Credentials are read from:
  *   1. DB Setting table (configured via admin panel)
  *   2. Environment variables (GOOGLE_CLIENT_ID set via wrangler secret)
+ *
+ * The redirect_uri is built from the request's actual origin (the domain
+ * the user is accessing from). This ensures Google redirects back to the
+ * SAME domain the user is on, which is critical when the site is accessible
+ * from multiple domains (e.g. piforum.eu.org and piforum.eu.cc).
+ *
+ * IMPORTANT: Each domain's redirect URI must be registered in Google Cloud
+ * Console → Credentials → Authorized redirect URIs.
  */
 export async function GET(request: Request) {
   try {
@@ -37,11 +45,31 @@ export async function GET(request: Request) {
       return errorResponse('Google OAuth Client Secret is not configured. The callback will fail.', 500);
     }
 
-    // Build the redirect URI — must match what's registered in Google Cloud Console
-    // Use the canonical URL from DB, then env, then the request's origin, then default
-    const siteUrlSetting = await db.setting.findUnique({ where: { key: 'seo_canonical_url' } });
-    const requestOrigin = new URL(request.url).origin;
-    const siteUrl = siteUrlSetting?.value || process.env.NEXT_PUBLIC_SITE_URL || requestOrigin || 'https://piforum.eu.org';
+    // Build the redirect URI using the request's ACTUAL origin.
+    // This is critical when the site is accessible from multiple domains
+    // (e.g. piforum.eu.org and piforum.eu.cc). If the user is on eu.cc,
+    // the redirect must go back to eu.cc, NOT to eu.org (which might be
+    // blocked by WAF or have a different SSL certificate).
+    //
+    // We determine the origin from:
+    //   1. X-Forwarded-Host + X-Forwarded-Proto (set by Caddy/Cloudflare proxy)
+    //   2. Host header (direct access)
+    //   3. seo_canonical_url DB setting (fallback)
+    //   4. NEXT_PUBLIC_SITE_URL env var (fallback)
+    //   5. Hardcoded default
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+    const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
+
+    let siteUrl: string;
+    if (forwardedHost) {
+      // User is accessing through a proxy — use the forwarded origin
+      siteUrl = `${forwardedProto}://${forwardedHost}`;
+    } else {
+      // No proxy headers — try DB setting, then env var, then default
+      const siteUrlSetting = await db.setting.findUnique({ where: { key: 'seo_canonical_url' } });
+      siteUrl = siteUrlSetting?.value || process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org';
+    }
+
     const redirectUri = `${siteUrl}/api/auth/google/callback`;
 
     // Generate a random state parameter for CSRF protection
@@ -56,6 +84,8 @@ export async function GET(request: Request) {
       create: { key: `oauth_state_${state}`, value: `${Date.now()}|${redirectUri}|${clientId}` },
     });
 
+    console.log(`[google-oauth] Init: redirect_uri=${redirectUri}, client_id=${clientId.slice(0, 8)}..., origin=${forwardedHost || 'canonical'}`);
+
     const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     googleAuthUrl.searchParams.set('client_id', clientId);
     googleAuthUrl.searchParams.set('redirect_uri', redirectUri);
@@ -68,6 +98,7 @@ export async function GET(request: Request) {
     // Redirect to Google
     return Response.redirect(googleAuthUrl.toString(), 302);
   } catch (e: any) {
+    console.error('[google-oauth] Initiation error:', e);
     return serverErrorResponse(e.message || 'Failed to initiate Google OAuth');
   }
 }

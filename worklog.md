@@ -437,3 +437,31 @@ Stage Summary:
 - Lint passes with 0 errors ✅
 - Google OAuth button "Continue with Google" verified in browser ✅
 - **Root cause**: Most likely a redirect_uri_mismatch — the redirect URI `https://piforum.eu.org/api/auth/google/callback` needs to be added in Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client → Authorized redirect URIs
+
+---
+Task ID: google-oauth-fix-v2
+Agent: Main Agent
+Task: Fix Google OAuth authentication failure "Failed to authenticate with Google. Please try again."
+
+Work Log:
+- Diagnosed root cause: The redirect_uri in Google OAuth was set to https://piforum.eu.org/api/auth/google/callback, but piforum.eu.org returns HTTP 403 (Cloudflare WAF/Bot Fight Mode)
+- User was accessing the site via piforum.eu.cc (working domain), but Google redirected to piforum.eu.org (blocked domain)
+- Updated seo_canonical_url in production D1 database from https://piforum.eu.org to https://piforum.eu.cc via admin API
+- Fixed Google OAuth initiation route to use X-Forwarded headers for determining request origin instead of new URL(request.url).origin
+- Fixed Google OAuth callback route with same origin logic and better error handling
+- Added self-healing mechanism for seo_canonical_url in settings API
+- Enhanced AuthModal error messages with more actionable details
+- Enhanced debug endpoint with url_source, forwarded_origin, verification_steps
+- Cleaned up stale OAuth state records from local DB
+- Set seo_canonical_url in local DB to https://piforum.eu.cc
+- Verified production site: redirect_uri is now https://piforum.eu.cc/api/auth/google/callback (previously was eu.org)
+- Built Cloudflare Worker bundle (3086 KiB gzip, slightly over 3072 KiB limit)
+
+Stage Summary:
+- ROOT CAUSE: redirect_uri pointed to piforum.eu.org (403 WAF) instead of piforum.eu.cc (working)
+- FIXED: Updated seo_canonical_url in production D1 to https://piforum.eu.cc ✅
+- FIXED: OAuth routes now use X-Forwarded headers for origin detection ✅
+- FIXED: Better error messages and logging in callback route ✅
+- PENDING: Deployment to Cloudflare Workers (need valid API token)
+- PENDING: User must add https://piforum.eu.cc/api/auth/google/callback to Google Cloud Console → Authorized redirect URIs
+- Bundle size: 3086 KiB gzip (14 KiB over 3072 KiB free plan limit — may need optimization)

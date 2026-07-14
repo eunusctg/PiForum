@@ -102,20 +102,21 @@ export default function AuthModal() {
       const errorDetail = hashParams.get('auth_error_detail') || queryParams.get('auth_error_detail');
       const errorMessages: Record<string, string> = {
         access_denied: 'Google sign-in was cancelled.',
-        missing_params: 'Invalid OAuth response.',
-        invalid_state: 'Security check failed. Please try again.',
-        expired_state: 'Session expired. Please try again.',
-        oauth_not_configured: 'Google OAuth is not properly configured. Contact an admin.',
-        token_exchange_failed: 'Failed to authenticate with Google. Please try again.',
-        no_id_token: 'Invalid Google response. Please try again.',
-        no_email: 'Your Google account has no email. Please add one.',
+        missing_params: 'Invalid OAuth response from Google.',
+        invalid_state: 'Security check failed. This can happen if you waited too long or used a different browser tab. Please try again.',
+        expired_state: 'Your sign-in session expired (over 10 minutes). Please try again.',
+        oauth_not_configured: 'Google OAuth is not properly configured on the server. Please contact an administrator.',
+        token_exchange_failed: 'Google could not verify your sign-in. This usually means the redirect URI is not registered in Google Cloud Console.',
+        no_id_token: 'Google did not return a valid identity token. Please try again.',
+        no_email: 'Your Google account has no email address. Please add one to your Google account.',
         account_banned: 'Your account has been banned.',
         registration_closed: 'Registration is currently closed.',
+        invalid_audience: 'Security check failed (audience mismatch). The Google OAuth configuration may be incorrect.',
       };
       let msg = errorMessages[authError] || `Authentication error: ${authError}`;
       // Append the detailed error from Google if available (helps debugging)
       if (errorDetail) {
-        msg += ` (${errorDetail})`;
+        msg += `\n\nDetails: ${errorDetail}`;
       }
       queueMicrotask(() => {
         setLoginError(msg);

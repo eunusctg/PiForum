@@ -56,9 +56,19 @@ export async function GET(request: Request) {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
-    // Resolve siteUrl for error redirects (before we have the state record)
-    const siteUrlSetting = await db.setting.findUnique({ where: { key: 'seo_canonical_url' } });
-    const siteUrl = siteUrlSetting?.value || process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org';
+    // Resolve siteUrl for error/success redirects.
+    // Use the same logic as the initiation route — prefer forwarded headers
+    // (the domain the user actually came from), then DB setting, env var, default.
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+    const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
+
+    let siteUrl: string;
+    if (forwardedHost) {
+      siteUrl = `${forwardedProto}://${forwardedHost}`;
+    } else {
+      const siteUrlSetting = await db.setting.findUnique({ where: { key: 'seo_canonical_url' } });
+      siteUrl = siteUrlSetting?.value || process.env.NEXT_PUBLIC_SITE_URL || 'https://piforum.eu.org';
+    }
 
     // User denied access
     if (error) {
@@ -70,18 +80,27 @@ export async function GET(request: Request) {
     }
 
     // Verify state (CSRF protection) — also clean up expired states
-    // Delete all expired states (older than 10 min) to prevent table bloat
-    const tenMinAgo = Date.now() - 10 * 60 * 1000;
-    await db.setting.deleteMany({
-      where: {
-        key: { startsWith: 'oauth_state_' },
-        value: { lt: tenMinAgo.toString() },
-      },
-    }).catch(() => {});
+    // Fetch all state records and delete expired ones in code (more reliable
+    // than string comparison with Prisma's `lt` filter)
+    try {
+      const allStates = await db.setting.findMany({
+        where: { key: { startsWith: 'oauth_state_' } },
+      });
+      const tenMinAgo = Date.now() - 10 * 60 * 1000;
+      for (const s of allStates) {
+        const ts = parseInt(s.value.split('|')[0], 10);
+        if (!isNaN(ts) && ts < tenMinAgo) {
+          await db.setting.delete({ where: { key: s.key } }).catch(() => {});
+        }
+      }
+    } catch {
+      // Non-critical — don't block the OAuth flow
+    }
 
     const stateRecord = await db.setting.findUnique({ where: { key: `oauth_state_${state}` } });
     if (!stateRecord) {
-      return authErrorRedirect(siteUrl, 'invalid_state');
+      console.error(`[google-callback] State not found: oauth_state_${state}`);
+      return authErrorRedirect(siteUrl, 'invalid_state', 'OAuth state record not found. This can happen if you waited too long or if the database was reset.');
     }
 
     // Parse the state value: "timestamp|redirectUri|clientId"
@@ -96,7 +115,7 @@ export async function GET(request: Request) {
     await db.setting.delete({ where: { key: `oauth_state_${state}` } }).catch(() => {});
 
     // Check state hasn't expired (10 min)
-    if (Date.now() - stateTimestamp > 10 * 60 * 1000) {
+    if (isNaN(stateTimestamp) || Date.now() - stateTimestamp > 10 * 60 * 1000) {
       return authErrorRedirect(siteUrl, 'expired_state');
     }
 
@@ -107,6 +126,15 @@ export async function GET(request: Request) {
     const clientSecret = clientSecretSetting?.value || process.env.GOOGLE_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
+      console.error('[google-callback] Missing credentials:', {
+        hasClientId: !!clientId,
+        hasClientSecret: !!clientSecret,
+        storedClientId: !!storedClientId,
+        dbClientId: !!clientIdSetting?.value,
+        envClientId: !!process.env.GOOGLE_CLIENT_ID,
+        dbClientSecret: !!clientSecretSetting?.value,
+        envClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      });
       return authErrorRedirect(
         siteUrl,
         'oauth_not_configured',
@@ -117,6 +145,8 @@ export async function GET(request: Request) {
     // Use the redirect URI stored in the state record (guaranteed to match
     // what was sent to Google during initiation)
     const redirectUri = storedRedirectUri;
+
+    console.log(`[google-callback] Exchanging code: redirect_uri=${redirectUri}, client_id=${clientId.slice(0, 8)}...`);
 
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -136,6 +166,7 @@ export async function GET(request: Request) {
       console.error('[google-callback] Token exchange failed:', errText);
       console.error('[google-callback] redirect_uri used:', redirectUri);
       console.error('[google-callback] client_id used:', clientId.slice(0, 8) + '...');
+      console.error('[google-callback] HTTP status:', tokenResponse.status);
 
       // Try to extract a human-readable reason from the Google error JSON
       let detail = 'Unknown error';
@@ -144,6 +175,15 @@ export async function GET(request: Request) {
         detail = errJson.error_description || errJson.error || errText.slice(0, 200);
       } catch {
         detail = errText.slice(0, 200);
+      }
+
+      // Provide actionable advice for common errors
+      if (detail.includes('redirect_uri')) {
+        detail += `. Add "${redirectUri}" to Google Console → Credentials → Authorized redirect URIs`;
+      } else if (detail.includes('invalid_client')) {
+        detail += '. Check Google OAuth Client ID/Secret in admin settings.';
+      } else if (detail.includes('invalid_grant')) {
+        detail += '. Code expired or reused. Please try again.';
       }
 
       return authErrorRedirect(siteUrl, 'token_exchange_failed', detail);
@@ -173,6 +213,8 @@ export async function GET(request: Request) {
     if (!googleEmail) {
       return authErrorRedirect(siteUrl, 'no_email');
     }
+
+    console.log(`[google-callback] Google auth success: email=${googleEmail}, name=${googleName}`);
 
     // Try to find existing user by email
     let user = await db.user.findUnique({
@@ -259,6 +301,8 @@ export async function GET(request: Request) {
 
     const serializedUser = serializeUser(user);
     const token = user.firebaseUid;
+
+    console.log(`[google-callback] Login success: user=${user.username}, redirecting to ${siteUrl}`);
 
     // Redirect to frontend with token in URL hash (so it's not sent to server logs)
     // The frontend AuthModal will pick it up and set it in the store.

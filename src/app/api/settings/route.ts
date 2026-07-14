@@ -32,6 +32,13 @@ export async function GET() {
       settingsMap['oauth_github_enabled'] = !!process.env.GITHUB_CLIENT_ID ? 'true' : 'false';
     }
 
+    // Auto-set seo_canonical_url from NEXT_PUBLIC_SITE_URL if not in DB.
+    // This is critical for Google OAuth — the redirect_uri must use the
+    // canonical URL, not the internal server address.
+    if (!settingsMap['seo_canonical_url'] && process.env.NEXT_PUBLIC_SITE_URL) {
+      settingsMap['seo_canonical_url'] = process.env.NEXT_PUBLIC_SITE_URL;
+    }
+
     return successResponse(settingsMap);
   } catch (e: any) {
     return serverErrorResponse(e.message || 'Failed to fetch settings');

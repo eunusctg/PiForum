@@ -231,20 +231,29 @@ for (const dep of libsqlDeps) {
   }
 }
 
-// === Step 12: Strip source map comments from handler.mjs ===
+// === Step 12: Strip debug endpoint and verbose strings from handler ===
+// The Google OAuth debug endpoint is useful in dev but adds to the bundle.
+// Strip its diagnostic code and verbose strings from the production build.
+// Also strips source map comments (was previously Step 13).
 const handlerFile = join(OPEN_NEXT_DIR, 'server-functions/default/handler.mjs')
 if (existsSync(handlerFile)) {
   let handlerCode = readFileSync(handlerFile, 'utf8')
-  const originalSize = Buffer.byteLength(handlerCode, 'utf8')
+  const origSize = Buffer.byteLength(handlerCode, 'utf8')
 
-  // Only strip source map comments — these are safe to remove
-  handlerCode = handlerCode.replace(/\n\/\/# sourceMappingURL=[^\n]*/g, '')
+  // Strip verification_steps arrays (long multi-line strings)
+  handlerCode = handlerCode.replace(/verification_steps:\[[\s\S]*?\]/g, 'verification_steps:[]')
 
-  writeFileSync(handlerFile, handlerCode, 'utf8')
+  // Strip long tip strings
+  handlerCode = handlerCode.replace(/tip:`Make sure "[^"]*" is added to Authorized redirect URIs[^`]*`/g, 'tip:"Check Google Console redirect URIs"')
+
+  // Strip source map comments
+  handlerCode = handlerCode.replace(/\/\/# sourceMappingURL=[^\n]*/g, '')
+
   const newSize = Buffer.byteLength(handlerCode, 'utf8')
-  bytesSaved += originalSize - newSize
-  if (originalSize !== newSize) {
-    console.log(`✓ Trimmed handler.mjs sourcemaps (saved ${((originalSize - newSize) / 1024).toFixed(1)} KiB)`)
+  writeFileSync(handlerFile, handlerCode, 'utf8')
+  bytesSaved += origSize - newSize
+  if (origSize !== newSize) {
+    console.log(`✓ Stripped debug strings & sourcemaps from handler.mjs (saved ${((origSize - newSize) / 1024).toFixed(1)} KiB)`)
   }
 }
 
