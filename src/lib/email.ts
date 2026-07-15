@@ -8,10 +8,11 @@ import { db } from '@/lib/db';
  * APIs instead.
  *
  * Supported providers (configured via admin settings):
- * 1. Cloudflare MailChannels — recommended, free for Cloudflare Workers domains
- * 2. Resend API (https://resend.com) — free tier available
- * 3. SendGrid API — popular transactional email service
- * 4. Mailgun API — another popular option
+ * 1. Cloudflare Workers Send Email — native binding, recommended for CF Workers
+ * 2. Cloudflare MailChannels — free for Cloudflare Workers domains
+ * 3. Resend API (https://resend.com) — free tier available
+ * 4. SendGrid API — popular transactional email service
+ * 5. Mailgun API — another popular option
  *
  * The `smtp_*` settings in the database determine the provider and credentials.
  * When SMTP is not enabled or not configured, emails are not sent (silent fallback).
@@ -30,6 +31,7 @@ interface EmailPayload {
  *
  * On Cloudflare Workers we can't use nodemailer, so we use HTTP-based APIs.
  * The `smtp_host` setting is repurposed to indicate the provider:
+ *   - "cloudflare-send" → Use Cloudflare Workers Send Email binding (native, recommended)
  *   - "cloudflare" → Use Cloudflare MailChannels API (free, no API key needed)
  *   - "resend" → Use Resend API
  *   - "sendgrid" → Use SendGrid API
@@ -52,11 +54,12 @@ export async function sendEmail(payload: EmailPayload): Promise<{ sent: boolean;
 
   const host = hostSetting?.value || '';
   const apiKey = passwordSetting?.value || '';
-  const fromEmail = fromEmailSetting?.value || 'noreply@piforum.org';
+  const fromEmail = fromEmailSetting?.value || 'noreply@piforum.eu.org';
   const fromName = fromNameSetting?.value || 'PiForum';
 
-  // Cloudflare MailChannels doesn't need an API key — it authenticates via domain ownership
-  if (host.toLowerCase().trim() !== 'cloudflare' && !apiKey) {
+  // Cloudflare providers don't need an API key
+  const cloudflareProviders = ['cloudflare', 'cloudflare-send'];
+  if (!cloudflareProviders.includes(host.toLowerCase().trim()) && !apiKey) {
     return { sent: false, error: 'No API key configured' };
   }
 
@@ -66,8 +69,12 @@ export async function sendEmail(payload: EmailPayload): Promise<{ sent: boolean;
   // Route to the appropriate provider
   const provider = host.toLowerCase().trim();
 
+  if (provider === 'cloudflare-send') {
+    return sendViaCloudflareSendEmail({ ...payload, to, from, fromEmail });
+  }
+
   if (provider === 'cloudflare') {
-    return sendViaCloudflare({ ...payload, to, from });
+    return sendViaCloudflareMailChannels({ ...payload, to, from });
   }
 
   if (provider === 'resend' || provider.includes('resend')) {
@@ -88,8 +95,97 @@ export async function sendEmail(payload: EmailPayload): Promise<{ sent: boolean;
   return sendViaResend(apiKey, { ...payload, to, from });
 }
 
+/* ---------- Cloudflare Workers Send Email API (native binding) ---------- */
+async function sendViaCloudflareSendEmail(
+  payload: { to: string[]; from: string; fromEmail: string; subject: string; html: string; text?: string },
+): Promise<{ sent: boolean; error?: string }> {
+  try {
+    // Try to use the Cloudflare Workers Send Email binding
+    // This requires the `send_email` binding in wrangler.toml
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    const ctx = (await getCloudflareContext({ async: true })) as {
+      env: { SEND_EMAIL?: { send: (msg: unknown) => Promise<void>; destination_address?: string } };
+    };
+
+    const sendEmailBinding = ctx?.env?.SEND_EMAIL;
+    if (!sendEmailBinding || typeof sendEmailBinding.send !== 'function') {
+      // Fallback to MailChannels if the binding is not configured
+      console.log('[email] SEND_EMAIL binding not found, falling back to MailChannels');
+      return sendViaCloudflareMailChannels(payload);
+    }
+
+    // The send_email binding can only send to the verified destination_address.
+    // If any recipient doesn't match, fall back to MailChannels for those.
+    const verifiedAddr = (sendEmailBinding as { destination_address?: string }).destination_address;
+    const verifiedRecipients: string[] = [];
+    const fallbackRecipients: string[] = [];
+
+    for (const recipient of payload.to) {
+      if (verifiedAddr && recipient.toLowerCase() === verifiedAddr.toLowerCase()) {
+        verifiedRecipients.push(recipient);
+      } else {
+        fallbackRecipients.push(recipient);
+      }
+    }
+
+    // Send to verified recipients via the native binding
+    // Construct a proper MIME message for HTML content
+    for (const recipient of verifiedRecipients) {
+      const boundary = '----=_Part_' + Math.random().toString(36).substring(2);
+      const mimeBody = [
+        `From: ${payload.from}`,
+        `To: ${recipient}`,
+        `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(payload.subject)))}?=`,
+        'MIME-Version: 1.0',
+        `Content-Type: multipart/alternative; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: 7bit',
+        '',
+        payload.text || payload.html.replace(/<[^>]*>/g, ''),
+        '',
+        `--${boundary}`,
+        'Content-Type: text/html; charset=UTF-8',
+        'Content-Transfer-Encoding: 7bit',
+        '',
+        payload.html,
+        '',
+        `--${boundary}--`,
+      ].join('\r\n');
+
+      // EmailMessage(from, to, rawMimeBody) — Workers global
+      const EmailMessageClass = (globalThis as any).EmailMessage;
+      if (EmailMessageClass) {
+        const message = new EmailMessageClass(payload.fromEmail, recipient, mimeBody);
+        await sendEmailBinding.send(message);
+      } else {
+        throw new Error('EmailMessage global not available (not running on Workers)');
+      }
+    }
+
+    // Send to non-verified recipients via MailChannels
+    if (fallbackRecipients.length > 0) {
+      console.log(`[email] ${fallbackRecipients.length} recipient(s) not verified for send_email binding, using MailChannels`);
+      const fallbackResult = await sendViaCloudflareMailChannels({
+        ...payload,
+        to: fallbackRecipients,
+      });
+      if (!fallbackResult.sent && verifiedRecipients.length === 0) {
+        return fallbackResult;
+      }
+    }
+
+    return { sent: true };
+  } catch (err: any) {
+    // If the native binding fails, fall back to MailChannels
+    console.log('[email] Cloudflare Send Email binding failed, falling back to MailChannels:', err.message);
+    return sendViaCloudflareMailChannels(payload);
+  }
+}
+
 /* ---------- Cloudflare MailChannels API ---------- */
-async function sendViaCloudflare(
+async function sendViaCloudflareMailChannels(
   payload: { to: string[]; from: string; subject: string; html: string; text?: string },
 ): Promise<{ sent: boolean; error?: string }> {
   try {

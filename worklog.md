@@ -52,3 +52,34 @@ Stage Summary:
 - Local dev fully functional: email login, thread view, Google OAuth button
 - CF build ready for deployment (need user's CLOUDFLARE_API_TOKEN)
 - Admin credentials: admin@piforum.com / admin123
+---
+Task ID: 3
+Agent: main
+Task: Fix all issues and deploy to Cloudflare Workers
+
+Work Log:
+- Verified Cloudflare API token works (Account: Techctg24 Inc)
+- Checked D1 database: tables exist with data (21 users, 28 threads, 12 categories, 38 forums, 118 settings)
+- Enabled Cloudflare email: set smtp_enabled=true, smtp_host=cloudflare-send, smtp_from_email=noreply@piforum.eu.org
+- Fixed canonical URL: changed seo_canonical_url from https://piforum.eu.cc to https://piforum.eu.org
+- Built project for Cloudflare Workers: npm run build:cf succeeded
+- Bundle size: 2641.53 KiB compressed (under 3072 KiB limit)
+- Deployed to Cloudflare Workers successfully
+- Verified all APIs work on Workers: ping, threads, thread detail, login
+- Set super admin password: eunus527@gmail.com / admin123
+- Verified email/password login works on deployed Workers
+- Verified thread viewing works (no "Thread not found" error)
+- Agent Browser verification: home page, thread view, login flow all working
+
+Key Finding - Google OAuth Issue:
+- GOOGLE_CLIENT_ID secret appears valid (starts with 1209****, matches Firebase project number format)
+- GOOGLE_CLIENT_SECRET secret is WRONG — set to Firebase VAPID key instead of OAuth client secret
+- The masked secret "BNDU****yLow" matches the VAPID key "BNDUVvk3...ShyLow"
+- User needs to set the correct Google OAuth Client Secret from Google Cloud Console
+
+Stage Summary:
+- Deployment: ✅ Successful (https://piforum.piforum.workers.dev, https://piforum.eu.org)
+- Email/Password Login: ✅ Working (eunus527@gmail.com / admin123)
+- Thread Viewing: ✅ Working (no more "Thread not found")
+- Cloudflare Email: ✅ Configured (smtp_enabled=true, cloudflare-send)
+- Google OAuth: ❌ Needs correct Client Secret (currently set to wrong value)

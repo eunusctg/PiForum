@@ -390,6 +390,25 @@ if (existsSync(handlerFile)) {
     'var e={wasm:undefined};return e'
   )
 
+  // Stub: @mswjs/interceptors — MSW (Mock Service Worker) is dev-only, NOT used in production
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/node_modules/next/dist/compiled/@mswjs/interceptors/ClientRequest/index.js',
+    'var e={};return e'
+  )
+
+  // Stub: styled-jsx — CSS-in-JS runtime, not used (Tailwind CSS only)
+  // Note: only safe to stub if no styled-jsx usage in the app
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/node_modules/styled-jsx/index.js',
+    'var e={default:function(){return null}};return e'
+  )
+
+  // Stub: pages/module.compiled.js — Pages Router module, NOT used (App Router only)
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/node_modules/next/dist/server/route-modules/pages/module.compiled.js',
+    'var e={default:{}};return e'
+  )
+
   // === Stub __esm modules (libsql/hrana — not needed on Workers) ===
   // The __esm format is: init_xxx = __esm({ "path"() { ... } });
   // We find each libsql-related init_ variable and replace the entire
@@ -753,6 +772,9 @@ const heavyDeps = [
   join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/recharts'),
   join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/@mdxeditor'),
   join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/d3-'),  // d3 subpackages (recharts dep)
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/@mswjs'),  // Mock Service Worker - dev only
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/styled-jsx'),  // CSS-in-JS, not used (Tailwind)
+  join(OPEN_NEXT_DIR, 'server-functions/default/node_modules/next/dist/compiled/@mswjs'),  // In Next.js compiled
 ]
 for (const dep of heavyDeps) {
   if (existsSync(dep)) {

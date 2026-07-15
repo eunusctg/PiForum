@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 /* ------------------------------------------------------------------ */
 
 const PROVIDERS = [
+  { value: 'cloudflare-send', label: 'Cloudflare Send Email (Native)' },
   { value: 'cloudflare', label: 'Cloudflare (MailChannels)' },
   { value: 'resend', label: 'Resend' },
   { value: 'sendgrid', label: 'SendGrid' },
@@ -57,7 +58,7 @@ export default function AdminEmail() {
   const handleProviderChange = (val: string) => {
     setValue('smtp_host', val);
     // Clear fields that aren't relevant when switching provider
-    if (val === 'cloudflare') {
+    if (val === 'cloudflare' || val === 'cloudflare-send') {
       setValue('smtp_password', '');
       setValue('smtp_username', '');
       setValue('smtp_port', '');
@@ -148,6 +149,17 @@ export default function AdminEmail() {
               </div>
 
               {/* Provider-specific info */}
+              {provider === 'cloudflare-send' && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30 p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-blue-700 dark:text-blue-400">
+                    <Info className="size-4" />
+                    Cloudflare Send Email (Native Binding)
+                  </div>
+                  <p className="text-xs text-blue-600 dark:text-blue-500">
+                    Native Cloudflare Workers email sending. Requires the <code>send_email</code> binding in wrangler.toml and a verified destination address. Falls back to MailChannels automatically if the binding is unavailable.
+                  </p>
+                </div>
+              )}
               {provider === 'cloudflare' && (
                 <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30 p-4 space-y-2">
                   <div className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400">
@@ -161,7 +173,7 @@ export default function AdminEmail() {
               )}
 
               {/* API key field for resend, sendgrid, mailgun */}
-              {provider !== 'cloudflare' && (
+              {provider !== 'cloudflare' && provider !== 'cloudflare-send' && (
                 <div className="space-y-2">
                   <Label htmlFor="smtp-api-key">
                     {provider === 'mailgun' ? 'API Key' : 'API Key'}
@@ -223,7 +235,7 @@ export default function AdminEmail() {
                 className="neu-input px-3 py-2.5"
               />
               <p className="text-xs text-muted-foreground">
-                {provider === 'cloudflare'
+                {provider === 'cloudflare' || provider === 'cloudflare-send'
                   ? 'Must be an email on your Cloudflare Workers domain with SPF/DKIM.'
                   : 'From email address.'}
               </p>
@@ -240,7 +252,7 @@ export default function AdminEmail() {
               <p className="text-xs text-muted-foreground">From display name.</p>
             </div>
           </div>
-          {provider !== 'cloudflare' && (
+          {provider !== 'cloudflare' && provider !== 'cloudflare-send' && (
             <div className="flex items-start gap-2 text-xs text-muted-foreground">
               <Lock className="size-3.5 mt-0.5 shrink-0" />
               <span>
