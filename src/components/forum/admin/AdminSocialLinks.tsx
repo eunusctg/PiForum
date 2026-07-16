@@ -9,7 +9,6 @@ import {
   Linkedin,
   Github,
   MessageCircle,
-  Twitch,
   ExternalLink,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -25,6 +24,7 @@ import {
 
 /* ------------------------------------------------------------------ */
 /*  Social Links — manage social media links shown in the footer.      */
+/*  Limited to 7 platforms.                                            */
 /* ------------------------------------------------------------------ */
 
 const SOCIAL_PLATFORMS = [
@@ -35,7 +35,6 @@ const SOCIAL_PLATFORMS = [
   { key: 'social_linkedin', label: 'LinkedIn', Icon: Linkedin, color: '#0A66C2', placeholder: 'https://linkedin.com/company/yourpage' },
   { key: 'social_github', label: 'GitHub', Icon: Github, color: '#6e5494', placeholder: 'https://github.com/yourorg' },
   { key: 'social_discord', label: 'Discord', Icon: MessageCircle, color: '#5865F2', placeholder: 'https://discord.gg/yourinvite' },
-  { key: 'social_twitch', label: 'Twitch', Icon: Twitch, color: '#9146FF', placeholder: 'https://twitch.tv/yourchannel' },
 ];
 
 const SOCIAL_KEYS = SOCIAL_PLATFORMS.map((p) => p.key);
@@ -55,7 +54,7 @@ export default function AdminSocialLinks() {
       <SectionHeader
         icon={Share2}
         title="Social Links"
-        description="Manage social media links shown in the footer."
+        description="Manage social media links shown in the footer. Up to 7 platforms."
       />
 
       {/* Social Platforms Card */}
@@ -98,19 +97,17 @@ export default function AdminSocialLinks() {
               <span
                 key={key}
                 title={`${label}: ${v(key)}`}
-                className="size-10 sm:size-11 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 hover:shadow-lg cursor-pointer"
-                style={{ backgroundColor: color, color: '#fff' }}
+                className="footer-social-icon size-10 sm:size-11 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 hover:shadow-lg cursor-pointer neu-circle"
               >
-                <Icon className="size-4 sm:size-5" />
+                <Icon className="size-4 sm:size-5 footer-social-icon-svg" style={{ color }} />
               </span>
             ) : (
               <span
                 key={key}
                 title={`${label} — link not set`}
-                className="size-10 sm:size-11 rounded-full flex items-center justify-center transition-all duration-200 opacity-70 hover:opacity-100"
-                style={{ backgroundColor: `${color}22`, color }}
+                className="footer-social-icon footer-social-icon-muted size-10 sm:size-11 rounded-full flex items-center justify-center transition-all duration-200 opacity-70 hover:opacity-100 neu-circle"
               >
-                <Icon className="size-4 sm:size-5" />
+                <Icon className="size-4 sm:size-5 footer-social-icon-svg" style={{ color, opacity: 0.55 }} />
               </span>
             );
           })}

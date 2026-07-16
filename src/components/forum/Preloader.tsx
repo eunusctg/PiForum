@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
  *
  * Visual layers:
  *  - Full-screen centered stage on `var(--neu-bg)`
- *  - Animated `π` glyph inside a `neu-circle` that pulses (scale 1 → 1.05) on
+ *  - Animated `Pi` glyph inside a `neu-circle` that pulses (scale 1 → 1.05) on
  *    a 2s loop with a soft breathing glow
  *  - Brand name "PiForum" + tagline (read from the settings cache in
  *    localStorage so it matches the configured forum tagline when available)
@@ -169,8 +169,8 @@ export default function Preloader() {
             className="preloader-logo neu-circle w-24 h-24 flex items-center justify-center"
             style={{ animationDuration: '2s' }}
           >
-            <span className="text-5xl font-bold text-primary select-none">
-              π
+            <span className="text-4xl sm:text-5xl font-bold text-primary select-none">
+              Pi
             </span>
           </div>
 

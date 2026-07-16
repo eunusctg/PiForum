@@ -6,10 +6,11 @@
 /*  • Only visible when a user is logged in                           */
 /*  • Appears on 'home' and 'forum' views                             */
 /*  • Positioned bottom-right, above the BackToTop button             */
-/*  • Bounce-in + pulse animation on appear                           */
+/*  • Bounce-in animation on appear                                   */
 /*  • Responsive: adjusts size and position on mobile vs desktop      */
-/*  • Theme-aware: adapts to day/night/golden mode via CSS            */
-/*  • Completely independent of footer — floats well above it         */
+/*  • Theme-aware: neumorphic soft UI matching site theme             */
+/*    (day mode = neumorphic white, night = dark, golden = gold)      */
+/*  • Uses site primary color, NOT green                              */
 /* ------------------------------------------------------------------ */
 
 import { useAppStore } from '@/lib/store';
@@ -46,7 +47,7 @@ export default function NewThreadFAB() {
         // Layout
         'inline-flex items-center justify-center',
         'size-14 sm:size-16 lg:size-[72px] p-0',
-        // Theme-aware colors via CSS class
+        // Theme-aware neumorphic colors via CSS class
         'theme-fab',
         'rounded-full',
         // Transitions

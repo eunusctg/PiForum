@@ -1508,3 +1508,130 @@ summary,
     box-shadow: var(--neu-shadow-sm);
   }
 }
+
+/* ============================================================
+   CAROUSEL DOT INDICATORS
+   ============================================================ */
+
+.carousel-dot {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  padding: 0;
+}
+
+.carousel-dot:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Dark mode dots - override inline styles */
+.dark .carousel-dot[aria-selected="false"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.dark .carousel-dot[aria-selected="false"]:hover {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Golden mode dots */
+.gold .carousel-dot[aria-selected="false"] {
+  background-color: rgba(61, 45, 0, 0.3) !important;
+}
+
+.gold .carousel-dot[aria-selected="false"]:hover {
+  background-color: rgba(61, 45, 0, 0.45) !important;
+}
+
+/* ============================================================
+   ADDITIONAL ANIMATIONS
+   ============================================================ */
+
+/* Fade-in-up animation for elements appearing on screen */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out both;
+}
+
+/* Staggered children animation */
+.stagger-children > * {
+  animation: fade-in-up 0.35s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.03s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.09s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.12s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.18s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.21s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.24s; }
+.stagger-children > *:nth-child(9) { animation-delay: 0.27s; }
+.stagger-children > *:nth-child(10) { animation-delay: 0.3s; }
+
+/* Smooth scale-in animation for cards */
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out both;
+}
+
+/* Subtle shimmer for skeleton loading */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Slide-in from right for thread views */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.35s ease-out both;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-scale-in,
+  .animate-slide-in-right,
+  .stagger-children > * {
+    animation: none;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE POST CONTENT
+   ============================================================ */
+
+/* Ensure post content breaks long words on mobile */
+.neu-card p,
+.neu-card pre,
+.neu-card code {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.neu-card pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.neu-card blockquote {
+  max-width: 100%;
+}
+
+/* Responsive thread view padding */
+@media (max-width: 640px) {
+  .neu-card {
+    border-radius: calc(var(--radius) - 4px);
+  }
+}

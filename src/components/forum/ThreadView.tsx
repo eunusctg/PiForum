@@ -788,7 +788,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="w-full max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* ---- Breadcrumb ---- */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -849,12 +849,12 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
       </Breadcrumb>
 
       {/* ---- Thread Header ---- */}
-      <div className="neu-card p-5 sm:p-6">
-        <div className="flex flex-col gap-4">
+      <div className="neu-card p-3 sm:p-5 lg:p-6">
+        <div className="flex flex-col gap-3 sm:gap-4">
           {/* Title row */}
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-2">
                 {threadData.pinned && (
                   <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 gap-0.5">
                     <Pin className="size-3" />
@@ -890,10 +890,10 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
           </div>
 
           {/* Author and meta row */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div className="neu-circle p-0.5 shrink-0">
-                <Avatar className="size-9">
+                <Avatar className="size-8 sm:size-9">
                   {threadData.author?.avatarUrl ? (
                     <AvatarImage src={threadData.author.avatarUrl} alt={threadData.author?.displayName || threadData.author?.username || ''} />
                   ) : null}
@@ -922,7 +922,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
             </div>
 
             {/* Stats and actions */}
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Eye className="size-3.5" />
                 {threadData.views} views
@@ -1047,7 +1047,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
 
       {/* ---- Replies ---- */}
       {postsPageData && postsPageData.posts.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-4 stagger-children">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <MessageSquare className="size-5 text-primary" />
             Replies ({postsPageData.total})
@@ -1373,267 +1373,254 @@ function PostCard({
   onArchive,
 }: PostCardProps) {
   const authorName = author?.displayName || author?.username || 'Unknown';
-  const authorInitial = authorName.charAt(0).toUpperCase();
+  const isEdited = updatedAt !== createdAt;
 
   return (
     <div
       className={cn(
-        'neu-card neu-card-3d p-4 sm:p-5',
+        'neu-card neu-card-3d p-3 sm:p-4 lg:p-5',
         isBestAnswer && 'ring-2 ring-emerald-500/40 overflow-hidden',
       )}
     >
       {isBestAnswer && (
-        <div className="-mx-4 sm:-mx-5 -mt-4 sm:-mt-5 mb-4 flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+        <div className="-mx-3 sm:-mx-4 lg:-mx-5 -mt-3 sm:-mt-4 lg:-mt-5 mb-3 sm:mb-4 flex items-center gap-2 px-3 sm:px-4 py-2 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-700 dark:text-emerald-400">
           <CheckCircle2 className="size-4" />
           <span className="text-sm font-semibold">Best Answer</span>
         </div>
       )}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* ---- Author Sidebar ---- */}
-        <div className="flex sm:flex-col items-center sm:items-center gap-3 sm:gap-2 sm:w-36 shrink-0">
-          <div className="neu-circle p-0.5">
-            <Avatar className="size-10 sm:size-14">
-              {author?.avatarUrl ? (
-                <AvatarImage src={author.avatarUrl} alt={authorName} />
-              ) : null}
-              <AvatarFallback className="text-sm font-semibold">{authorInitial}</AvatarFallback>
-            </Avatar>
-          </div>
-          <div className="sm:text-center">
-            <div className="text-sm font-medium truncate max-w-[120px] flex items-center gap-1 justify-center">
-              <span className="truncate">{authorName}</span>
-              {author?.isVerified && <VerifiedBadge size="xs" />}
-            </div>
-            {author && (
-              <Badge variant={getRoleBadgeVariant(author.role)} className="text-xs px-1 py-0 h-4 mt-0.5">
-                {ROLE_LABELS[author.role as UserRole]}
-              </Badge>
-            )}
-          </div>
-        </div>
 
-        {/* ---- Content Area ---- */}
-        <div className="flex-1 min-w-0">
-          {/* Post header */}
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {!isOriginalPost && (
-                <span className="neu-card-inset rounded-md px-2 py-0.5 text-xs font-medium">
-                  #{replyNumber}
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <Clock className="size-3" />
-                {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
-              </span>
-              {updatedAt !== createdAt && (
-                <span className="text-muted-foreground/60">(edited)</span>
-              )}
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="neu-divider mb-3" />
-
-          {/* Post content or editing textarea */}
-          {isEditing ? (
-            <div className="space-y-3">
-              <div className="neu-input p-1">
-                <textarea
-                  value={editContent}
-                  onChange={(e) => onEditContentChange?.(e.target.value)}
-                  rows={8}
-                  className="w-full bg-transparent resize-y min-h-[120px] p-3 text-sm outline-none placeholder:text-muted-foreground"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  onClick={onCancelEdit}
-                  className="neu-btn px-3 py-1.5 text-xs font-medium text-muted-foreground"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={onSaveEdit}
-                  className="neu-btn px-4 py-1.5 text-xs font-medium text-primary"
-                >
-                  Save Edit
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1">{renderMarkdown(content)}</div>
+      {/* Post header — author name inline + badges + meta */}
+      <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          {/* Author name inline */}
+          <span className="text-sm font-medium truncate max-w-[160px] sm:max-w-none">
+            {authorName}
+          </span>
+          {author?.isVerified && <VerifiedBadge size="xs" />}
+          {author && (
+            <Badge variant={getRoleBadgeVariant(author.role)} className="text-xs px-1 py-0 h-4 hidden sm:inline-flex">
+              {ROLE_LABELS[author.role as UserRole]}
+            </Badge>
           )}
-
-          {/* Attachments */}
-          {!isEditing && attachments.length > 0 && (
-            <div className="mt-4 space-y-2">
-              <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Paperclip className="size-3" />
-                Attachments
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {attachments.map((att) => (
-                  <a
-                    key={att.id}
-                    href={att.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="neu-btn px-3 py-1.5 text-xs flex items-center gap-1.5 text-primary hover:text-primary/80"
-                  >
-                    <Paperclip className="size-3" />
-                    {att.filename}
-                    <span className="text-muted-foreground">
-                      ({(att.size / 1024).toFixed(1)}KB)
-                    </span>
-                  </a>
-                ))}
-              </div>
-            </div>
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="size-3" />
+            {formatDistanceToNow(new Date(createdAt), { addSuffix: true })}
+          </span>
+          {/* Edited indicator beside time */}
+          {isEdited && (
+            <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 gap-0.5 text-muted-foreground">
+              <Edit3 className="size-2.5" />
+              Edited
+            </Badge>
           )}
-
-          {/* Action bar: Vote + Reply + Share + Report + Archive + Edit + Delete */}
-          {!isEditing && (
-            <div className="mt-4 neu-card-inset rounded-lg p-2 flex items-center gap-1.5 flex-wrap">
-              {/* Vote buttons */}
-              {!isOriginalPost && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={onUpvote}
-                    disabled={isVoting}
-                    className={`neu-btn p-1.5 transition-colors ${
-                      userVote === 1
-                        ? 'text-green-500 neu-btn-inset'
-                        : 'text-muted-foreground hover:text-green-500'
-                    } disabled:opacity-40`}
-                    title="Upvote"
-                  >
-                    <ChevronUp className="size-4" />
-                  </button>
-                  <span
-                    className={`text-sm font-medium min-w-[2rem] text-center ${
-                      voteScore > 0
-                        ? 'text-green-500'
-                        : voteScore < 0
-                          ? 'text-destructive'
-                          : 'text-muted-foreground'
-                    }`}
-                  >
-                    {voteScore}
-                  </span>
-                  <button
-                    onClick={onDownvote}
-                    disabled={isVoting}
-                    className={`neu-btn p-1.5 transition-colors ${
-                      userVote === -1
-                        ? 'text-destructive neu-btn-inset'
-                        : 'text-muted-foreground hover:text-destructive'
-                    } disabled:opacity-40`}
-                    title="Downvote"
-                  >
-                    <ChevronDown className="size-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* Divider */}
-              {!isOriginalPost && <div className="w-px h-5 bg-border mx-0.5" />}
-
-              {/* Reply */}
-              {onReply && (
-                <button
-                  onClick={onReply}
-                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-                  title="Reply to this post"
-                >
-                  <MessageSquare className="size-3.5" />
-                  Reply
-                </button>
-              )}
-
-              {/* Share */}
-              <ShareButtons
-                url={typeof window !== 'undefined' ? `${window.location.origin}/thread/${threadId}#post-${postId}` : ''}
-                title={threadTitle}
-              />
-
-              {/* Report */}
-              {onReport && (
-                <button
-                  onClick={onReport}
-                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-orange-500 transition-colors"
-                  title="Report this post"
-                >
-                  <Flag className="size-3.5" />
-                  Report
-                </button>
-              )}
-
-              {/* Archive — only on original post, for thread author or mod/admin */}
-              {canArchive && isOriginalPost && onArchive && (
-                <button
-                  onClick={onArchive}
-                  className={`neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                    isArchived ? 'text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-amber-600'
-                  }`}
-                  title={isArchived ? 'Unarchive thread' : 'Archive thread'}
-                >
-                  <Archive className="size-3.5" />
-                  {isArchived ? 'Unarchive' : 'Archive'}
-                </button>
-              )}
-
-              {/* Spacer */}
-              <div className="flex-1" />
-
-              {/* Best Answer */}
-              {canMarkBestAnswer && !isBestAnswer && (
-                <button
-                  onClick={onMarkBestAnswer}
-                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
-                  title="Mark as Best Answer"
-                >
-                  <CheckCircle2 className="size-3.5" />
-                  <span className="hidden sm:inline">Best Answer</span>
-                </button>
-              )}
-              {isBestAnswer && canUnmarkBestAnswer && (
-                <button
-                  onClick={onUnmarkBestAnswer}
-                  className="neu-btn p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                  title="Remove Best Answer"
-                >
-                  <XCircle className="size-3.5" />
-                </button>
-              )}
-
-              {/* Edit — with text label for discoverability */}
-              {canEdit && (
-                <button
-                  onClick={onEdit}
-                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-                  title="Edit post"
-                >
-                  <Edit3 className="size-3.5" />
-                  Edit
-                </button>
-              )}
-
-              {/* Delete — with text label for discoverability */}
-              {canDelete && (
-                <button
-                  onClick={onDelete}
-                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                  title="Delete post"
-                >
-                  <Trash2 className="size-3.5" />
-                  Delete
-                </button>
-              )}
-            </div>
+          {!isOriginalPost && (
+            <span className="neu-card-inset rounded-md px-2 py-0.5 text-xs font-medium">
+              #{replyNumber}
+            </span>
           )}
         </div>
       </div>
+
+      {/* Divider */}
+      <div className="neu-divider mb-3" />
+
+      {/* Post content or editing textarea */}
+      {isEditing ? (
+        <div className="space-y-3">
+          <div className="neu-input p-1">
+            <textarea
+              value={editContent}
+              onChange={(e) => onEditContentChange?.(e.target.value)}
+              rows={8}
+              className="w-full bg-transparent resize-y min-h-[120px] p-3 text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={onCancelEdit}
+              className="neu-btn px-3 py-1.5 text-xs font-medium text-muted-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onSaveEdit}
+              className="neu-btn px-4 py-1.5 text-xs font-medium text-primary"
+            >
+              Save Edit
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-1 break-words overflow-wrap-anywhere">{renderMarkdown(content)}</div>
+      )}
+
+      {/* Attachments */}
+      {!isEditing && attachments.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+            <Paperclip className="size-3" />
+            Attachments
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((att) => (
+              <a
+                key={att.id}
+                href={att.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="neu-btn px-3 py-1.5 text-xs flex items-center gap-1.5 text-primary hover:text-primary/80"
+              >
+                <Paperclip className="size-3" />
+                <span className="max-w-[100px] sm:max-w-none truncate">{att.filename}</span>
+                <span className="text-muted-foreground hidden sm:inline">
+                  ({(att.size / 1024).toFixed(1)}KB)
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Action bar: Vote + Reply + Share + Report + Archive + Edit + Delete */}
+      {!isEditing && (
+        <div className="mt-4 neu-card-inset rounded-lg p-1.5 sm:p-2 flex items-center gap-1 sm:gap-1.5 flex-wrap">
+          {/* Vote buttons */}
+          {!isOriginalPost && (
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <button
+                onClick={onUpvote}
+                disabled={isVoting}
+                className={`neu-btn p-1.5 transition-colors ${
+                  userVote === 1
+                    ? 'text-green-500 neu-btn-inset'
+                    : 'text-muted-foreground hover:text-green-500'
+                } disabled:opacity-40`}
+                title="Upvote"
+              >
+                <ChevronUp className="size-4" />
+              </button>
+              <span
+                className={`text-sm font-medium min-w-[1.5rem] sm:min-w-[2rem] text-center ${
+                  voteScore > 0
+                    ? 'text-green-500'
+                    : voteScore < 0
+                      ? 'text-destructive'
+                      : 'text-muted-foreground'
+                }`}
+              >
+                {voteScore}
+              </span>
+              <button
+                onClick={onDownvote}
+                disabled={isVoting}
+                className={`neu-btn p-1.5 transition-colors ${
+                  userVote === -1
+                    ? 'text-destructive neu-btn-inset'
+                    : 'text-muted-foreground hover:text-destructive'
+                } disabled:opacity-40`}
+                title="Downvote"
+              >
+                <ChevronDown className="size-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Divider */}
+          {!isOriginalPost && <div className="w-px h-5 bg-border mx-0.5 hidden sm:block" />}
+
+          {/* Reply */}
+          {onReply && (
+            <button
+              onClick={onReply}
+              className="neu-btn p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium flex items-center gap-1 sm:gap-1.5 text-muted-foreground hover:text-primary transition-colors"
+              title="Reply to this post"
+            >
+              <MessageSquare className="size-3.5" />
+              <span className="hidden sm:inline">Reply</span>
+            </button>
+          )}
+
+          {/* Share */}
+          <ShareButtons
+            url={typeof window !== 'undefined' ? `${window.location.origin}/thread/${threadId}#post-${postId}` : ''}
+            title={threadTitle}
+          />
+
+          {/* Report */}
+          {onReport && (
+            <button
+              onClick={onReport}
+              className="neu-btn p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium flex items-center gap-1 sm:gap-1.5 text-muted-foreground hover:text-orange-500 transition-colors"
+              title="Report this post"
+            >
+              <Flag className="size-3.5" />
+              <span className="hidden sm:inline">Report</span>
+            </button>
+          )}
+
+          {/* Archive — only on original post, for thread author or mod/admin */}
+          {canArchive && isOriginalPost && onArchive && (
+            <button
+              onClick={onArchive}
+              className={`neu-btn p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium flex items-center gap-1 sm:gap-1.5 transition-colors ${
+                isArchived ? 'text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-amber-600'
+              }`}
+              title={isArchived ? 'Unarchive thread' : 'Archive thread'}
+            >
+              <Archive className="size-3.5" />
+              <span className="hidden sm:inline">{isArchived ? 'Unarchive' : 'Archive'}</span>
+            </button>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Best Answer */}
+          {canMarkBestAnswer && !isBestAnswer && (
+            <button
+              onClick={onMarkBestAnswer}
+              className="neu-btn p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+              title="Mark as Best Answer"
+            >
+              <CheckCircle2 className="size-3.5" />
+              <span className="hidden sm:inline">Best Answer</span>
+            </button>
+          )}
+          {isBestAnswer && canUnmarkBestAnswer && (
+            <button
+              onClick={onUnmarkBestAnswer}
+              className="neu-btn p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+              title="Remove Best Answer"
+            >
+              <XCircle className="size-3.5" />
+            </button>
+          )}
+
+          {/* Edit */}
+          {canEdit && (
+            <button
+              onClick={onEdit}
+              className="neu-btn p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium flex items-center gap-1 sm:gap-1.5 text-muted-foreground hover:text-primary transition-colors"
+              title="Edit post"
+            >
+              <Edit3 className="size-3.5" />
+              <span className="hidden sm:inline">Edit</span>
+            </button>
+          )}
+
+          {/* Delete */}
+          {canDelete && (
+            <button
+              onClick={onDelete}
+              className="neu-btn p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium flex items-center gap-1 sm:gap-1.5 text-muted-foreground hover:text-destructive transition-colors"
+              title="Delete post"
+            >
+              <Trash2 className="size-3.5" />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1644,7 +1631,7 @@ function PostCard({
 
 function ThreadViewSkeleton() {
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="w-full max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
       <div className="flex items-center gap-2">
         <Skeleton className="h-4 w-12" />
         <Skeleton className="h-4 w-4" />
@@ -1653,7 +1640,7 @@ function ThreadViewSkeleton() {
         <Skeleton className="h-4 w-28" />
       </div>
 
-      <div className="neu-card p-5 sm:p-6 space-y-4">
+      <div className="neu-card p-4 sm:p-6 space-y-4">
         <Skeleton className="h-7 w-3/4" />
         <div className="flex items-center gap-3">
           <Skeleton className="size-9 rounded-full" />
@@ -1664,32 +1651,28 @@ function ThreadViewSkeleton() {
         </div>
       </div>
 
-      <div className="neu-card p-5 space-y-3">
-        <div className="flex gap-4">
-          <div className="flex flex-col items-center gap-2 w-36 shrink-0">
-            <Skeleton className="size-14 rounded-full" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-5/6" />
-            <Skeleton className="h-3 w-4/6" />
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-3/4" />
-          </div>
+      <div className="neu-card p-3 sm:p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-5/6" />
+          <Skeleton className="h-3 w-4/6" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-3/4" />
         </div>
       </div>
 
-      <div className="neu-card p-5 space-y-3">
-        <div className="flex gap-4">
-          <div className="flex flex-col items-center gap-2 w-36 shrink-0">
-            <Skeleton className="size-14 rounded-full" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-2/3" />
-          </div>
+      <div className="neu-card p-3 sm:p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-2/3" />
         </div>
       </div>
     </div>

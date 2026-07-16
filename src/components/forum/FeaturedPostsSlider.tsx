@@ -21,9 +21,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import VerifiedBadge from '@/components/forum/VerifiedBadge';
 
 /* ------------------------------------------------------------------ */
-/*  Featured Posts Slider — Lightweight horizontal scroll with CSS     */
-/*  snap. No external carousel library to keep bundle small.          */
-/*  Shows 10 posts, filterable by category.                           */
+/*  Featured Posts Slider — Responsive carousel with dot indicators    */
+/*  and CSS scroll-snap. No external library.                          */
+/*  Shows 10 posts, filterable by category.                            */
 /* ------------------------------------------------------------------ */
 
 interface FeaturedThread extends Thread {
@@ -37,7 +37,9 @@ export default function FeaturedPostsSlider() {
   const [loading, setLoading] = useState(true);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isScrollingRef = useRef(false);
 
   const fetchFeatured = useCallback(async (categoryId?: string) => {
     try {
@@ -49,6 +51,7 @@ export default function FeaturedPostsSlider() {
       const data = await res.json();
       if (data.success) {
         setThreads(data.data.threads);
+        setActiveIndex(0);
       }
     } catch (err) {
       console.error('Failed to fetch featured threads:', err);
@@ -73,14 +76,37 @@ export default function FeaturedPostsSlider() {
     fetchFeatured();
   };
 
-  const scroll = (direction: 'left' | 'right') => {
+  // Scroll to a specific slide by index
+  const scrollToSlide = useCallback((index: number) => {
     if (!scrollRef.current) return;
-    const scrollAmount = scrollRef.current.clientWidth * 0.7;
-    scrollRef.current.scrollBy({
-      left: direction === 'left' ? -scrollAmount : scrollAmount,
-      behavior: 'smooth',
-    });
+    const container = scrollRef.current;
+    const slides = container.children;
+    if (index < 0 || index >= slides.length) return;
+    isScrollingRef.current = true;
+    slides[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+    setActiveIndex(index);
+    setTimeout(() => { isScrollingRef.current = false; }, 400);
+  }, []);
+
+  const scroll = (direction: 'left' | 'right') => {
+    const newIndex = direction === 'left'
+      ? Math.max(0, activeIndex - 1)
+      : Math.min(threads.length - 1, activeIndex + 1);
+    scrollToSlide(newIndex);
   };
+
+  // Track scroll position to update active dot
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current || isScrollingRef.current) return;
+    const container = scrollRef.current;
+    const scrollLeft = container.scrollLeft;
+    const slideWidth = container.children[0]?.clientWidth || 1;
+    const gap = 16;
+    const index = Math.round(scrollLeft / (slideWidth + gap));
+    if (index !== activeIndex && index >= 0 && index < threads.length) {
+      setActiveIndex(index);
+    }
+  }, [activeIndex, threads.length]);
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
 
@@ -155,17 +181,18 @@ export default function FeaturedPostsSlider() {
         </div>
       </div>
 
-      {/* Sliding Grid — Pure CSS scroll-snap */}
+      {/* Sliding Carousel — CSS scroll-snap with dot indicators */}
       {loading ? (
         <FeaturedSkeletons />
       ) : threads.length === 0 ? (
         <EmptyFeatured />
       ) : (
-        <div className="relative group/slider">
+        <div className="relative">
           {/* Scroll container */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 scrollbar-hide"
+            onScroll={handleScroll}
+            className="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-3"
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
@@ -175,7 +202,7 @@ export default function FeaturedPostsSlider() {
             {threads.map((thread) => (
               <div
                 key={thread.id}
-                className="snap-start shrink-0 w-[85%] sm:w-[45%] lg:w-[30%] xl:w-[28%]"
+                className="snap-start shrink-0 w-[82%] sm:w-[45%] lg:w-[30%] xl:w-[23%]"
               >
                 <FeaturedCard
                   thread={thread}
@@ -185,21 +212,51 @@ export default function FeaturedPostsSlider() {
             ))}
           </div>
 
-          {/* Navigation arrows — appear on hover */}
+          {/* Navigation arrows — visible on hover (desktop) */}
           <button
             onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 neu-circle size-9 p-0 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity"
+            className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 z-10 neu-circle size-8 sm:size-9 p-0 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity ${
+              activeIndex === 0 ? 'hidden' : ''
+            }`}
             aria-label="Scroll left"
           >
             <ChevronLeft className="size-4" />
           </button>
           <button
             onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 neu-circle size-9 p-0 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity"
+            className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 z-10 neu-circle size-8 sm:size-9 p-0 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity ${
+              activeIndex >= threads.length - 1 ? 'hidden' : ''
+            }`}
             aria-label="Scroll right"
           >
             <ChevronRight className="size-4" />
           </button>
+
+          {/* Dot Indicators */}
+          {threads.length > 1 && (
+            <div className="flex items-center justify-center gap-1.5 mt-3" role="tablist" aria-label="Slide indicators">
+              {threads.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => scrollToSlide(idx)}
+                  role="tab"
+                  aria-selected={idx === activeIndex}
+                  aria-label={`Go to slide ${idx + 1}`}
+                  className="carousel-dot rounded-full"
+                  style={{
+                    width: idx === activeIndex ? '1.5rem' : '0.5rem',
+                    height: '0.5rem',
+                    backgroundColor: idx === activeIndex ? 'var(--primary)' : 'rgba(0,0,0,0.18)',
+                    boxShadow: idx === activeIndex ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -300,7 +357,7 @@ function FeaturedCard({
                   <span className="text-xs leading-none">{thread.forum.category.icon}</span>
                 )}
                 <span>{thread.forum.category.name}</span>
-                <span className="opacity-50">→</span>
+                <span className="opacity-50">&rarr;</span>
                 <span>{thread.forum.name}</span>
               </>
             ) : (
@@ -349,11 +406,11 @@ function FeaturedCard({
 
 function FeaturedSkeletons() {
   return (
-    <div className="flex gap-4 overflow-hidden">
+    <div className="flex gap-3 sm:gap-4 overflow-hidden">
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="shrink-0 w-[85%] sm:w-[45%] lg:w-[30%] neu-card overflow-hidden"
+          className="shrink-0 w-[82%] sm:w-[45%] lg:w-[30%] neu-card overflow-hidden"
         >
           <Skeleton className="w-full aspect-video" />
           <div className="p-4 space-y-3">
