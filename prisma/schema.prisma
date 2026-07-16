@@ -108,6 +108,7 @@ model Thread {
   views      Int      @default(0)
   pinned     Boolean  @default(false)
   locked     Boolean  @default(false)
+  archived   Boolean  @default(false)
   featured   Boolean  @default(false)
   solved     Boolean  @default(false)
   bestAnswerId String?  @unique

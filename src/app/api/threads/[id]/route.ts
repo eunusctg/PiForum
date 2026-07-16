@@ -73,13 +73,13 @@ export async function PUT(
     const body = await parseBody(request);
     if (!body) return errorResponse('Invalid request body');
 
-    const { pinned, locked, title, content } = body;
+    const { pinned, locked, archived, title, content } = body;
 
-    // Check permissions: author can edit title/content, admin can pin/lock
+    // Check permissions: author can edit title/content, admin can pin/lock/archive
     const userId = request.headers.get('x-user-id');
 
-    if (pinned !== undefined || locked !== undefined) {
-      // Only admins can pin/lock
+    if (pinned !== undefined || locked !== undefined || archived !== undefined) {
+      // Only admins/mods can pin/lock/archive
       const adminCheck = await requireAdmin(request);
       if (adminCheck.error) return adminCheck.error;
     }
@@ -111,6 +111,7 @@ export async function PUT(
       data: {
         ...(pinned !== undefined && { pinned }),
         ...(locked !== undefined && { locked }),
+        ...(archived !== undefined && { archived }),
         ...(title !== undefined && { title }),
         ...(content !== undefined && { content }),
       },

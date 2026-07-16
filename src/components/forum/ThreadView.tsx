@@ -32,6 +32,11 @@ import {
   MoreHorizontal,
   CheckCircle2,
   XCircle,
+  Flag,
+  Bookmark,
+  BookmarkCheck,
+  Archive,
+  Share2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -48,6 +53,8 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import VerifiedBadge from '@/components/forum/VerifiedBadge';
+import ReportModal from '@/components/forum/ReportModal';
+import ShareButtons from '@/components/forum/ShareButtons';
 
 /* ------------------------------------------------------------------ */
 /*  Post data with extra fields from API                               */
@@ -581,6 +588,68 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
     }
   };
 
+  // Archive toggle handler
+  const handleArchiveToggle = async () => {
+    if (!threadData || !currentUser) return;
+    try {
+      const res = await fetch(`/api/threads/${threadId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser.id,
+        },
+        body: JSON.stringify({ archived: !threadData.archived }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setThreadData(data.data);
+        setCurrentThread(data.data);
+        toast({
+          title: data.data.archived ? 'Thread Archived' : 'Thread Unarchived',
+          description: data.data.archived
+            ? 'This thread has been archived.'
+            : 'This thread has been unarchived.',
+        });
+      }
+    } catch (err) {
+      console.error('Failed to toggle archive:', err);
+    }
+  };
+
+  // Bookmark toggle handler — POST toggles (creates or removes)
+  const handleBookmarkToggle = async () => {
+    if (!currentUser || !threadData) return;
+    try {
+      const res = await fetch(`/api/bookmarks/${threadId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': currentUser.id,
+        },
+      });
+      const data = await res.json();
+      if (data.success) {
+        const isBookmarked = data.data?.bookmarked !== false;
+        toast({
+          title: isBookmarked ? 'Bookmarked' : 'Bookmark Removed',
+          description: isBookmarked
+            ? 'Thread added to your bookmarks.'
+            : 'Thread removed from your bookmarks.',
+        });
+      }
+    } catch (err) {
+      console.error('Failed to toggle bookmark:', err);
+    }
+  };
+
+  // Report state
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ type: 'thread' | 'post'; id: string; title: string }>({
+    type: 'thread',
+    id: '',
+    title: '',
+  });
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setReplyFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
@@ -798,6 +867,12 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
                     Locked
                   </Badge>
                 )}
+                {threadData.archived && (
+                  <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 gap-0.5 border-amber-500/40 text-amber-600 dark:text-amber-400">
+                    <Archive className="size-3" />
+                    Archived
+                  </Badge>
+                )}
                 {threadData.solved && (
                   <Badge
                     variant="default"
@@ -854,14 +929,45 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
               </span>
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <MessageSquare className="size-3.5" />
-                {(threadData.postCount ?? 0) - 1} replies
+                {Math.max(0, (threadData.postCount ?? 0) - 1)} replies
               </span>
 
+              {/* Thread action buttons — visible to all */}
+              <div className="flex items-center gap-1.5 ml-1">
+                {/* Bookmark */}
+                <button
+                  onClick={handleBookmarkToggle}
+                  className="neu-btn p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                  title="Bookmark thread"
+                >
+                  <Bookmark className="size-4" />
+                </button>
+
+                {/* Share */}
+                <ShareButtons
+                  url={typeof window !== 'undefined' ? window.location.href : ''}
+                  title={threadData.title}
+                />
+
+                {/* Report */}
+                <button
+                  onClick={() => {
+                    setReportTarget({ type: 'thread', id: threadId, title: threadData.title });
+                    setReportModalOpen(true);
+                  }}
+                  className="neu-btn p-1.5 text-muted-foreground hover:text-orange-500 transition-colors"
+                  title="Report thread"
+                >
+                  <Flag className="size-4" />
+                </button>
+              </div>
+
+              {/* Admin/Mod actions */}
               {isAdminOrMod && (
-                <div className="flex items-center gap-2 ml-2">
+                <div className="flex items-center gap-1.5 ml-1">
                   <button
                     onClick={handlePinToggle}
-                    className={`neu-btn px-3 py-1.5 text-xs font-medium flex items-center gap-1 ${
+                    className={`neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1 ${
                       threadData.pinned ? 'text-primary' : 'text-muted-foreground'
                     }`}
                   >
@@ -870,12 +976,21 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
                   </button>
                   <button
                     onClick={handleLockToggle}
-                    className={`neu-btn px-3 py-1.5 text-xs font-medium flex items-center gap-1 ${
+                    className={`neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1 ${
                       threadData.locked ? 'text-destructive' : 'text-muted-foreground'
                     }`}
                   >
                     {threadData.locked ? <Unlock className="size-3" /> : <Lock className="size-3" />}
                     {threadData.locked ? 'Unlock' : 'Lock'}
+                  </button>
+                  <button
+                    onClick={handleArchiveToggle}
+                    className={`neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1 ${
+                      threadData.archived ? 'text-amber-600' : 'text-muted-foreground'
+                    }`}
+                  >
+                    <Archive className="size-3" />
+                    {threadData.archived ? 'Unarchive' : 'Archive'}
                   </button>
                 </div>
               )}
@@ -894,6 +1009,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
           attachments={[]}
           isOriginalPost
           postId={`thread-${threadData.id}`}
+          threadId={threadId}
           voteScore={0}
           userVote={0}
           isVoting={false}
@@ -905,6 +1021,11 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
           onEdit={() => {}}
           onDelete={() => {}}
           onReply={canReply ? openReplyEditor : undefined}
+          onReport={() => {
+            setReportTarget({ type: 'post', id: `thread-${threadData.id}`, title: threadData.title });
+            setReportModalOpen(true);
+          }}
+          threadTitle={threadData.title}
         />
       )}
 
@@ -943,6 +1064,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
                 attachments={post.attachments ?? []}
                 isOriginalPost={false}
                 postId={post.id}
+                threadId={threadId}
                 voteScore={voteData.voteScore}
                 userVote={voteData.userVote}
                 isVoting={votingPostIds.has(post.id)}
@@ -970,6 +1092,11 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
                 onMarkBestAnswer={() => handleMarkBestAnswer(post.id)}
                 onUnmarkBestAnswer={handleUnmarkBestAnswer}
                 onReply={canReply ? openReplyEditor : undefined}
+                onReport={() => {
+                  setReportTarget({ type: 'post', id: post.id, title: `Post #${(page - 1) * postsPageData.limit + idx + 1} in ${threadData?.title ?? 'thread'}` });
+                  setReportModalOpen(true);
+                }}
+                threadTitle={threadData?.title ?? ''}
               />
             );
           })}
@@ -1139,6 +1266,15 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
           </button>
         </div>
       )}
+
+      {/* ---- Report Modal ---- */}
+      <ReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        targetType={reportTarget.type}
+        targetId={reportTarget.id}
+        targetTitle={reportTarget.title}
+      />
     </div>
   );
 }
@@ -1155,6 +1291,7 @@ interface PostCardProps {
   attachments: { id: string; url: string; filename: string; size: number; mimeType: string }[];
   isOriginalPost: boolean;
   postId: string;
+  threadId: string;
   voteScore: number;
   userVote: number;
   isVoting: boolean;
@@ -1176,6 +1313,8 @@ interface PostCardProps {
   onMarkBestAnswer?: () => void;
   onUnmarkBestAnswer?: () => void;
   onReply?: () => void;
+  onReport?: () => void;
+  threadTitle?: string;
 }
 
 function PostCard({
@@ -1186,6 +1325,7 @@ function PostCard({
   attachments,
   isOriginalPost,
   postId,
+  threadId,
   voteScore,
   userVote,
   isVoting,
@@ -1207,15 +1347,13 @@ function PostCard({
   onMarkBestAnswer,
   onUnmarkBestAnswer,
   onReply,
+  onReport,
+  threadTitle = '',
 }: PostCardProps) {
   const authorName = author?.displayName || author?.username || 'Unknown';
   const authorInitial = authorName.charAt(0).toUpperCase();
 
-  const showActions =
-    !isEditing &&
-    ((canEdit || canDelete) ||
-      (canMarkBestAnswer && !isBestAnswer) ||
-      (isBestAnswer && canUnmarkBestAnswer));
+  const showActions = false; // Actions moved to the bottom action bar
 
   return (
     <div
@@ -1377,9 +1515,10 @@ function PostCard({
             </div>
           )}
 
-          {/* Vote bar + Reply */}
+          {/* Action bar: Vote + Reply + Share + Report + Edit + Delete */}
           {!isEditing && (
-            <div className="mt-4 flex items-center gap-3">
+            <div className="mt-4 neu-card-inset rounded-lg p-2 flex items-center gap-1.5 flex-wrap">
+              {/* Vote buttons */}
               {!isOriginalPost && (
                 <div className="flex items-center gap-1">
                   <button
@@ -1419,14 +1558,83 @@ function PostCard({
                   </button>
                 </div>
               )}
+
+              {/* Divider */}
+              {!isOriginalPost && <div className="w-px h-5 bg-border mx-0.5" />}
+
+              {/* Reply */}
               {onReply && (
                 <button
                   onClick={onReply}
-                  className="neu-btn px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors ml-auto"
+                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
                   title="Reply to this post"
                 >
                   <MessageSquare className="size-3.5" />
                   Reply
+                </button>
+              )}
+
+              {/* Share */}
+              <ShareButtons
+                url={typeof window !== 'undefined' ? `${window.location.origin}/thread/${threadId}#post-${postId}` : ''}
+                title={threadTitle}
+              />
+
+              {/* Report */}
+              {onReport && (
+                <button
+                  onClick={onReport}
+                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-orange-500 transition-colors"
+                  title="Report this post"
+                >
+                  <Flag className="size-3.5" />
+                  Report
+                </button>
+              )}
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Best Answer */}
+              {canMarkBestAnswer && !isBestAnswer && (
+                <button
+                  onClick={onMarkBestAnswer}
+                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                  title="Mark as Best Answer"
+                >
+                  <CheckCircle2 className="size-3.5" />
+                  <span className="hidden sm:inline">Best Answer</span>
+                </button>
+              )}
+              {isBestAnswer && canUnmarkBestAnswer && (
+                <button
+                  onClick={onUnmarkBestAnswer}
+                  className="neu-btn p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                  title="Remove Best Answer"
+                >
+                  <XCircle className="size-3.5" />
+                </button>
+              )}
+
+              {/* Edit */}
+              {canEdit && (
+                <button
+                  onClick={onEdit}
+                  className="neu-btn p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                  title="Edit post"
+                >
+                  <Edit3 className="size-3.5" />
+                </button>
+              )}
+
+              {/* Delete */}
+              {canDelete && (
+                <button
+                  onClick={onDelete}
+                  className="neu-btn p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                  title="Delete post"
+                >
+                  <Trash2 className="size-3.5" />
                 </button>
               )}
             </div>

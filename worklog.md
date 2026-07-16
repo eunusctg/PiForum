@@ -1,29 +1,36 @@
 ---
 Task ID: 1
 Agent: Main Agent
-Task: Fix social links in footer, make New Thread button floating FAB, fix BackToTop button, add progress animation only in post view
+Task: Fix previously mentioned functions, add share buttons, add post actions (edit, delete, archive, report)
 
 Work Log:
-- Read and analyzed SiteFooter.tsx, BackToTopButton.tsx, ForumShell.tsx, ThreadList.tsx, ForumHome.tsx
-- Found social icons issue: using `color + '20'` produced 8-digit hex `#1877F220` which could have rendering issues and was too faint (13% alpha)
-- Created `hexToRgba()` helper function for reliable color conversion
-- Rewrote social icons rendering: unconfigured icons now use `rgba()` with 15% alpha background + dashed border + explicit icon color via inline style
-- Configured icons use solid brand color background with white icons + explicit `style={{ color: '#ffffff' }}`
-- Created NewThreadFAB component (floating, responsive, animated) - only shows for logged-in users on home/forum views
-- Updated BackToTopButton with `showProgress` prop - progress ring only shows when `showProgress={true}`
-- Updated ForumShell to pass `showProgress={currentView === 'thread'}` to BackToTopButton
-- Removed old inline "New Thread" button from ForumHome toolbar and mobile-only floating button
-- Removed inline "New Thread" button from ThreadList forum header
-- Cleaned up unused imports (Plus from ForumHome, Loader2 from ThreadList)
-- Verified all features with Agent Browser and VLM:
-  - Social icons: All 8 visible with brand colors in footer
-  - BackToTop: Floating, fixed position, progress ring works on thread view
-  - NewThreadFAB: Correctly hidden when not logged in (expected behavior)
-  - No dev server errors
+- Investigated live page state with Agent Browser - confirmed social icons, BackToTop, and NewThreadFAB are all working
+- Added `archived` field to Thread model in Prisma schema, pushed to DB
+- Added `archived: boolean` to Thread type in types.ts
+- Updated thread PUT API to support `archived` field
+- Created ReportModal component (src/components/forum/ReportModal.tsx)
+  - Dialog with 5 reason options (Spam, Harassment, Off-topic, Inappropriate, Other)
+  - Optional details textarea with 500 char limit
+  - Auth guard - shows login prompt if not logged in
+  - POSTs to /api/reports with proper body
+- Created ShareButtons component (src/components/forum/ShareButtons.tsx)
+  - Expandable share menu with Facebook, Twitter, LinkedIn, WhatsApp, Copy Link
+  - Smooth slide animation, click-outside-to-close
+  - aria-hidden when collapsed for accessibility
+- Updated ThreadView PostCard with comprehensive action bar:
+  - Vote (up/down) + Reply + Share + Report + Best Answer + Edit + Delete
+  - All in a clearly visible inset card at the bottom of each post
+- Added thread header actions: Bookmark, Share, Report (visible to all users)
+- Added admin/mod actions: Pin, Lock, Archive (visible to admins/mods)
+- Added Bookmark POST API to /api/bookmarks/[threadId] (toggle behavior)
+- Fixed replies count bug (Math.max(0, ...) to prevent -1)
+- Verified all features with Agent Browser - everything working
 
 Stage Summary:
-- Social links fix: Replaced fragile hex8 colors with rgba(), added dashed borders for unconfigured icons, explicit inline styles on Icon components
-- NewThreadFAB: Created as global floating FAB in ForumShell (z-[99], bottom-24/28/32)
-- BackToTop: Made accept showProgress prop, progress ring only in thread view
-- ForumShell: Wires showProgress and NewThreadFAB together
-- All features verified working via Agent Browser
+- All previously mentioned functions confirmed working (social icons, FABs, BackToTop)
+- Share buttons: Facebook, Twitter, LinkedIn, WhatsApp, Copy Link on every post and thread
+- Report: Full modal with reason selection and details textarea
+- Post actions: Edit, Delete, Reply, Vote, Share, Report - all visible in action bar
+- Thread actions: Bookmark, Share, Report (all users) + Pin, Lock, Archive (admin/mod)
+- Bookmarks API: Added POST handler with toggle behavior
+- Archived threads: Full support with badge, API, and admin toggle

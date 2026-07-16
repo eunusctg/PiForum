@@ -77,6 +77,7 @@ export interface Thread {
   views: number;
   pinned: boolean;
   locked: boolean;
+  archived: boolean;
   featured: boolean;
   solved: boolean;
   bestAnswerId?: string | null;
