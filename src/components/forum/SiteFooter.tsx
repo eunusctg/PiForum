@@ -54,14 +54,6 @@ const SOCIAL_PLATFORMS: { key: string; settingKey: string; label: string; Icon: 
   { key: 'twitch', settingKey: 'social_twitch', label: 'Twitch', Icon: Twitch, color: '#9146FF' },
 ];
 
-/** Convert a hex color (#RRGGBB) to rgba string with given alpha. */
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
 export default function SiteFooter() {
   const settings = useAppStore((s) => s.settings);
   const getSetting = useAppStore((s) => s.getSetting);
@@ -193,7 +185,7 @@ export default function SiteFooter() {
               </p>
             )}
 
-            {/* Social icons — always show all 8 with vivid brand colors */}
+            {/* Social icons — neumorphic theme-aware circles */}
             <div className="mt-5 flex flex-wrap items-center gap-2.5 sm:gap-3" role="navigation" aria-label="Social links">
               {socials.map(({ key, href, label, Icon, color }) => {
                 const hasLink = !!(href && href.trim().length > 0);
@@ -206,11 +198,10 @@ export default function SiteFooter() {
                       target="_blank"
                       rel="me noopener noreferrer"
                       aria-label={label}
-                      className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all duration-200 hover:scale-110 hover:shadow-lg"
-                      style={{ backgroundColor: color, color: '#ffffff' }}
+                      className="footer-social-icon inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all duration-200 hover:scale-110 hover:shadow-lg neu-circle"
                       title={label}
                     >
-                      <Icon className="w-6 h-6" style={{ color: '#ffffff' }} aria-hidden="true" />
+                      <Icon className="w-5 h-5 sm:w-6 sm:h-6 footer-social-icon-svg" style={{ color }} aria-hidden="true" />
                     </a>
                   );
                 }
@@ -219,37 +210,18 @@ export default function SiteFooter() {
                   <span
                     key={key}
                     aria-label={`${label} (not configured)`}
-                    className="group inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all duration-200 cursor-default hover:scale-105"
-                    style={{
-                      backgroundColor: hexToRgba(color, 0.3),
-                      color: color,
-                      border: `2px solid ${hexToRgba(color, 0.5)}`,
-                      // CSS custom property for hover — Tailwind can't do dynamic rgba
-                      // @ts-expect-error — CSS custom property for hover state
-                      '--icon-bg-hover': hexToRgba(color, 0.45),
-                      '--icon-border-hover': hexToRgba(color, 0.7),
-                    }}
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.backgroundColor = el.style.getPropertyValue('--icon-bg-hover') || hexToRgba(color, 0.45);
-                      el.style.borderColor = el.style.getPropertyValue('--icon-border-hover') || hexToRgba(color, 0.7);
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.backgroundColor = hexToRgba(color, 0.3);
-                      el.style.borderColor = hexToRgba(color, 0.5);
-                    }}
+                    className="footer-social-icon footer-social-icon-muted inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all duration-200 cursor-default hover:scale-105 neu-circle"
                     title={`${label} — link not set`}
                   >
-                    <Icon className="w-6 h-6" style={{ color: color }} aria-hidden="true" />
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 footer-social-icon-svg" style={{ color, opacity: 0.55 }} aria-hidden="true" />
                   </span>
                 );
               })}
             </div>
           </section>
 
-          {/* 2. Quick Links */}
-          <section aria-labelledby="footer-links-heading">
+          {/* 2. Quick Links — hidden on mobile for better responsiveness */}
+          <section aria-labelledby="footer-links-heading" className="hidden sm:block">
             <h3 id="footer-links-heading" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Quick Links
             </h3>

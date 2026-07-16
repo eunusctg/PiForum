@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   // Keep heavy Node-only packages out of the Cloudflare Worker bundle.
   // These are only used in local dev (Node.js) and never on the Workers
   // runtime. Listing them here prevents Next/OpenNext from bundling them,

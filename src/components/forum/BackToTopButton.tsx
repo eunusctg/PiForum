@@ -8,6 +8,7 @@
 /*  • Bounce-in + pulse animation on appear                          */
 /*  • Smooth scroll to top on click                                   */
 /*  • Responsive: adjusts size and position on mobile vs desktop      */
+/*  • Theme-aware: adapts to day/night/golden mode via CSS            */
 /*  • Completely independent of footer — floats well above it         */
 /* ------------------------------------------------------------------ */
 
@@ -60,12 +61,9 @@ export default function BackToTopButton({ showProgress = false }: BackToTopButto
         'inline-flex items-center justify-center',
         showProgress ? 'size-12 sm:size-14 lg:size-16' : 'size-11 sm:size-12 lg:size-14',
         'p-0',
-        // Colors — solid prominent background
-        'text-primary-foreground bg-primary/90 backdrop-blur-md',
+        // Theme-aware colors via CSS class
+        'theme-back-top',
         'rounded-full',
-        // Shadow for floating effect
-        'shadow-lg shadow-primary/25',
-        'border-2 border-primary-foreground/20',
         // Transitions
         'transition-all duration-300 ease-out',
         // Visibility states
@@ -73,7 +71,7 @@ export default function BackToTopButton({ showProgress = false }: BackToTopButto
           ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
           : 'opacity-0 translate-y-8 scale-50 pointer-events-none',
         // Hover/active effects
-        'hover:bg-primary hover:scale-110 hover:shadow-xl hover:shadow-primary/30',
+        'hover:scale-110',
         'active:scale-95',
       ].join(' ')}
     >
@@ -92,7 +90,7 @@ export default function BackToTopButton({ showProgress = false }: BackToTopButto
             r="20"
             stroke="currentColor"
             strokeWidth="2.5"
-            className="text-primary-foreground/20"
+            className="theme-progress-track"
           />
           {/* Progress arc */}
           <circle
@@ -103,7 +101,7 @@ export default function BackToTopButton({ showProgress = false }: BackToTopButto
             stroke="currentColor"
             strokeWidth="3"
             strokeLinecap="round"
-            className="text-primary-foreground transition-[stroke-dashoffset] duration-150 ease-out"
+            className="theme-progress-arc transition-[stroke-dashoffset] duration-150 ease-out"
             style={{
               strokeDasharray: 2 * Math.PI * 20,
               strokeDashoffset: 2 * Math.PI * 20 * (1 - scrollProgress),
@@ -112,7 +110,7 @@ export default function BackToTopButton({ showProgress = false }: BackToTopButto
         </svg>
       )}
       <ArrowUp
-        className={showProgress ? 'size-5 sm:size-6 lg:size-7 relative z-10' : 'size-5 sm:size-5 lg:size-6 relative z-10'}
+        className={showProgress ? 'size-5 sm:size-6 lg:size-7 relative z-10 theme-back-top-icon' : 'size-5 sm:size-5 lg:size-6 relative z-10 theme-back-top-icon'}
         aria-hidden="true"
       />
     </button>
