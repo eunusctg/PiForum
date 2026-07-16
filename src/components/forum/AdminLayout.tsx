@@ -13,6 +13,7 @@ import {
   ScrollText,
   FileText,
   Palette,
+  Share2,
   KeyRound,
   Mail,
   BadgeCheck,
@@ -71,6 +72,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
       { view: 'admin-rules', label: 'Rules', icon: ScrollText, desc: 'Community rules' },
       { view: 'admin-pages', label: 'Pages', icon: FileText, desc: 'Static pages & header/footer' },
       { view: 'admin-branding', label: 'Branding', icon: Palette, desc: 'Site identity & appearance' },
+      { view: 'admin-social', label: 'Social Links', icon: Share2, desc: 'Social media links & footer icons' },
     ],
   },
   {

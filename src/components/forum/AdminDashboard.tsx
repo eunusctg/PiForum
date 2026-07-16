@@ -17,6 +17,7 @@ import {
   Flag,
   Sparkles,
   Database,
+  Share2,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -221,13 +222,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Admin Quick Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { label: 'Users', view: 'admin-users' as const, icon: Users },
           { label: 'Categories', view: 'admin-categories' as const, icon: Settings },
           { label: 'Settings', view: 'admin-settings' as const, icon: Settings },
           { label: 'Reports', view: 'admin-reports' as const, icon: Flag },
           { label: 'Security', view: 'admin-security' as const, icon: Shield },
+          { label: 'Social', view: 'admin-social' as const, icon: Share2 },
         ].map((item) => (
           <button
             key={item.view}

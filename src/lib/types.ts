@@ -273,6 +273,7 @@ export type AppView =
   | "admin-gdpr"
   | "admin-monetization"
   | "admin-backup"
+  | "admin-social"
   | "admin-settings"
   | "admin-security"
   | "login"

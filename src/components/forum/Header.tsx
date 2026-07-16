@@ -123,6 +123,8 @@ function viewToUrl(
       return "/admin/monetization";
     case "admin-backup":
       return "/admin/backup";
+    case "admin-social":
+      return "/admin/social";
     default:
       return null;
   }

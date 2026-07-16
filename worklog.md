@@ -113,3 +113,34 @@ Stage Summary:
 - Reply editor is hidden by default, only shows on Reply button click
 - Per-post Reply buttons added to all posts including original post
 - All changes verified via browser: social icons visible, back-to-top works, thread view shows login prompt when not logged in (editor correctly hidden)
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix social icons not showing in footer + Create admin social links page + Convert reply editor to modal popup
+
+Work Log:
+- Investigated why social icons weren't visible in footer - found they used extremely low opacity (text-muted-foreground/30, bg-muted/25) when no URL was configured
+- Changed unconfigured icon styling from nearly-invisible to clearly visible outlined circles with border-border, bg-muted/40, text-muted-foreground
+- Changed configured icon styling to prominent: border-primary/30, bg-primary/10, text-primary with hover effects
+- Created AdminSocialLinks.tsx component with 8 platform inputs + live preview section
+- Added "admin-social" to AppView type in types.ts
+- Added Social Links entry to AdminLayout sidebar in Content group with Share2 icon
+- Added Social Links quick nav button to AdminDashboard with Share2 icon
+- Added /admin/social URL mapping in Header.tsx
+- Added lazy import and view case for admin-social in ForumShell.tsx
+- Created /admin/social/page.tsx route
+- Converted ThreadView reply editor from inline to modal overlay popup
+  - Fixed position overlay with dark backdrop (bg-black/50 backdrop-blur-sm)
+  - Centered card with slide-in-from-bottom animation
+  - Click outside to close
+  - Escape key to close
+  - Body scroll locked when modal is open
+  - Responsive: bottom-sheet on mobile, centered on desktop
+- Verified all changes via browser automation: 8 social icons visible in footer, admin page loads correctly, reply modal works with click/escape close
+
+Stage Summary:
+- Social icons now clearly visible in footer column 1 (8 icons with outlined style)
+- Admin Social Links page fully functional at /admin/social
+- Reply editor now pops up as modal overlay instead of inline
+- All browser tests passed

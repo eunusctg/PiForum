@@ -55,6 +55,7 @@ const AdminCookies = lazy(() => import('@/components/forum/admin/AdminCookies'))
 const AdminGdpr = lazy(() => import('@/components/forum/admin/AdminGdpr'));
 const AdminMonetization = lazy(() => import('@/components/forum/admin/AdminMonetization'));
 const AdminBackup = lazy(() => import('@/components/forum/admin/AdminBackup'));
+const AdminSocialLinks = lazy(() => import('@/components/forum/admin/AdminSocialLinks'));
 
 /** Lightweight inline spinner used as fallback while lazy chunks load. */
 function ChunkLoader() {
@@ -283,6 +284,8 @@ export default function ForumShell({
         return <SuspenseWrap><AdminLayout activeView="admin-monetization"><AdminMonetization /></AdminLayout></SuspenseWrap>;
       case 'admin-backup':
         return <SuspenseWrap><AdminLayout activeView="admin-backup"><AdminBackup /></AdminLayout></SuspenseWrap>;
+      case 'admin-social':
+        return <SuspenseWrap><AdminLayout activeView="admin-social"><AdminSocialLinks /></AdminLayout></SuspenseWrap>;
       case 'admin-settings':
         return <SuspenseWrap><AdminLayout activeView="admin-branding"><AdminSettings /></AdminLayout></SuspenseWrap>;
       default:

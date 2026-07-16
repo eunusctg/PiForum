@@ -358,6 +358,20 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
     }
   }, [fetchPosts, threadData]);
 
+  // Close reply modal on Escape key and lock body scroll
+  useEffect(() => {
+    if (!showReplyEditor) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowReplyEditor(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [showReplyEditor]);
+
   // ---------- handlers ----------
   const handleHomeClick = () => navigateTo('home');
 
@@ -668,13 +682,9 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
   const isAdminOrMod = currentUser && currentUser.role >= UserRole.Moderator;
   const canReply = currentUser && !threadData?.locked;
 
-  // Open reply editor and scroll to it
+  // Open reply editor modal
   const openReplyEditor = useCallback(() => {
     setShowReplyEditor(true);
-    // Defer scroll so the DOM updates first
-    setTimeout(() => {
-      replyEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
   }, []);
 
   const getPostVoteData = (post: PostWithMeta) => {
@@ -993,7 +1003,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
         </div>
       )}
 
-      {/* ---- Reply Button / Reply Form ---- */}
+      {/* ---- Reply Button ---- */}
       {canReply && !showReplyEditor && (
         <button
           onClick={openReplyEditor}
@@ -1004,95 +1014,106 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
         </button>
       )}
 
+      {/* ---- Reply Modal Overlay ---- */}
       {canReply && showReplyEditor && (
-        <div ref={replyEditorRef} className="neu-card p-5 sm:p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold flex items-center gap-2">
-              <Send className="size-4 text-primary" />
-              Post a Reply
-            </h3>
-            <button
-              onClick={() => setShowReplyEditor(false)}
-              className="neu-btn p-1.5 text-muted-foreground hover:text-primary transition-colors"
-              title="Cancel reply"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowReplyEditor(false);
+          }}
+        >
+          <div
+            ref={replyEditorRef}
+            className="neu-card w-full max-w-2xl mx-0 sm:mx-4 rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 space-y-4 animate-in slide-in-from-bottom-4 duration-300 max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold flex items-center gap-2">
+                <Send className="size-4 text-primary" />
+                Post a Reply
+              </h3>
+              <button
+                onClick={() => setShowReplyEditor(false)}
+                className="neu-btn p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                title="Cancel reply"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
 
-          <div className="neu-input p-1">
-            <textarea
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-              placeholder="Write your reply... (supports **bold**, *italic*, `code`, > quotes)"
-              rows={5}
-              autoFocus
-              className="w-full bg-transparent resize-y min-h-[100px] p-3 text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
+            <div className="neu-input p-1">
+              <textarea
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                placeholder="Write your reply... (supports **bold**, *italic*, `code`, > quotes)"
+                rows={6}
+                autoFocus
+                className="w-full bg-transparent resize-y min-h-[120px] p-3 text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </div>
 
-          {/* File attachments */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label className="neu-btn px-3 py-1.5 text-xs font-medium cursor-pointer flex items-center gap-1.5 text-muted-foreground hover:text-primary">
-                <Paperclip className="size-3.5" />
-                Attach Files
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileChange}
-                  className="hidden"
-                  accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
-                />
-              </label>
+            {/* File attachments */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <label className="neu-btn px-3 py-1.5 text-xs font-medium cursor-pointer flex items-center gap-1.5 text-muted-foreground hover:text-primary">
+                  <Paperclip className="size-3.5" />
+                  Attach Files
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
+                  />
+                </label>
+                {replyFiles.length > 0 && (
+                  <span className="text-xs text-muted-foreground">{replyFiles.length} file(s)</span>
+                )}
+              </div>
+
               {replyFiles.length > 0 && (
-                <span className="text-xs text-muted-foreground">{replyFiles.length} file(s)</span>
+                <div className="flex flex-wrap gap-2">
+                  {replyFiles.map((file, idx) => (
+                    <div
+                      key={idx}
+                      className="neu-card-inset rounded-lg px-3 py-1.5 flex items-center gap-2 text-xs"
+                    >
+                      <Paperclip className="size-3 text-muted-foreground" />
+                      <span className="max-w-[120px] truncate">{file.name}</span>
+                      <button
+                        onClick={() => removeFile(idx)}
+                        className="text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
-            {replyFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {replyFiles.map((file, idx) => (
-                  <div
-                    key={idx}
-                    className="neu-card-inset rounded-lg px-3 py-1.5 flex items-center gap-2 text-xs"
-                  >
-                    <Paperclip className="size-3 text-muted-foreground" />
-                    <span className="max-w-[120px] truncate">{file.name}</span>
-                    <button
-                      onClick={() => removeFile(idx)}
-                      className="text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-end gap-3">
-            <span className="text-xs text-muted-foreground">
-              {replyContent.length > 0 && `${replyContent.length} characters`}
-            </span>
-            <button
-              onClick={() => setShowReplyEditor(false)}
-              className="neu-btn px-4 py-2.5 text-sm font-medium text-muted-foreground"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleReply}
-              disabled={!replyContent.trim() || replySubmitting}
-              className="neu-btn px-5 py-2.5 text-sm font-medium text-primary flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {replySubmitting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Send className="size-4" />
-              )}
-              {replySubmitting ? 'Posting...' : 'Post Reply'}
-            </button>
+            <div className="flex items-center justify-end gap-3">
+              <span className="text-xs text-muted-foreground">
+                {replyContent.length > 0 && `${replyContent.length} characters`}
+              </span>
+              <button
+                onClick={() => setShowReplyEditor(false)}
+                className="neu-btn px-4 py-2.5 text-sm font-medium text-muted-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReply}
+                disabled={!replyContent.trim() || replySubmitting}
+                className="neu-btn px-5 py-2.5 text-sm font-medium text-primary flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {replySubmitting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Send className="size-4" />
+                )}
+                {replySubmitting ? 'Posting...' : 'Post Reply'}
+              </button>
+            </div>
           </div>
         </div>
       )}

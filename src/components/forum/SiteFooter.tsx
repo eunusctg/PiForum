@@ -183,7 +183,7 @@ export default function SiteFooter() {
               </p>
             )}
 
-            {/* Social icons row — always show all 8; configured ones are interactive, unconfigured are subtle placeholders */}
+            {/* Social icons row — configured ones are interactive, unconfigured shown as outlined */}
             <nav className="mt-5 flex flex-wrap items-center gap-2 sm:gap-2.5" aria-label="Social links">
               {socials.map(({ key, href, label, Icon }) => {
                 const hasLink = href && href.trim().length > 0;
@@ -194,7 +194,7 @@ export default function SiteFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}
-                    className="group flex items-center justify-center size-10 rounded-full bg-muted/60 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                    className="group flex items-center justify-center size-10 rounded-full border border-primary/30 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200"
                   >
                     <Icon className="size-[18px]" aria-hidden="true" />
                   </a>
@@ -202,7 +202,7 @@ export default function SiteFooter() {
                   <span
                     key={key}
                     aria-label={`${label} (not configured)`}
-                    className="flex items-center justify-center size-10 rounded-full bg-muted/25 text-muted-foreground/30 cursor-default"
+                    className="flex items-center justify-center size-10 rounded-full border border-border bg-muted/40 text-muted-foreground cursor-default"
                     title={`${label} — link not set`}
                   >
                     <Icon className="size-[18px]" aria-hidden="true" />
