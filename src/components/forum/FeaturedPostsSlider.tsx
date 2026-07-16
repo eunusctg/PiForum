@@ -187,7 +187,7 @@ export default function FeaturedPostsSlider() {
       ) : threads.length === 0 ? (
         <EmptyFeatured />
       ) : (
-        <div className="relative">
+        <div className="relative group/slider">
           {/* Scroll container */}
           <div
             ref={scrollRef}
@@ -212,29 +212,29 @@ export default function FeaturedPostsSlider() {
             ))}
           </div>
 
-          {/* Navigation arrows — visible on hover (desktop) */}
+          {/* Navigation arrows — always visible on desktop */}
           <button
             onClick={() => scroll('left')}
-            className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 z-10 neu-circle size-8 sm:size-9 p-0 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity ${
-              activeIndex === 0 ? 'hidden' : ''
-            }`}
+            className={`absolute left-1 top-1/2 -translate-y-1/2 z-10 neu-circle size-9 sm:size-10 p-0 items-center justify-center transition-all duration-200 ${
+              activeIndex === 0 ? 'opacity-30 pointer-events-none' : 'opacity-90 hover:opacity-100 hover:scale-110'
+            } hidden sm:flex`}
             aria-label="Scroll left"
           >
-            <ChevronLeft className="size-4" />
+            <ChevronLeft className="size-4 sm:size-5" />
           </button>
           <button
             onClick={() => scroll('right')}
-            className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 z-10 neu-circle size-8 sm:size-9 p-0 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity ${
-              activeIndex >= threads.length - 1 ? 'hidden' : ''
-            }`}
+            className={`absolute right-1 top-1/2 -translate-y-1/2 z-10 neu-circle size-9 sm:size-10 p-0 items-center justify-center transition-all duration-200 ${
+              activeIndex >= threads.length - 1 ? 'opacity-30 pointer-events-none' : 'opacity-90 hover:opacity-100 hover:scale-110'
+            } hidden sm:flex`}
             aria-label="Scroll right"
           >
-            <ChevronRight className="size-4" />
+            <ChevronRight className="size-4 sm:size-5" />
           </button>
 
-          {/* Dot Indicators */}
+          {/* Dot Indicators — prominent, pill-shaped */}
           {threads.length > 1 && (
-            <div className="flex items-center justify-center gap-1.5 mt-3" role="tablist" aria-label="Slide indicators">
+            <div className="flex items-center justify-center gap-2 mt-5 py-2" role="tablist" aria-label="Slide indicators">
               {threads.map((_, idx) => (
                 <button
                   key={idx}
@@ -242,16 +242,20 @@ export default function FeaturedPostsSlider() {
                   role="tab"
                   aria-selected={idx === activeIndex}
                   aria-label={`Go to slide ${idx + 1}`}
-                  className="carousel-dot rounded-full"
+                  className="carousel-dot rounded-full transition-all duration-300 ease-out"
                   style={{
-                    width: idx === activeIndex ? '1.5rem' : '0.5rem',
-                    height: '0.5rem',
-                    backgroundColor: idx === activeIndex ? 'var(--primary)' : 'rgba(0,0,0,0.18)',
-                    boxShadow: idx === activeIndex ? '0 1px 4px rgba(0,0,0,0.12)' : 'none',
+                    width: idx === activeIndex ? '2.25rem' : '0.75rem',
+                    height: idx === activeIndex ? '0.75rem' : '0.75rem',
+                    backgroundColor: idx === activeIndex
+                      ? 'var(--primary)'
+                      : 'var(--muted-foreground)',
+                    opacity: idx === activeIndex ? 1 : 0.3,
+                    boxShadow: idx === activeIndex
+                      ? '0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent), 0 2px 8px rgba(0,0,0,0.15)'
+                      : 'none',
                     border: 'none',
                     padding: 0,
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease',
                   }}
                 />
               ))}

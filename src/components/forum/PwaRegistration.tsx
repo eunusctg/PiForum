@@ -13,7 +13,7 @@ import { useAppStore } from '@/lib/store';
    - SW registered with updateViaCache: 'none' for immediate updates
    - FCM push notification integration */
 
-const CURRENT_CACHE_PREFIX = 'piforum-v4';
+const CURRENT_CACHE_PREFIX = 'piforum-v5';
 
 /* ---------- Offline indicator banner — declared outside render ---------- */
 function OfflineBanner() {

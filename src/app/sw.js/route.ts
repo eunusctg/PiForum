@@ -10,11 +10,11 @@
    - Preload critical app shell resources on install */
 export async function GET() {
   const sw = `
-const CACHE = 'piforum-v4';
-const CACHE_STATIC = 'piforum-v4-static';
-const CACHE_PAGES = 'piforum-v4-pages';
-const CACHE_API = 'piforum-v4-api';
-const CACHE_IMG = 'piforum-v4-images';
+const CACHE = 'piforum-v5';
+const CACHE_STATIC = 'piforum-v5-static';
+const CACHE_PAGES = 'piforum-v5-pages';
+const CACHE_API = 'piforum-v5-api';
+const CACHE_IMG = 'piforum-v5-images';
 
 const APP_SHELL = [
   '/',
@@ -72,7 +72,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => !k.startsWith('piforum-v4'))
+          .filter((k) => !k.startsWith('piforum-v5'))
           .map((k) => caches.delete(k))
       )
     ).then(() => self.clients.claim())

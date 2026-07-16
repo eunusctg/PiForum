@@ -31,3 +31,37 @@ Stage Summary:
 - π symbol completely removed from codebase
 - Thread view compilation causes OOM in sandbox (large component + memory constraints)
 - Server unstable due to sandbox memory limits but code is correct
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix deployment issues - changes not showing on user's site
+
+Work Log:
+- Investigated why user couldn't see changes despite code being correct
+- Found aggressive service worker caching (piforum-v4) was serving old cached content
+- Service worker uses cache-first strategy for static assets (90-day expiry) and navigation pages
+- Bumped cache version from v4 to v5 in sw.js/route.ts and PwaRegistration.tsx
+- Fixed carousel navigation arrows: parent div was missing `group/slider` class, so arrows were never visible
+- Changed arrows from hover-only (opacity-0 → group-hover:opacity-100) to always-visible on desktop (opacity-90 with hover:scale-110)
+- Made carousel dot indicators much more prominent: increased size from 0.5rem to 0.75rem height, active dot from 1.5rem to 2.25rem width
+- Changed dot colors from rgba(0,0,0,0.18) to var(--muted-foreground) with opacity:0.3 for better theme support
+- Added glowing ring effect on active dot via box-shadow
+- Added py-2 padding to dot container for better visibility
+- Cleared .next cache and restarted dev server
+- Verified all changes via agent-browser + VLM analysis:
+  - Carousel dots: ✅ Visible (teal pill-shaped active + gray inactive dots)
+  - Carousel arrows: ✅ Right arrow visible on desktop
+  - Footer: ✅ No Quick Links column, No Newsletter column, 7 social icons
+  - Thread rows: ✅ No user avatars, just User icon + name
+  - Post cards: ✅ No profile sidebar, author name inline, Edited badge in header
+  - Post numbers: ✅ #2, #3, #4, #5 visible on replies
+  - Community Stats: ✅ Removed
+  - Preloader: ✅ Shows "Pi" not π
+
+Stage Summary:
+- Root cause: Service worker v4 was aggressively caching old content, preventing users from seeing updates
+- Fix: Bumped to v5 cache version, old caches will be purged on next SW activation
+- Also fixed carousel arrows never being visible due to missing group/slider class
+- Made dots more visible with larger size and stronger colors
+- All changes confirmed working via DOM inspection and VLM visual analysis
