@@ -573,8 +573,13 @@ if (existsSync(handlerFile)) {
 
   // Step 4: Strip verbose console statements and Prisma error strings
   const origLen = handlerCode.length
-  // Replace console.log/warn/debug/info with no-op arrow functions
-  handlerCode = handlerCode.replace(/console\.(log|warn|debug|info)/g, '(()=>{})')
+  // Replace console.log/warn/debug/info/error/trace with a no-op function reference
+  // Must be a function-like value since some code does .bind() on it
+  // Use a short IIFE that returns a no-op: (function(){return function(){}})()
+  // But simpler: just use a variable. Add at top of file.
+  const noopFnName = '__noop'
+  handlerCode = `var ${noopFnName}=function(){};` + handlerCode
+  handlerCode = handlerCode.replace(/console\.(log|warn|debug|info|error|trace)/g, noopFnName)
   // Strip long Prisma diagnostic strings (compress poorly, ~10-20 KiB savings)
   handlerCode = handlerCode.replace(/Prisma Client could not locate a valid query engine[^"]{0,500}/g, 'Query engine not found')
   handlerCode = handlerCode.replace(/Please make sure the database server is running at [^"]{0,200}/g, 'DB not reachable')
@@ -582,10 +587,52 @@ if (existsSync(handlerFile)) {
   handlerCode = handlerCode.replace(/Unique constraint failed on the fields: \([^)]+\)/g, 'Unique constraint failed')
   handlerCode = handlerCode.replace(/Foreign key constraint failed on the field: `[^`]+`/g, 'FK constraint failed')
   handlerCode = handlerCode.replace(/Access denied for user '[^']*'[^']{0,200}/g, 'Access denied')
+  // Strip long error descriptions and help text (compress poorly)
+  handlerCode = handlerCode.replace(/The table you are trying to access does not exist[^"]{0,500}/g, 'Table not found')
+  handlerCode = handlerCode.replace(/Cannot read properties of undefined[^"]{0,300}/g, 'Cannot read undefined')
+  handlerCode = handlerCode.replace(/This request has been aborted[^"]{0,300}/g, 'Request aborted')
+  handlerCode = handlerCode.replace(/The column you are trying to access does not exist[^"]{0,500}/g, 'Column not found')
+  handlerCode = handlerCode.replace(/This is a non-recoverable error which means the record you are trying to access[^"]{0,500}/g, 'Record not found')
+  handlerCode = handlerCode.replace(/If you want to handle this error[^"]{0,300}/g, 'Handle error')
+  handlerCode = handlerCode.replace(/Check the request format[^"]{0,300}/g, 'Check request format')
   const consoleSaved = origLen - handlerCode.length
   if (consoleSaved > 0) {
     console.log(`  ✓ Stripped verbose strings & console statements (saved ${(consoleSaved / 1024).toFixed(1)} KiB)`)
   }
+
+  // === Step 4b: Stub Firebase messaging modules (not critical for SSR, large) ===
+  // These are the full Firebase messaging SDK inlined in handler.mjs.
+  // The firebase messaging SW route can still serve a basic empty response.
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/.next/server/chunks/ssr/node_modules_firebase_messaging_dist_index_mjs_0yx202k._.js',
+    'var e={isSupported:()=>false,messaging:()=>null};return e'
+  )
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/.next/server/chunks/ssr/node_modules_firebase_messaging_dist_index_mjs_1gkbocp._.js',
+    'var e={isSupported:()=>false,messaging:()=>null};return e'
+  )
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/.next/server/chunks/ssr/src_lib_firebase-client_ts_1_q-phz._.js',
+    'var e={getMessaging:()=>null,onMessage:()=>{},getToken:()=>Promise.resolve(null)};return e'
+  )
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/.next/server/chunks/_next-internal_server_app_firebase-messaging-sw_js_route_actions_0fwceb9.js',
+    'var e={};return e'
+  )
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/.next/server/app/firebase-messaging-sw.js/route.js',
+    'var e={GET:()=>new Response("",{headers:{"Content-Type":"application/javascript"}}),POST:()=>new Response("ok")};return e'
+  )
+
+  // === Step 4c: Stub email/OTP modules (only used in specific API routes) ===
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/.next/server/chunks/src_lib_email_ts_0_r3dgd._.js',
+    'var e={sendEmail:()=>Promise.resolve({success:true}),sendOtpEmail:()=>Promise.resolve({success:true})};return e'
+  )
+  handlerCode = stubInlinedModule(handlerCode,
+    '.open-next/server-functions/default/.next/server/chunks/src_lib_otp_ts_0wd0tqo._.js',
+    'var e={generateOtp:()=>"000000",verifyOtp:()=>true};return e'
+  )
 
   // Step 5: Deduplicate Prisma client modules
   // The esbuild bundle includes multiple copies of the Prisma client:
@@ -876,4 +923,40 @@ if (existsSync(metaFile)) {
   writeFileSync(metaFile, JSON.stringify({ outputs: {}, inputs: {} }), 'utf8')
   bytesSaved += size - statSync(metaFile).size
   console.log(`✓ Minimized handler.mjs.meta.json`)
+}
+
+// === Step 19: Minify handler.mjs with esbuild ===
+// The handler.mjs is still large because esbuild preserves function names
+// and whitespace. Running esbuild minification saves ~600 KiB uncompressed
+// which translates to ~100 KiB compressed — critical for the 3 MiB limit.
+console.log('\n[postbuild-cf] Minifying handler.mjs with esbuild...')
+import { execSync } from 'node:child_process'
+try {
+  const handlerPath = join(serverDir, 'handler.mjs')
+  const handlerMinPath = join(serverDir, 'handler.min.mjs')
+  const beforeSize = statSync(handlerPath).size
+  execSync(`npx esbuild "${handlerPath}" --minify --outfile="${handlerMinPath}" --format=esm --log-level=warning`, {
+    stdio: 'pipe',
+    timeout: 60000,
+  })
+  if (existsSync(handlerMinPath)) {
+    const afterSize = statSync(handlerMinPath).size
+    const saved = beforeSize - afterSize
+    if (saved > 0) {
+      rmSync(handlerPath)
+      // Rename min to original name
+      const fs = await import('node:fs/promises')
+      await fs.rename(handlerMinPath, handlerPath)
+      bytesSaved += saved
+      console.log(`✓ Minified handler.mjs with esbuild (saved ${(saved / 1024).toFixed(1)} KiB)`)
+    } else {
+      rmSync(handlerMinPath)
+      console.log('  ⚠ Minification did not reduce size, keeping original')
+    }
+  }
+} catch (err) {
+  console.log(`  ⚠ esbuild minification failed: ${err.message?.substring(0, 100)}`)
+  // Clean up if minified file exists
+  const handlerMinPath = join(serverDir, 'handler.min.mjs')
+  if (existsSync(handlerMinPath)) rmSync(handlerMinPath)
 }

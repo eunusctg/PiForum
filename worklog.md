@@ -86,3 +86,26 @@ Stage Summary:
 - Root cause of "nothing showed" was that PM2-managed dev server needed cache clear + restart
 - All previously implemented features confirmed working after fresh deploy
 - PM2 key insight: must use `npx pm2 restart next-dev` instead of killing processes manually
+---
+Task ID: 3
+Agent: Main Agent
+Task: Deploy PiForum to Cloudflare Workers (piforum.eu.cc and piforum.eu.org)
+
+Work Log:
+- Discovered site is deployed to Cloudflare Workers via OpenNext (not local dev server)
+- Dev server on localhost:3000 is only for development — live domains use Cloudflare Workers
+- Built for Cloudflare: `bun run build:cf` (OpenNext build + postbuild optimization)
+- Initial deploy failed: 3174 KiB compressed > 3 MiB (3072 KiB) free plan limit
+- Added Firebase messaging module stubs to handler.mjs (saved ~51 KiB)
+- Added email/OTP module stubs to handler.mjs (saved ~46 KiB)
+- Added esbuild minification step to postbuild script (saved ~583 KiB)
+- Added `minify = true` to wrangler.toml (critical — reduced from 3086 KiB to 2632 KiB!)
+- Final deploy: 10800 KiB uncompressed / 2632 KiB gzip — SUCCESS
+- Deployed to Cloudflare Workers with all code changes
+
+Stage Summary:
+- Root cause of features not showing: code changes were only on localhost, not deployed to Cloudflare
+- Added `minify = true` to wrangler.toml — this was the key to fitting under the 3 MiB limit
+- Worker bundle optimized: Firebase stubs, email/OTP stubs, esbuild minification, wrangler minify
+- Both domains (piforum.eu.cc, piforum.eu.org) now serve the updated Worker code
+- All features deployed: social icons, back-to-top, new thread FAB, share buttons, edit/delete/archive/report

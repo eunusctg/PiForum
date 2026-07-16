@@ -17,6 +17,9 @@ compatibility_flags = ["nodejs_compat"]
 main = ".open-next/worker.js"
 assets = { directory = ".open-next/assets", binding = "ASSETS" }
 
+# Minify the worker to reduce bundle size (critical for 3 MiB free plan limit)
+minify = true
+
 # ============================================================
 # Account ID (Techctg24 Inc)
 # ============================================================
