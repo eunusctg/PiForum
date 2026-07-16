@@ -144,3 +144,31 @@ Stage Summary:
 - Admin Social Links page fully functional at /admin/social
 - Reply editor now pops up as modal overlay instead of inline
 - All browser tests passed
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix back-to-top floating/responsive + Fix social links not showing in footer
+
+Work Log:
+- Used VLM to analyze actual screenshots and found:
+  1. Social icons were rendering but nearly invisible (light gray on light backgrounds using bg-muted/40 text-muted-foreground)
+  2. Back-to-top button was visible but too close to footer elements, not prominently floating
+- Rewrote BackToTopButton.tsx: 
+  - Increased z-index to z-[100] for true floating above everything
+  - Larger bottom offset: bottom-8/10/14 right-5/8/10 for responsive
+  - Bigger button: size-12/14/16 responsive
+  - Solid primary-colored background (bg-primary/90) instead of transparent
+  - Changed icon from ChevronUp to ArrowUp for clearer direction
+  - Added shadow-lg with primary color for floating depth effect
+- Rewrote SiteFooter.tsx social icons:
+  - Added brand colors (color) to SOCIAL_PLATFORMS array (Facebook #1877F2, Twitter #1DA1F2, etc.)
+  - Configured icons: solid brand-color background with white icons
+  - Unconfigured icons: translucent brand-color background (color at 12% opacity) with colored icons (opacity-70 hover:opacity-100)
+  - Both are now clearly visible regardless of theme
+- Updated AdminSocialLinks.tsx preview to match footer look
+
+Stage Summary:
+- Social icons now clearly visible with vivid brand colors (8 colored circles)
+- Back-to-top button now prominently floats with solid primary background
+- Verified via VLM that both are clearly visible on the page

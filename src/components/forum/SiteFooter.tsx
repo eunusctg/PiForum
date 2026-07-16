@@ -39,18 +39,19 @@ type SocialLink = {
   href: string;
   label: string;
   Icon: LucideIcon;
+  color: string;
 };
 
-/* All 8 platforms — always rendered; grayed-out when no URL is set. */
-const SOCIAL_PLATFORMS: { key: string; settingKey: string; label: string; Icon: LucideIcon }[] = [
-  { key: 'facebook', settingKey: 'social_facebook', label: 'Facebook', Icon: Facebook },
-  { key: 'twitter', settingKey: 'social_twitter', label: 'X (Twitter)', Icon: Twitter },
-  { key: 'instagram', settingKey: 'social_instagram', label: 'Instagram', Icon: Instagram },
-  { key: 'youtube', settingKey: 'social_youtube', label: 'YouTube', Icon: Youtube },
-  { key: 'linkedin', settingKey: 'social_linkedin', label: 'LinkedIn', Icon: Linkedin },
-  { key: 'github', settingKey: 'social_github', label: 'GitHub', Icon: Github },
-  { key: 'discord', settingKey: 'social_discord', label: 'Discord', Icon: MessageCircle },
-  { key: 'twitch', settingKey: 'social_twitch', label: 'Twitch', Icon: Twitch },
+/* All 8 platforms with brand colors — always rendered with vivid icons. */
+const SOCIAL_PLATFORMS: { key: string; settingKey: string; label: string; Icon: LucideIcon; color: string }[] = [
+  { key: 'facebook', settingKey: 'social_facebook', label: 'Facebook', Icon: Facebook, color: '#1877F2' },
+  { key: 'twitter', settingKey: 'social_twitter', label: 'X (Twitter)', Icon: Twitter, color: '#1DA1F2' },
+  { key: 'instagram', settingKey: 'social_instagram', label: 'Instagram', Icon: Instagram, color: '#E4405F' },
+  { key: 'youtube', settingKey: 'social_youtube', label: 'YouTube', Icon: Youtube, color: '#FF0000' },
+  { key: 'linkedin', settingKey: 'social_linkedin', label: 'LinkedIn', Icon: Linkedin, color: '#0A66C2' },
+  { key: 'github', settingKey: 'social_github', label: 'GitHub', Icon: Github, color: '#6e5494' },
+  { key: 'discord', settingKey: 'social_discord', label: 'Discord', Icon: MessageCircle, color: '#5865F2' },
+  { key: 'twitch', settingKey: 'social_twitch', label: 'Twitch', Icon: Twitch, color: '#9146FF' },
 ];
 
 export default function SiteFooter() {
@@ -70,13 +71,14 @@ export default function SiteFooter() {
   const logoUrl = getSetting('logo_url', '');
   const year = new Date().getFullYear();
 
-  // Social links — always show all platforms; grayed-out when no URL
+  // Social links — always show all platforms with brand colors
   const socials = useMemo<SocialLink[]>(() => {
     return SOCIAL_PLATFORMS.map((p) => ({
       key: p.key,
       href: getSetting(p.settingKey, ''),
       label: `${forumName} on ${p.label}`,
       Icon: p.Icon,
+      color: p.color,
     }));
   }, [settings, getSetting, forumName]);
 
@@ -183,9 +185,9 @@ export default function SiteFooter() {
               </p>
             )}
 
-            {/* Social icons row — configured ones are interactive, unconfigured shown as outlined */}
-            <nav className="mt-5 flex flex-wrap items-center gap-2 sm:gap-2.5" aria-label="Social links">
-              {socials.map(({ key, href, label, Icon }) => {
+            {/* Social icons — always show all 8 with vivid brand colors */}
+            <nav className="mt-5 flex flex-wrap items-center gap-2.5 sm:gap-3" aria-label="Social links">
+              {socials.map(({ key, href, label, Icon, color }) => {
                 const hasLink = href && href.trim().length > 0;
                 return hasLink ? (
                   <a
@@ -194,18 +196,21 @@ export default function SiteFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}
-                    className="group flex items-center justify-center size-10 rounded-full border border-primary/30 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200"
+                    className="group flex items-center justify-center size-10 sm:size-11 rounded-full transition-all duration-200 hover:scale-110 hover:shadow-lg"
+                    style={{ backgroundColor: color, color: '#fff' }}
+                    title={label}
                   >
-                    <Icon className="size-[18px]" aria-hidden="true" />
+                    <Icon className="size-[18px] sm:size-5" aria-hidden="true" />
                   </a>
                 ) : (
                   <span
                     key={key}
                     aria-label={`${label} (not configured)`}
-                    className="flex items-center justify-center size-10 rounded-full border border-border bg-muted/40 text-muted-foreground cursor-default"
+                    className="flex items-center justify-center size-10 sm:size-11 rounded-full transition-all duration-200 cursor-default opacity-70 hover:opacity-100"
+                    style={{ backgroundColor: `${color}22`, color }}
                     title={`${label} — link not set`}
                   >
-                    <Icon className="size-[18px]" aria-hidden="true" />
+                    <Icon className="size-[18px] sm:size-5" aria-hidden="true" />
                   </span>
                 );
               })}
