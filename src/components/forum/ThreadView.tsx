@@ -1001,32 +1001,48 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
 
       {/* ---- Original Post (Thread Content) ---- */}
       {threadData.content && (
-        <PostCard
-          content={threadData.content}
-          author={threadData.author}
-          createdAt={threadData.createdAt}
-          updatedAt={threadData.updatedAt}
-          attachments={[]}
-          isOriginalPost
-          postId={`thread-${threadData.id}`}
-          threadId={threadId}
-          voteScore={0}
-          userVote={0}
-          isVoting={false}
-          onUpvote={() => {}}
-          onDownvote={() => {}}
-          replyNumber={0}
-          canEdit={false}
-          canDelete={false}
-          onEdit={() => {}}
-          onDelete={() => {}}
-          onReply={canReply ? openReplyEditor : undefined}
-          onReport={() => {
-            setReportTarget({ type: 'post', id: `thread-${threadData.id}`, title: threadData.title });
-            setReportModalOpen(true);
-          }}
-          threadTitle={threadData.title}
-        />
+        <>
+          <PostCard
+            content={threadData.content}
+            author={threadData.author}
+            createdAt={threadData.createdAt}
+            updatedAt={threadData.updatedAt}
+            attachments={[]}
+            isOriginalPost
+            postId={`thread-${threadData.id}`}
+            threadId={threadId}
+            voteScore={0}
+            userVote={0}
+            isVoting={false}
+            onUpvote={() => {}}
+            onDownvote={() => {}}
+            replyNumber={0}
+            canEdit={!!currentUser && (currentUser.id === threadData.authorId || currentUser.role >= UserRole.Admin)}
+            canDelete={!!currentUser && (currentUser.id === threadData.authorId || currentUser.role >= UserRole.Admin)}
+            onEdit={() => {
+              setEditingPostId(`thread-${threadData.id}`);
+              setEditContent(threadData.content);
+            }}
+            onDelete={() => handleDeletePost(`thread-${threadData.id}`)}
+            onReply={canReply ? openReplyEditor : undefined}
+            onReport={() => {
+              setReportTarget({ type: 'post', id: `thread-${threadData.id}`, title: threadData.title });
+              setReportModalOpen(true);
+            }}
+            canArchive={!!currentUser && (currentUser.id === threadData.authorId || currentUser.role >= UserRole.Moderator)}
+            isArchived={threadData.archived}
+            onArchive={handleArchiveToggle}
+            threadTitle={threadData.title}
+          />
+          {/* Prominent share section below original post */}
+          <div className="neu-card-inset rounded-lg p-3 sm:p-4">
+            <ShareButtons
+              url={typeof window !== 'undefined' ? window.location.href : ''}
+              title={threadData.title}
+              expanded
+            />
+          </div>
+        </>
       )}
 
       {/* ---- Replies ---- */}
@@ -1315,6 +1331,9 @@ interface PostCardProps {
   onReply?: () => void;
   onReport?: () => void;
   threadTitle?: string;
+  canArchive?: boolean;
+  isArchived?: boolean;
+  onArchive?: () => void;
 }
 
 function PostCard({
@@ -1349,11 +1368,12 @@ function PostCard({
   onReply,
   onReport,
   threadTitle = '',
+  canArchive = false,
+  isArchived = false,
+  onArchive,
 }: PostCardProps) {
   const authorName = author?.displayName || author?.username || 'Unknown';
   const authorInitial = authorName.charAt(0).toUpperCase();
-
-  const showActions = false; // Actions moved to the bottom action bar
 
   return (
     <div
@@ -1410,49 +1430,6 @@ function PostCard({
                 <span className="text-muted-foreground/60">(edited)</span>
               )}
             </div>
-
-            {/* Edit/Delete + Best Answer actions */}
-            {showActions && (
-              <div className="flex items-center gap-1">
-                {canMarkBestAnswer && !isBestAnswer && (
-                  <button
-                    onClick={onMarkBestAnswer}
-                    className="neu-btn px-2 py-1 text-xs font-medium flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
-                    title="Mark as Best Answer"
-                  >
-                    <CheckCircle2 className="size-3.5" />
-                    <span className="hidden sm:inline">Best Answer</span>
-                  </button>
-                )}
-                {isBestAnswer && canUnmarkBestAnswer && (
-                  <button
-                    onClick={onUnmarkBestAnswer}
-                    className="neu-btn p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                    title="Remove Best Answer"
-                  >
-                    <XCircle className="size-3.5" />
-                  </button>
-                )}
-                {canEdit && (
-                  <button
-                    onClick={onEdit}
-                    className="neu-btn p-1.5 text-muted-foreground hover:text-primary transition-colors"
-                    title="Edit post"
-                  >
-                    <Edit3 className="size-3.5" />
-                  </button>
-                )}
-                {canDelete && (
-                  <button
-                    onClick={onDelete}
-                    className="neu-btn p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                    title="Delete post"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Divider */}
@@ -1515,7 +1492,7 @@ function PostCard({
             </div>
           )}
 
-          {/* Action bar: Vote + Reply + Share + Report + Edit + Delete */}
+          {/* Action bar: Vote + Reply + Share + Report + Archive + Edit + Delete */}
           {!isEditing && (
             <div className="mt-4 neu-card-inset rounded-lg p-2 flex items-center gap-1.5 flex-wrap">
               {/* Vote buttons */}
@@ -1592,6 +1569,20 @@ function PostCard({
                 </button>
               )}
 
+              {/* Archive — only on original post, for thread author or mod/admin */}
+              {canArchive && isOriginalPost && onArchive && (
+                <button
+                  onClick={onArchive}
+                  className={`neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                    isArchived ? 'text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-amber-600'
+                  }`}
+                  title={isArchived ? 'Unarchive thread' : 'Archive thread'}
+                >
+                  <Archive className="size-3.5" />
+                  {isArchived ? 'Unarchive' : 'Archive'}
+                </button>
+              )}
+
               {/* Spacer */}
               <div className="flex-1" />
 
@@ -1616,25 +1607,27 @@ function PostCard({
                 </button>
               )}
 
-              {/* Edit */}
+              {/* Edit — with text label for discoverability */}
               {canEdit && (
                 <button
                   onClick={onEdit}
-                  className="neu-btn p-1.5 text-muted-foreground hover:text-primary transition-colors"
+                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
                   title="Edit post"
                 >
                   <Edit3 className="size-3.5" />
+                  Edit
                 </button>
               )}
 
-              {/* Delete */}
+              {/* Delete — with text label for discoverability */}
               {canDelete && (
                 <button
                   onClick={onDelete}
-                  className="neu-btn p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                  className="neu-btn px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-destructive transition-colors"
                   title="Delete post"
                 >
                   <Trash2 className="size-3.5" />
+                  Delete
                 </button>
               )}
             </div>

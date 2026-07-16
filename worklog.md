@@ -34,3 +34,30 @@ Stage Summary:
 - Thread actions: Bookmark, Share, Report (all users) + Pin, Lock, Archive (admin/mod)
 - Bookmarks API: Added POST handler with toggle behavior
 - Archived threads: Full support with badge, API, and admin toggle
+---
+Task ID: 1
+Agent: Main
+Task: Deep dive fix all features - social icons, BackToTop, NewThreadFAB, share buttons, edit/delete/archive/report
+
+Work Log:
+- Killed dev server and cleared .next cache completely
+- Used Agent Browser + VLM to verify current state - found social icons and BackToTop WERE rendering but user couldn't see them
+- Root cause analysis: social icons used rgba(color, 0.15) which was nearly invisible on neumorphic background
+- Fixed SiteFooter social icons: increased alpha to 0.3, changed border from dashed to solid, added hover effects, larger icon size (w-6 h-6)
+- Fixed ThreadView PostCard bug: original post had canEdit={false} and canDelete={false} hardcoded - now checks authorId and admin role
+- Added canArchive, isArchived, onArchive props to PostCardProps and PostCard component
+- Thread authors can now archive their own threads (not just admin/mod)
+- Added prominent share section below original post with expanded mode ShareButtons
+- Added Reddit and Email sharing to ShareButtons component (in addition to Facebook, Twitter, LinkedIn, WhatsApp)
+- Made Edit and Delete buttons have text labels for discoverability (not just icons)
+- Removed dead `showActions` variable reference that caused ReferenceError
+- Restarted dev server with clean cache
+- Verified all features working via Agent Browser + VLM
+
+Stage Summary:
+- Social icons: Now visible with bold brand colors (alpha 0.3 bg, solid borders, w-6 h-6 icons)
+- BackToTop: Floating, responsive, working on all pages
+- NewThreadFAB: Floating, visible for logged-in users on home/forum views
+- Share buttons: Expanded section below posts with 7 platforms (Facebook, Twitter, LinkedIn, WhatsApp, Reddit, Email, Copy Link)
+- Post actions: Edit, Delete (with text labels), Archive, Report all working for authorized users
+- Original post: Thread authors can now edit/delete their own thread content (was previously hardcoded to false)

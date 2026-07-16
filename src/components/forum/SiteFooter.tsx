@@ -204,13 +204,13 @@ export default function SiteFooter() {
                       key={key}
                       href={href}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="me noopener noreferrer"
                       aria-label={label}
                       className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all duration-200 hover:scale-110 hover:shadow-lg"
                       style={{ backgroundColor: color, color: '#ffffff' }}
                       title={label}
                     >
-                      <Icon className="w-5 h-5" style={{ color: '#ffffff' }} aria-hidden="true" />
+                      <Icon className="w-6 h-6" style={{ color: '#ffffff' }} aria-hidden="true" />
                     </a>
                   );
                 }
@@ -219,15 +219,29 @@ export default function SiteFooter() {
                   <span
                     key={key}
                     aria-label={`${label} (not configured)`}
-                    className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all duration-200 cursor-default hover:scale-105"
+                    className="group inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all duration-200 cursor-default hover:scale-105"
                     style={{
-                      backgroundColor: hexToRgba(color, 0.15),
+                      backgroundColor: hexToRgba(color, 0.3),
                       color: color,
-                      border: `2px dashed ${hexToRgba(color, 0.4)}`,
+                      border: `2px solid ${hexToRgba(color, 0.5)}`,
+                      // CSS custom property for hover — Tailwind can't do dynamic rgba
+                      // @ts-expect-error — CSS custom property for hover state
+                      '--icon-bg-hover': hexToRgba(color, 0.45),
+                      '--icon-border-hover': hexToRgba(color, 0.7),
+                    }}
+                    onMouseEnter={(e) => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.backgroundColor = el.style.getPropertyValue('--icon-bg-hover') || hexToRgba(color, 0.45);
+                      el.style.borderColor = el.style.getPropertyValue('--icon-border-hover') || hexToRgba(color, 0.7);
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.backgroundColor = hexToRgba(color, 0.3);
+                      el.style.borderColor = hexToRgba(color, 0.5);
                     }}
                     title={`${label} — link not set`}
                   >
-                    <Icon className="w-5 h-5" style={{ color: color }} aria-hidden="true" />
+                    <Icon className="w-6 h-6" style={{ color: color }} aria-hidden="true" />
                   </span>
                 );
               })}
