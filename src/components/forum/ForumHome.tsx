@@ -8,7 +8,6 @@ import {
   Users,
   FileText,
   Star,
-  Plus,
   Pin,
   Lock,
   Clock,
@@ -119,7 +118,7 @@ export default function ForumHome() {
 
   return (
     <div className="relative w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* ---- Toolbar: sort tabs + New Thread button ---- */}
+      {/* ---- Toolbar: sort tabs ---- */}
       <section className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-1.5">
           <SortTab
@@ -141,16 +140,6 @@ export default function ForumHome() {
             label="Pinned"
           />
         </div>
-
-        {currentUser && (
-          <button
-            onClick={handleNewThread}
-            className="neu-btn px-4 py-2.5 text-sm font-medium text-primary flex items-center gap-2"
-          >
-            <Plus className="size-4" />
-            New Thread
-          </button>
-        )}
       </section>
 
       {/* ---- Featured Posts Slider ---- */}
@@ -212,17 +201,6 @@ export default function ForumHome() {
           />
         </div>
       </section>
-
-      {/* ---- Floating New Thread Button (mobile) ---- */}
-      {currentUser && (
-        <button
-          onClick={handleNewThread}
-          className="fixed bottom-6 right-6 neu-btn p-4 text-primary hover:text-primary/80 z-50 sm:hidden"
-          aria-label="Create new thread"
-        >
-          <Plus className="size-6" />
-        </button>
-      )}
     </div>
   );
 }

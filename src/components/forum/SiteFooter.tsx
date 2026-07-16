@@ -54,6 +54,14 @@ const SOCIAL_PLATFORMS: { key: string; settingKey: string; label: string; Icon: 
   { key: 'twitch', settingKey: 'social_twitch', label: 'Twitch', Icon: Twitch, color: '#9146FF' },
 ];
 
+/** Convert a hex color (#RRGGBB) to rgba string with given alpha. */
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 export default function SiteFooter() {
   const settings = useAppStore((s) => s.settings);
   const getSetting = useAppStore((s) => s.getSetting);
@@ -186,35 +194,44 @@ export default function SiteFooter() {
             )}
 
             {/* Social icons — always show all 8 with vivid brand colors */}
-            <nav className="mt-5 flex flex-wrap items-center gap-2.5 sm:gap-3" aria-label="Social links">
+            <div className="mt-5 flex flex-wrap items-center gap-2.5 sm:gap-3" role="navigation" aria-label="Social links">
               {socials.map(({ key, href, label, Icon, color }) => {
-                const hasLink = href && href.trim().length > 0;
-                return hasLink ? (
-                  <a
-                    key={key}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={label}
-                    className="group flex items-center justify-center size-10 sm:size-11 rounded-full transition-all duration-200 hover:scale-110 hover:shadow-lg"
-                    style={{ backgroundColor: color, color: '#fff' }}
-                    title={label}
-                  >
-                    <Icon className="size-[18px] sm:size-5" aria-hidden="true" />
-                  </a>
-                ) : (
+                const hasLink = !!(href && href.trim().length > 0);
+
+                if (hasLink) {
+                  return (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={label}
+                      className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all duration-200 hover:scale-110 hover:shadow-lg"
+                      style={{ backgroundColor: color, color: '#ffffff' }}
+                      title={label}
+                    >
+                      <Icon className="w-5 h-5" style={{ color: '#ffffff' }} aria-hidden="true" />
+                    </a>
+                  );
+                }
+
+                return (
                   <span
                     key={key}
                     aria-label={`${label} (not configured)`}
-                    className="flex items-center justify-center size-10 sm:size-11 rounded-full transition-all duration-200 cursor-default opacity-70 hover:opacity-100"
-                    style={{ backgroundColor: `${color}22`, color }}
+                    className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all duration-200 cursor-default hover:scale-105"
+                    style={{
+                      backgroundColor: hexToRgba(color, 0.15),
+                      color: color,
+                      border: `2px dashed ${hexToRgba(color, 0.4)}`,
+                    }}
                     title={`${label} — link not set`}
                   >
-                    <Icon className="size-[18px] sm:size-5" aria-hidden="true" />
+                    <Icon className="w-5 h-5" style={{ color: color }} aria-hidden="true" />
                   </span>
                 );
               })}
-            </nav>
+            </div>
           </section>
 
           {/* 2. Quick Links */}

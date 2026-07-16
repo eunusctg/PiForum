@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Home,
-  Loader2,
   Clock,
   User,
   FileText,
@@ -250,15 +249,6 @@ export default function ThreadList({
               )}
             </div>
           </div>
-          {currentUser && (
-            <button
-              onClick={handleNewThread}
-              className="neu-btn px-4 py-2.5 text-sm font-medium text-primary flex items-center gap-2 shrink-0"
-            >
-              <Plus className="size-4" />
-              New Thread
-            </button>
-          )}
         </div>
 
         {/* Forum mini-stats */}

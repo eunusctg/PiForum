@@ -7,6 +7,7 @@ import AuthModal from '@/components/forum/AuthModal';
 import ForumHome from '@/components/forum/ForumHome';
 import SiteFooter from '@/components/forum/SiteFooter';
 import BackToTopButton from '@/components/forum/BackToTopButton';
+import NewThreadFAB from '@/components/forum/NewThreadFAB';
 import CookieConsent from '@/components/forum/CookieConsent';
 import Preloader from '@/components/forum/Preloader';
 import type { AppView } from '@/lib/types';
@@ -293,6 +294,9 @@ export default function ForumShell({
     }
   };
 
+  // Show progress ring only inside thread/post view
+  const showProgress = currentView === 'thread';
+
   return (
     <div
       className="min-h-screen flex flex-col"
@@ -306,7 +310,8 @@ export default function ForumShell({
         </div>
       </main>
       <SiteFooter />
-      <BackToTopButton />
+      <BackToTopButton showProgress={showProgress} />
+      <NewThreadFAB />
       <CookieConsent />
     </div>
   );
