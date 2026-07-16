@@ -83,3 +83,33 @@ Stage Summary:
 - Thread Viewing: ✅ Working (no more "Thread not found")
 - Cloudflare Email: ✅ Configured (smtp_enabled=true, cloudflare-send)
 - Google OAuth: ❌ Needs correct Client Secret (currently set to wrong value)
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Fix social icons in footer + hide rich text editor until reply click
+
+Work Log:
+- Diagnosed root cause: No social settings exist in the database, and SiteFooter filtered out icons with empty URLs
+- Rewrote SiteFooter.tsx to always show all 8 social platform icons (Facebook, Twitter/X, Instagram, YouTube, LinkedIn, GitHub, Discord, Twitch)
+- Icons with URLs: clickable colored circles with hover effects
+- Icons without URLs: grayed-out placeholder circles (text-muted-foreground/30)
+- Recreated BackToTopButton.tsx as standalone floating component (previous version was lost)
+- Added BackToTopButton to ForumShell.tsx
+- Added fab-animated CSS animation back to globals.css
+- Modified ThreadView.tsx to hide reply editor by default:
+  - Added showReplyEditor state + replyEditorRef
+  - Added 'Reply to this thread' button that shows when editor is hidden
+  - Reply editor only appears when user clicks Reply button
+  - Added per-post 'Reply' button in PostCard component (onReply prop)
+  - Added Cancel button and X close button to reply editor
+  - Auto-scroll to editor when opened
+  - Auto-close editor after successful reply
+  - Original post also gets Reply button
+
+Stage Summary:
+- Footer now shows all 8 social icons (confirmed via VLM = 8 icons)
+- Back-to-top button is standalone, floating, animated, responsive
+- Reply editor is hidden by default, only shows on Reply button click
+- Per-post Reply buttons added to all posts including original post
+- All changes verified via browser: social icons visible, back-to-top works, thread view shows login prompt when not logged in (editor correctly hidden)

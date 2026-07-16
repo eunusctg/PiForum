@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
 import type { Thread, Post, ForumUser, Forum, Category } from '@/lib/types';
 import { UserRole, ROLE_LABELS } from '@/lib/types';
@@ -266,6 +266,8 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
   const [replyContent, setReplyContent] = useState('');
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [replyFiles, setReplyFiles] = useState<File[]>([]);
+  const [showReplyEditor, setShowReplyEditor] = useState(false);
+  const replyEditorRef = useRef<HTMLDivElement>(null);
 
   // Edit state
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
@@ -516,6 +518,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
       if (data.success) {
         setReplyContent('');
         setReplyFiles([]);
+        setShowReplyEditor(false);
         // Refresh posts
         fetchPosts();
       }
@@ -664,6 +667,15 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
   // ---------- derived ----------
   const isAdminOrMod = currentUser && currentUser.role >= UserRole.Moderator;
   const canReply = currentUser && !threadData?.locked;
+
+  // Open reply editor and scroll to it
+  const openReplyEditor = useCallback(() => {
+    setShowReplyEditor(true);
+    // Defer scroll so the DOM updates first
+    setTimeout(() => {
+      replyEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, []);
 
   const getPostVoteData = (post: PostWithMeta) => {
     const local = localVotes[post.id];
@@ -882,6 +894,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
           canDelete={false}
           onEdit={() => {}}
           onDelete={() => {}}
+          onReply={canReply ? openReplyEditor : undefined}
         />
       )}
 
@@ -946,6 +959,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
                 canUnmarkBestAnswer={canUnmarkBestAnswer}
                 onMarkBestAnswer={() => handleMarkBestAnswer(post.id)}
                 onUnmarkBestAnswer={handleUnmarkBestAnswer}
+                onReply={canReply ? openReplyEditor : undefined}
               />
             );
           })}
@@ -979,13 +993,32 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
         </div>
       )}
 
-      {/* ---- Reply Form ---- */}
-      {canReply && (
-        <div className="neu-card p-5 sm:p-6 space-y-4">
-          <h3 className="text-base font-semibold flex items-center gap-2">
-            <Send className="size-4 text-primary" />
-            Post a Reply
-          </h3>
+      {/* ---- Reply Button / Reply Form ---- */}
+      {canReply && !showReplyEditor && (
+        <button
+          onClick={openReplyEditor}
+          className="neu-btn w-full p-4 sm:p-5 text-sm font-medium flex items-center justify-center gap-2 text-primary hover:text-primary transition-colors"
+        >
+          <MessageSquare className="size-4" />
+          Reply to this thread
+        </button>
+      )}
+
+      {canReply && showReplyEditor && (
+        <div ref={replyEditorRef} className="neu-card p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Send className="size-4 text-primary" />
+              Post a Reply
+            </h3>
+            <button
+              onClick={() => setShowReplyEditor(false)}
+              className="neu-btn p-1.5 text-muted-foreground hover:text-primary transition-colors"
+              title="Cancel reply"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
 
           <div className="neu-input p-1">
             <textarea
@@ -993,6 +1026,7 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
               onChange={(e) => setReplyContent(e.target.value)}
               placeholder="Write your reply... (supports **bold**, *italic*, `code`, > quotes)"
               rows={5}
+              autoFocus
               className="w-full bg-transparent resize-y min-h-[100px] p-3 text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
@@ -1041,6 +1075,12 @@ export default function ThreadView({ threadId }: ThreadViewProps) {
             <span className="text-xs text-muted-foreground">
               {replyContent.length > 0 && `${replyContent.length} characters`}
             </span>
+            <button
+              onClick={() => setShowReplyEditor(false)}
+              className="neu-btn px-4 py-2.5 text-sm font-medium text-muted-foreground"
+            >
+              Cancel
+            </button>
             <button
               onClick={handleReply}
               disabled={!replyContent.trim() || replySubmitting}
@@ -1114,6 +1154,7 @@ interface PostCardProps {
   canUnmarkBestAnswer?: boolean;
   onMarkBestAnswer?: () => void;
   onUnmarkBestAnswer?: () => void;
+  onReply?: () => void;
 }
 
 function PostCard({
@@ -1144,6 +1185,7 @@ function PostCard({
   canUnmarkBestAnswer = false,
   onMarkBestAnswer,
   onUnmarkBestAnswer,
+  onReply,
 }: PostCardProps) {
   const authorName = author?.displayName || author?.username || 'Unknown';
   const authorInitial = authorName.charAt(0).toUpperCase();
@@ -1314,46 +1356,58 @@ function PostCard({
             </div>
           )}
 
-          {/* Vote bar */}
-          {!isEditing && !isOriginalPost && (
+          {/* Vote bar + Reply */}
+          {!isEditing && (
             <div className="mt-4 flex items-center gap-3">
-              <div className="flex items-center gap-1">
+              {!isOriginalPost && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={onUpvote}
+                    disabled={isVoting}
+                    className={`neu-btn p-1.5 transition-colors ${
+                      userVote === 1
+                        ? 'text-green-500 neu-btn-inset'
+                        : 'text-muted-foreground hover:text-green-500'
+                    } disabled:opacity-40`}
+                    title="Upvote"
+                  >
+                    <ChevronUp className="size-4" />
+                  </button>
+                  <span
+                    className={`text-sm font-medium min-w-[2rem] text-center ${
+                      voteScore > 0
+                        ? 'text-green-500'
+                        : voteScore < 0
+                          ? 'text-destructive'
+                          : 'text-muted-foreground'
+                    }`}
+                  >
+                    {voteScore}
+                  </span>
+                  <button
+                    onClick={onDownvote}
+                    disabled={isVoting}
+                    className={`neu-btn p-1.5 transition-colors ${
+                      userVote === -1
+                        ? 'text-destructive neu-btn-inset'
+                        : 'text-muted-foreground hover:text-destructive'
+                    } disabled:opacity-40`}
+                    title="Downvote"
+                  >
+                    <ChevronDown className="size-4" />
+                  </button>
+                </div>
+              )}
+              {onReply && (
                 <button
-                  onClick={onUpvote}
-                  disabled={isVoting}
-                  className={`neu-btn p-1.5 transition-colors ${
-                    userVote === 1
-                      ? 'text-green-500 neu-btn-inset'
-                      : 'text-muted-foreground hover:text-green-500'
-                  } disabled:opacity-40`}
-                  title="Upvote"
+                  onClick={onReply}
+                  className="neu-btn px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors ml-auto"
+                  title="Reply to this post"
                 >
-                  <ChevronUp className="size-4" />
+                  <MessageSquare className="size-3.5" />
+                  Reply
                 </button>
-                <span
-                  className={`text-sm font-medium min-w-[2rem] text-center ${
-                    voteScore > 0
-                      ? 'text-green-500'
-                      : voteScore < 0
-                        ? 'text-destructive'
-                        : 'text-muted-foreground'
-                  }`}
-                >
-                  {voteScore}
-                </span>
-                <button
-                  onClick={onDownvote}
-                  disabled={isVoting}
-                  className={`neu-btn p-1.5 transition-colors ${
-                    userVote === -1
-                      ? 'text-destructive neu-btn-inset'
-                      : 'text-muted-foreground hover:text-destructive'
-                  } disabled:opacity-40`}
-                  title="Downvote"
-                >
-                  <ChevronDown className="size-4" />
-                </button>
-              </div>
+              )}
             </div>
           )}
         </div>

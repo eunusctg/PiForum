@@ -6,6 +6,7 @@ import Header from '@/components/forum/Header';
 import AuthModal from '@/components/forum/AuthModal';
 import ForumHome from '@/components/forum/ForumHome';
 import SiteFooter from '@/components/forum/SiteFooter';
+import BackToTopButton from '@/components/forum/BackToTopButton';
 import CookieConsent from '@/components/forum/CookieConsent';
 import Preloader from '@/components/forum/Preloader';
 import type { AppView } from '@/lib/types';
@@ -302,6 +303,7 @@ export default function ForumShell({
         </div>
       </main>
       <SiteFooter />
+      <BackToTopButton />
       <CookieConsent />
     </div>
   );

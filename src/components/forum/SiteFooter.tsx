@@ -8,15 +8,15 @@
 /*    • ≥sm     → 2 columns                                           */
 /*    • ≥lg     → 3 columns (Brand, Quick Links, Newsletter)          */
 /*                                                                    */
-/*  Extras: floating back-to-top FAB (appears on scroll), inline      */
-/*  newsletter form with attached submit, 40px touch targets.         */
+/*  Extras: inline newsletter form with attached submit,              */
+/*  40px touch targets.                                               */
 /*                                                                    */
 /*  Settings-driven (forum_name, forum_tagline, logo_url, social_*,   */
 /*  forum_description), nav-driven (navigateTo), data-driven          */
 /*  (/api/pages?footer=1 for legal-link slug lookup).                */
 /* ------------------------------------------------------------------ */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { useToast } from '@/hooks/use-toast';
 import type { Page } from '@/lib/types';
@@ -25,7 +25,10 @@ import {
   Twitter,
   MessageCircle,
   Youtube,
-  ChevronUp,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Twitch,
   Mail,
   Send,
   type LucideIcon,
@@ -38,7 +41,20 @@ type SocialLink = {
   Icon: LucideIcon;
 };
 
+/* All 8 platforms — always rendered; grayed-out when no URL is set. */
+const SOCIAL_PLATFORMS: { key: string; settingKey: string; label: string; Icon: LucideIcon }[] = [
+  { key: 'facebook', settingKey: 'social_facebook', label: 'Facebook', Icon: Facebook },
+  { key: 'twitter', settingKey: 'social_twitter', label: 'X (Twitter)', Icon: Twitter },
+  { key: 'instagram', settingKey: 'social_instagram', label: 'Instagram', Icon: Instagram },
+  { key: 'youtube', settingKey: 'social_youtube', label: 'YouTube', Icon: Youtube },
+  { key: 'linkedin', settingKey: 'social_linkedin', label: 'LinkedIn', Icon: Linkedin },
+  { key: 'github', settingKey: 'social_github', label: 'GitHub', Icon: Github },
+  { key: 'discord', settingKey: 'social_discord', label: 'Discord', Icon: MessageCircle },
+  { key: 'twitch', settingKey: 'social_twitch', label: 'Twitch', Icon: Twitch },
+];
+
 export default function SiteFooter() {
+  const settings = useAppStore((s) => s.settings);
   const getSetting = useAppStore((s) => s.getSetting);
   const navigateTo = useAppStore((s) => s.navigateTo);
   const { toast } = useToast();
@@ -46,25 +62,23 @@ export default function SiteFooter() {
   const [footerPages, setFooterPages] = useState<Page[]>([]);
   const [email, setEmail] = useState('');
   const [subscribing, setSubscribing] = useState(false);
-  const [showTop, setShowTop] = useState(false);
 
   const forumName = getSetting('forum_name', 'PiForum');
-  const forumTagline = getSetting('forum_tagline', 'Dominate Tech: Elite Tutorials & Expert Intel');
+  const forumTagline = getSetting('forum_tagline', 'PiForum');
   const forumDescription =
     getSetting('forum_description', 'Stop scrolling dead forums. Piforum delivers battle-tested tutorials and raw expert knowledge. Post your guides, crush doubts, and own the conversation.') || forumTagline || '';
   const logoUrl = getSetting('logo_url', '');
   const year = new Date().getFullYear();
 
-  // Social links
+  // Social links — always show all platforms; grayed-out when no URL
   const socials = useMemo<SocialLink[]>(() => {
-    const list: SocialLink[] = [
-      { key: 'github', href: getSetting('social_github', ''), label: `${forumName} on GitHub`, Icon: Github },
-      { key: 'twitter', href: getSetting('social_twitter', ''), label: `${forumName} on Twitter / X`, Icon: Twitter },
-      { key: 'discord', href: getSetting('social_discord', ''), label: `${forumName} on Discord`, Icon: MessageCircle },
-      { key: 'youtube', href: getSetting('social_youtube', ''), label: `${forumName} on YouTube`, Icon: Youtube },
-    ];
-    return list.filter((s) => s.href && s.href.trim().length > 0);
-  }, [getSetting, forumName]);
+    return SOCIAL_PLATFORMS.map((p) => ({
+      key: p.key,
+      href: getSetting(p.settingKey, ''),
+      label: `${forumName} on ${p.label}`,
+      Icon: p.Icon,
+    }));
+  }, [settings, getSetting, forumName]);
 
   // Look up footer pages with slug hints for the legal-ish labels.
   const legalPageBySlug = useMemo(() => {
@@ -92,17 +106,6 @@ export default function SiteFooter() {
     }
     load();
     return () => { active = false; };
-  }, []);
-
-  // Floating back-to-top visibility
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const onScroll = () => {
-      setShowTop(window.scrollY > window.innerHeight * 0.6);
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   function handleSubscribe(e: React.FormEvent<HTMLFormElement>) {
@@ -133,11 +136,6 @@ export default function SiteFooter() {
       navigateTo('page', { pageSlug: slug });
     }
   }
-
-  const scrollToTop = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
 
   return (
     <footer
@@ -185,23 +183,33 @@ export default function SiteFooter() {
               </p>
             )}
 
-            {/* Social icons row */}
-            {socials.length > 0 && (
-              <nav className="mt-5 flex flex-wrap items-center gap-2 sm:gap-2.5" aria-label="Social links">
-                {socials.map(({ key, href, label, Icon }) => (
+            {/* Social icons row — always show all 8; configured ones are interactive, unconfigured are subtle placeholders */}
+            <nav className="mt-5 flex flex-wrap items-center gap-2 sm:gap-2.5" aria-label="Social links">
+              {socials.map(({ key, href, label, Icon }) => {
+                const hasLink = href && href.trim().length > 0;
+                return hasLink ? (
                   <a
                     key={key}
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}
-                    className="neu-circle flex items-center justify-center size-10 sm:size-9 p-2 text-muted-foreground hover:text-primary transition-colors"
+                    className="group flex items-center justify-center size-10 rounded-full bg-muted/60 text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-200"
                   >
-                    <Icon className="size-5" aria-hidden="true" />
+                    <Icon className="size-[18px]" aria-hidden="true" />
                   </a>
-                ))}
-              </nav>
-            )}
+                ) : (
+                  <span
+                    key={key}
+                    aria-label={`${label} (not configured)`}
+                    className="flex items-center justify-center size-10 rounded-full bg-muted/25 text-muted-foreground/30 cursor-default"
+                    title={`${label} — link not set`}
+                  >
+                    <Icon className="size-[18px]" aria-hidden="true" />
+                  </span>
+                );
+              })}
+            </nav>
           </section>
 
           {/* 2. Quick Links */}
@@ -344,25 +352,6 @@ export default function SiteFooter() {
           </nav>
         </div>
       </div>
-
-      {/* Floating back-to-top FAB */}
-      <button
-        type="button"
-        onClick={scrollToTop}
-        aria-label="Back to top"
-        tabIndex={showTop ? 0 : -1}
-        className={[
-          'neu-circle fixed bottom-5 right-5 z-40',
-          'inline-flex items-center justify-center size-11 p-0',
-          'text-primary',
-          'transition-all duration-300 ease-out',
-          showTop
-            ? 'opacity-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 translate-y-4 pointer-events-none',
-        ].join(' ')}
-      >
-        <ChevronUp className="size-5" aria-hidden="true" />
-      </button>
     </footer>
   );
 }

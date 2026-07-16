@@ -1210,3 +1210,25 @@ summary,
     transform: none !important;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Floating FAB animation                                             */
+/* ------------------------------------------------------------------ */
+@keyframes fab-bounce-in {
+  0% { transform: scale(0) translateY(20px); opacity: 0; }
+  60% { transform: scale(1.1) translateY(-4px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.fab-animated {
+  animation: fab-bounce-in 0.5s ease-out both;
+}
+
+@keyframes fab-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 30%, transparent); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+
+.fab-animated {
+  animation: fab-bounce-in 0.5s ease-out both, fab-pulse 2s ease-in-out 1s infinite;
+}
