@@ -61,3 +61,28 @@ Stage Summary:
 - Share buttons: Expanded section below posts with 7 platforms (Facebook, Twitter, LinkedIn, WhatsApp, Reddit, Email, Copy Link)
 - Post actions: Edit, Delete (with text labels), Archive, Report all working for authorized users
 - Original post: Thread authors can now edit/delete their own thread content (was previously hardcoded to false)
+---
+Task ID: 2
+Agent: Main Agent
+Task: Deep dive deploy - restart PM2-managed dev server with cleared cache
+
+Work Log:
+- Discovered dev server is managed by PM2 (not plain bunx next dev)
+- PM2 process name: "next-dev" (id: 0)
+- Killed all stale processes and cleared .next build cache
+- Restarted via `npx pm2 restart next-dev` after `rm -rf .next`
+- Waited for fresh Turbopack compilation to complete
+- Verified with Agent Browser:
+  - Social icons: All 8 icons render with brand colors and SVGs in footer ✅
+  - BackToTop button: position:fixed, z-index:100, opacity:1 after scroll, progress SVG on thread view ✅
+  - NewThreadFAB: position:fixed, z-index:99, bottom:128px, right:40px, opacity:1 for logged-in users ✅
+  - Share buttons: Facebook, Twitter, LinkedIn, WhatsApp, Reddit, Email, Copy link on every post ✅
+  - Edit/Delete: Visible for post authors and admins ✅
+  - Archive: Visible for thread authors and mods/admins ✅
+  - Report: Available on every post ✅
+  - Bookmark: Available on thread header ✅
+
+Stage Summary:
+- Root cause of "nothing showed" was that PM2-managed dev server needed cache clear + restart
+- All previously implemented features confirmed working after fresh deploy
+- PM2 key insight: must use `npx pm2 restart next-dev` instead of killing processes manually
